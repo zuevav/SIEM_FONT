@@ -1,0 +1,150 @@
+# =====================================================================
+# SIEM Backend - Python Dependencies
+# =====================================================================
+
+# Core Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.25
+pyodbc==5.0.1
+# MS SQL Server driver: ODBC Driver 18 for SQL Server
+
+# Async support
+asyncio==3.4.3
+aiohttp==3.9.1
+aiofiles==23.2.1
+
+# Security & Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.2
+python-ldap==3.4.4
+# AD integration
+
+# Environment & Configuration
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# WebSockets (real-time)
+websockets==12.0
+
+# Caching & Queues (optional)
+redis==5.0.1
+hiredis==2.3.2
+
+# HTTP Client
+httpx==0.26.0
+requests==2.31.0
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.3
+
+# Serialization
+orjson==3.9.12
+# Faster JSON
+pyyaml==6.0.1
+
+# Logging
+python-json-logger==2.0.7
+loguru==0.7.2
+
+# Email
+aiosmtplib==3.0.1
+email-validator==2.1.0.post1
+
+# Date & Time
+python-dateutil==2.8.2
+pytz==2023.3.post1
+
+# GeoIP (optional)
+geoip2==4.7.0
+# Requires MaxMind GeoLite2 database
+
+# Cryptography
+cryptography==41.0.7
+hashlib-additional==1.0.0
+
+# Monitoring & Metrics
+prometheus-client==0.19.0
+# Optional: Prometheus metrics
+
+# Validation
+validators==0.22.0
+
+# Excel Export (для отчётов ЦБ)
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+
+# PDF Export (для отчётов)
+reportlab==4.0.9
+weasyprint==60.2
+# Requires system libs: libpango, libcairo
+
+# Task Scheduling
+apscheduler==3.10.4
+
+# MITRE ATT&CK
+mitreattack-python==3.0.5
+
+# Testing (dev)
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
+httpx[http2]==0.26.0
+# For test client
+
+# Development Tools (dev)
+black==23.12.1
+# Code formatter
+isort==5.13.2
+# Import sorter
+pylint==3.0.3
+# Linter
+mypy==1.8.0
+# Type checker
+flake8==7.0.0
+# Another linter
+
+# Documentation (dev)
+mkdocs==1.5.3
+mkdocs-material==9.5.3
+
+# Performance (optional)
+gunicorn==21.2.0
+# WSGI server (if not using uvicorn)
+
+# Extras
+click==8.1.7
+# CLI interface
+rich==13.7.0
+# Beautiful terminal output
+tqdm==4.66.1
+# Progress bars
+
+# System
+psutil==5.9.7
+# System monitoring
+
+# =====================================================================
+# NOTES
+# =====================================================================
+# Install:
+#   pip install -r requirements.txt
+#
+# For development:
+#   pip install -r requirements-dev.txt
+#
+# MS SQL Server ODBC Driver:
+#   Linux: https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server
+#   Windows: https://learn.microsoft.com/en-us/sql/connect/odbc/windows/microsoft-odbc-driver-for-sql-server-on-windows
+#
+# System dependencies (Ubuntu/Debian):
+#   apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 unixodbc-dev
+#
+# Python version: 3.11+
+# =====================================================================
