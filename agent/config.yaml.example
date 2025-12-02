@@ -1,0 +1,166 @@
+# ============================================================================
+# SIEM Windows Agent Configuration
+# ============================================================================
+
+# SIEM Server Configuration
+siem:
+  # SIEM API endpoint
+  api_url: "http://localhost:8000"
+
+  # Agent registration (no authentication for registration)
+  register_on_startup: true
+
+  # Heartbeat interval (seconds)
+  heartbeat_interval: 60
+
+  # Event sending
+  batch_size: 100
+  send_interval: 30
+  max_queue_size: 10000
+
+# Windows Event Log Collection
+eventlog:
+  enabled: true
+
+  # Event log channels to monitor
+  channels:
+    - name: "Security"
+      enabled: true
+      min_event_id: 0
+      max_event_id: 99999
+
+    - name: "System"
+      enabled: true
+      min_event_id: 0
+      max_event_id: 99999
+
+    - name: "Application"
+      enabled: false
+      min_event_id: 0
+      max_event_id: 99999
+
+    - name: "Microsoft-Windows-Sysmon/Operational"
+      enabled: true
+      min_event_id: 0
+      max_event_id: 99999
+
+    - name: "Microsoft-Windows-PowerShell/Operational"
+      enabled: true
+      min_event_id: 0
+      max_event_id: 99999
+
+  # Severity filter (0=all, 1=Critical, 2=Error, 3=Warning, 4=Information)
+  min_severity: 0
+
+  # Event filters (exclude low-priority events)
+  exclude_event_ids:
+    - 5379  # Credential Manager credentials were read
+    - 4798  # A user's local group membership was enumerated
+    - 5158  # Windows Filtering Platform has permitted a bind
+    - 5440  # Windows Filtering Platform started
+    - 5441  # Windows Filtering Platform stopped
+
+# Sysmon Integration
+sysmon:
+  enabled: true
+  check_installation: true
+
+  # High-priority Sysmon events
+  priority_events:
+    - 1   # Process creation
+    - 3   # Network connection
+    - 7   # Image loaded
+    - 8   # CreateRemoteThread
+    - 10  # ProcessAccess
+    - 11  # FileCreate
+    - 12  # RegistryEvent (Object create and delete)
+    - 13  # RegistryEvent (Value Set)
+    - 22  # DNSEvent (DNS query)
+
+# Software Inventory
+inventory:
+  enabled: true
+
+  # Full inventory interval (seconds)
+  full_scan_interval: 3600
+
+  # Quick scan interval (seconds) - only changes
+  quick_scan_interval: 300
+
+  # Include installed software
+  collect_software: true
+
+  # Include Windows services
+  collect_services: true
+
+  # Include startup programs
+  collect_startup: false
+
+  # Include network connections
+  collect_network: false
+
+# Performance Settings
+performance:
+  # Max CPU usage (%)
+  max_cpu_percent: 20
+
+  # Max memory (MB)
+  max_memory_mb: 512
+
+  # Worker threads
+  worker_threads: 4
+
+  # Enable compression for API requests
+  compression: true
+
+# Logging
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+  # Log file path
+  file: "C:\\ProgramData\\SIEM\\agent.log"
+
+  # Max log file size (MB)
+  max_size_mb: 100
+
+  # Max log file age (days)
+  max_age_days: 30
+
+  # Keep old logs
+  max_backups: 5
+
+  # Log to console (for debugging)
+  console: false
+
+# Agent Information
+agent:
+  # Agent version (auto-detected)
+  version: "1.0.0"
+
+  # Agent tags (for grouping)
+  tags:
+    - "production"
+    - "windows"
+
+  # Criticality level (low, medium, high, critical)
+  criticality: "medium"
+
+  # Location
+  location: ""
+
+  # Owner/Responsible person
+  owner: ""
+
+# Advanced Settings
+advanced:
+  # Retry failed API calls
+  retry_attempts: 3
+  retry_delay_seconds: 5
+
+  # Enable debug mode (verbose logging)
+  debug: false
+
+  # Enable profiling (for performance analysis)
+  profiling: false
+  profiling_port: 6060
