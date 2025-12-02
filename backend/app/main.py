@@ -212,16 +212,24 @@ async def get_info():
 # API ROUTES
 # ============================================================================
 
-# TODO: Import and include API routers here
-# from app.api.v1 import auth, events, alerts, agents, incidents
+# Import API routers
+from app.api.v1 import auth, events, agents
 
-# app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-# app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
+# Authentication router
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+
+# Events router
+app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
+
+# Agents router
+app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
+
+logger.info("API routers loaded successfully")
+
+# TODO: Add more routers in next phase
+# from app.api.v1 import alerts, incidents
 # app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
-# app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
 # app.include_router(incidents.router, prefix="/api/v1/incidents", tags=["Incidents"])
-
-logger.info("API routers will be added in next development phase")
 
 
 # ============================================================================
