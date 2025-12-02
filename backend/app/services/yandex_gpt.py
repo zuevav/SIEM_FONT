@@ -10,11 +10,12 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 
 from app.config import settings
+from app.services.ai_provider import AIServiceProvider
 
 logger = logging.getLogger(__name__)
 
 
-class YandexGPTService:
+class YandexGPTService(AIServiceProvider):
     """
     Service for interacting with Yandex GPT API
     Provides AI-powered analysis of security events, alerts, and incidents

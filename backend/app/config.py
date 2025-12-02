@@ -69,9 +69,30 @@ class Settings(BaseSettings):
         )
 
     # ============================================================================
-    # YANDEX GPT (AI ANALYSIS)
+    # AI PROVIDER SELECTION
     # ============================================================================
-    yandex_gpt_enabled: bool = Field(default=True, env="YANDEX_GPT_ENABLED")
+    # Options: "deepseek", "yandex_gpt"
+    # DeepSeek - Free/affordable AI provider (recommended)
+    # Yandex GPT - Requires Yandex Cloud account (paid)
+    ai_provider: str = Field(default="deepseek", env="AI_PROVIDER")
+
+    # ============================================================================
+    # DEEPSEEK AI (FREE/AFFORDABLE)
+    # ============================================================================
+    deepseek_enabled: bool = Field(default=True, env="DEEPSEEK_ENABLED")
+    deepseek_api_key: str = Field(default="", env="DEEPSEEK_API_KEY")
+    deepseek_api_url: str = Field(
+        default="https://api.deepseek.com/v1/chat/completions",
+        env="DEEPSEEK_API_URL"
+    )
+    deepseek_model: str = Field(default="deepseek-chat", env="DEEPSEEK_MODEL")
+    deepseek_temperature: float = Field(default=0.3, env="DEEPSEEK_TEMPERATURE")
+    deepseek_max_tokens: int = Field(default=2000, env="DEEPSEEK_MAX_TOKENS")
+
+    # ============================================================================
+    # YANDEX GPT (PAID)
+    # ============================================================================
+    yandex_gpt_enabled: bool = Field(default=False, env="YANDEX_GPT_ENABLED")
     yandex_gpt_api_key: str = Field(default="", env="YANDEX_GPT_API_KEY")
     yandex_gpt_folder_id: str = Field(default="", env="YANDEX_GPT_FOLDER_ID")
     yandex_gpt_api_url: str = Field(
@@ -90,7 +111,7 @@ class Settings(BaseSettings):
     ai_fallback_to_rules: bool = Field(default=True, env="AI_FALLBACK_TO_RULES")
 
     # Mock (for testing)
-    mock_yandex_gpt: bool = Field(default=False, env="MOCK_YANDEX_GPT")
+    mock_ai: bool = Field(default=False, env="MOCK_AI")
 
     @property
     def ai_model_uri(self) -> str:
