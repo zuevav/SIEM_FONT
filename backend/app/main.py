@@ -14,6 +14,7 @@ import logging
 
 from app.config import settings
 from app.database import engine, check_db_connection, close_db_connection
+from app.tasks import get_ai_analyzer_task, get_dashboard_updater_task
 
 # Setup logging
 logging.basicConfig(
@@ -51,17 +52,46 @@ async def lifespan(app: FastAPI):
     # Log configuration
     logger.info(f"Database: {settings.mssql_server}/{settings.mssql_database}")
     logger.info(f"CORS origins: {settings.cors_origins_list}")
-    logger.info(f"AI Analysis: {'Enabled' if settings.yandex_gpt_enabled else 'Disabled'}")
+    logger.info(f"AI Provider: {settings.ai_provider}")
     logger.info(f"Email notifications: {'Enabled' if settings.email_enabled else 'Disabled'}")
 
+    # Start background tasks
+    logger.info("Starting background tasks...")
+    try:
+        ai_analyzer = get_ai_analyzer_task()
+        await ai_analyzer.start()
+
+        dashboard_updater = get_dashboard_updater_task()
+        await dashboard_updater.start()
+
+        logger.info("✓ Background tasks started")
+    except Exception as e:
+        logger.warning(f"Some background tasks failed to start: {e}")
+
     logger.info("Application started successfully")
+    logger.info("=" * 70)
 
     yield  # Application runs here
 
     # Shutdown
+    logger.info("=" * 70)
     logger.info("Shutting down application...")
+
+    # Stop background tasks
+    try:
+        ai_analyzer = get_ai_analyzer_task()
+        await ai_analyzer.stop()
+
+        dashboard_updater = get_dashboard_updater_task()
+        await dashboard_updater.stop()
+
+        logger.info("✓ Background tasks stopped")
+    except Exception as e:
+        logger.error(f"Error stopping background tasks: {e}")
+
     close_db_connection()
     logger.info("✓ Application shutdown complete")
+    logger.info("=" * 70)
 
 
 # ============================================================================
@@ -214,6 +244,7 @@ async def get_info():
 
 # Import API routers
 from app.api.v1 import auth, events, agents, alerts, incidents
+from app.websocket import websocket_router
 
 # Authentication router
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -230,20 +261,11 @@ app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 # Incidents router
 app.include_router(incidents.router, prefix="/api/v1/incidents", tags=["Incidents"])
 
+# WebSocket router
+app.include_router(websocket_router, prefix="/ws", tags=["WebSocket"])
+
 logger.info("API routers loaded successfully")
-
-
-# ============================================================================
-# WEBSOCKET (PLACEHOLDER)
-# ============================================================================
-
-# TODO: Implement WebSocket for real-time updates
-# from fastapi import WebSocket
-#
-# @app.websocket("/ws")
-# async def websocket_endpoint(websocket: WebSocket):
-#     await websocket.accept()
-#     # Handle real-time events
+logger.info("WebSocket endpoints available at /ws/*")
 
 # ============================================================================
 # RUN APPLICATION
