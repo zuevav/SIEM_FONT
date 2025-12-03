@@ -315,10 +315,58 @@ else
 fi
 
 # =====================================================================
-# STEP 6: CREATE HELPER SCRIPTS
+# STEP 6: INSTALL NETWORK MONITOR
 # =====================================================================
 
-print_step "Step 6: Creating helper scripts"
+print_step "Step 6: Installing Network Monitor (optional)"
+
+if [ -d "network_monitor" ]; then
+    read -p "Install Network Monitor for SNMP/Syslog/NetFlow monitoring? (y/N): " install_netmon
+
+    if [ "$install_netmon" = "y" ] || [ "$install_netmon" = "Y" ]; then
+        cd network_monitor
+
+        # Create virtual environment
+        print_info "Creating Python virtual environment for Network Monitor..."
+        python3 -m venv venv
+
+        # Activate and install
+        print_info "Installing Network Monitor dependencies..."
+        source venv/bin/activate
+
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
+        deactivate
+
+        # Create config from template
+        if [ ! -f "config.yaml" ]; then
+            if [ -f "config.yaml.example" ]; then
+                cp config.yaml.example config.yaml
+                print_success "Created config.yaml from template"
+                print_warning "Edit network_monitor/config.yaml before starting!"
+            fi
+        fi
+
+        cd ..
+        print_success "Network Monitor installed successfully!"
+        print_info "Configure network_monitor/config.yaml with:"
+        print_info "  - SIEM server URL and API key"
+        print_info "  - SNMP devices list"
+        print_info "  - Syslog and NetFlow settings"
+        print_info "To install as systemd service: cd network_monitor && sudo ./install.sh"
+    else
+        print_info "Skipping Network Monitor installation"
+    fi
+else
+    print_warning "Network Monitor directory not found, skipping"
+fi
+
+# =====================================================================
+# STEP 7: CREATE HELPER SCRIPTS
+# =====================================================================
+
+print_step "Step 7: Creating helper scripts"
 
 # Start backend script
 cat > start_backend.sh << 'EOF'
@@ -340,6 +388,18 @@ npm run dev
 EOF
     chmod +x start_frontend.sh
     print_success "Created start_frontend.sh"
+fi
+
+# Start network monitor script
+if [ -d "network_monitor" ]; then
+    cat > start_network_monitor.sh << 'EOF'
+#!/bin/bash
+cd network_monitor
+source venv/bin/activate
+python main.py
+EOF
+    chmod +x start_network_monitor.sh
+    print_success "Created start_network_monitor.sh"
 fi
 
 # Stop all script
@@ -401,6 +461,12 @@ echo "2. Start backend:  ./start_backend.sh"
 
 if [ "$SKIP_FRONTEND" = false ]; then
     echo "3. Start frontend: ./start_frontend.sh"
+fi
+
+if [ -d "network_monitor" ] && [ "$install_netmon" = "y" ]; then
+    echo "4. Configure network_monitor/config.yaml"
+    echo "5. Start network monitor: ./start_network_monitor.sh"
+    echo "   Or install as systemd service: cd network_monitor && sudo ./install.sh"
 fi
 
 echo -e "\n${CYAN}Access the system:${NC}"

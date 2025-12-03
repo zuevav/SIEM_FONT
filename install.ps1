@@ -290,10 +290,39 @@ if (-not $SkipFrontend) {
 }
 
 # =====================================================================
-# STEP 6: CREATE SHORTCUTS AND SCRIPTS
+# STEP 6: INSTALL NETWORK MONITOR (Optional - WSL recommended)
 # =====================================================================
 
-Write-Step "Step 6: Creating helper scripts"
+Write-Step "Step 6: Network Monitor (optional)"
+
+if (Test-Path "network_monitor") {
+    Write-Warning "Network Monitor is designed for Linux"
+    Write-Info "For Windows, we recommend installing it in WSL (Windows Subsystem for Linux)"
+    Write-Info "Alternatively, you can run it on a separate Linux server"
+
+    $installNetmon = Read-Host "Install Network Monitor in WSL or skip? (wsl/skip) [skip]"
+
+    if ($installNetmon -eq "wsl") {
+        Write-Info "To install Network Monitor in WSL:"
+        Write-Info "1. Install WSL: wsl --install"
+        Write-Info "2. Open WSL: wsl"
+        Write-Info "3. cd /mnt/c/<path-to-project>/network_monitor"
+        Write-Info "4. Run: ./install.sh"
+        Write-Info ""
+        Write-Info "Network Monitor will run on the same machine via WSL"
+    } else {
+        Write-Info "Skipping Network Monitor installation"
+        Write-Info "You can install it later on a Linux server"
+    }
+} else {
+    Write-Warning "Network Monitor directory not found"
+}
+
+# =====================================================================
+# STEP 7: CREATE SHORTCUTS AND SCRIPTS
+# =====================================================================
+
+Write-Step "Step 7: Creating helper scripts"
 
 # Start backend script
 $startBackend = @"
@@ -350,6 +379,10 @@ Write-Host "2. Start backend:  .\start_backend.bat" -ForegroundColor Yellow
 
 if (-not $SkipFrontend) {
     Write-Host "3. Start frontend: .\start_frontend.bat" -ForegroundColor Yellow
+}
+
+if ((Test-Path "network_monitor") -and ($installNetmon -eq "wsl")) {
+    Write-Host "4. Install Network Monitor in WSL (see instructions above)" -ForegroundColor Yellow
 }
 
 Write-Host "`nAccess the system:" -ForegroundColor Cyan
