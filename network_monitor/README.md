@@ -43,6 +43,38 @@
 - Парсинг vendor-specific форматов (Cisco, Fortinet, Juniper)
 - Фильтрация по источникам
 
+### NetFlow/IPFIX Collector ⭐ НОВОЕ
+- **NetFlow v5** - классический NetFlow от Cisco
+- **NetFlow v9** - template-based NetFlow
+- **IPFIX (NetFlow v10)** - современный стандарт
+- Анализ сетевого трафика в реальном времени
+- Детектирование подозрительных потоков:
+  - Большие объёмы данных (> 100 MB)
+  - Подключения к подозрительным портам
+  - Port scanning detection
+- Статистика: пакеты, потоки, байты
+- Порт: UDP 2055 (настраивается)
+
+### SNMP Traps Receiver ⭐ НОВОЕ
+- Приём асинхронных SNMP уведомлений (port 162)
+- Поддержка SNMPv2c и SNMPv3
+- Обработка стандартных traps:
+  - coldStart / warmStart (перезагрузка)
+  - linkDown / linkUp (интерфейсы)
+  - authenticationFailure (безопасность)
+- Vendor-specific traps
+- Автоматическое определение severity
+
+### Device Discovery ⭐ НОВОЕ
+- Автоматическое обнаружение устройств в сети
+- ICMP ping sweep для поиска живых хостов
+- SNMP probing для идентификации типа устройства
+- Автоопределение типа по sysDescr и sysObjectID:
+  - Принтеры, Коммутаторы, Роутеры
+  - Межсетевые экраны, UPS, Серверы
+- Continuous discovery с настраиваемым интервалом
+- Поддержка множественных подсетей (CIDR)
+
 ### Детектирование аномалий
 - Высокий CPU/Memory usage
 - Низкий уровень тонера в принтере

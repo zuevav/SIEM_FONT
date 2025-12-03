@@ -13,6 +13,9 @@ from pathlib import Path
 from config import Config
 from snmp_collector import SNMPCollector
 from syslog_receiver import SyslogReceiver
+from netflow_collector import NetFlowCollector
+from snmp_traps import SNMPTrapsReceiver
+from device_discovery import DeviceDiscovery
 from api_client import SIEMAPIClient
 
 
@@ -40,6 +43,9 @@ class NetworkMonitor:
         # Components
         self.snmp_collector = None
         self.syslog_receiver = None
+        self.netflow_collector = None
+        self.snmp_traps = None
+        self.device_discovery = None
         self.api_client = None
 
         # Tasks
@@ -63,6 +69,15 @@ class NetworkMonitor:
         if self.config.syslog.enabled:
             self.syslog_receiver = SyslogReceiver(self.config, self.event_queue)
 
+        if self.config.netflow.enabled:
+            self.netflow_collector = NetFlowCollector(self.config, self.event_queue)
+
+        # Always enable SNMP traps (listens on port 162)
+        self.snmp_traps = SNMPTrapsReceiver(self.config, self.event_queue)
+
+        # Device discovery
+        self.device_discovery = DeviceDiscovery(self.config)
+
         # Start background tasks
         self.tasks = [
             asyncio.create_task(self._event_sender()),
@@ -76,10 +91,18 @@ class NetworkMonitor:
         if self.syslog_receiver:
             self.tasks.append(asyncio.create_task(self.syslog_receiver.start()))
 
+        if self.netflow_collector:
+            self.tasks.append(asyncio.create_task(self.netflow_collector.start()))
+
+        if self.snmp_traps:
+            self.tasks.append(asyncio.create_task(self.snmp_traps.start()))
+
         logger.info("Network Monitor started successfully")
         logger.info(f"SNMP: {'Enabled' if self.config.snmp.enabled else 'Disabled'} "
                     f"({len(self.config.snmp.devices)} devices)")
         logger.info(f"Syslog: {'Enabled' if self.config.syslog.enabled else 'Disabled'}")
+        logger.info(f"NetFlow: {'Enabled' if self.config.netflow.enabled else 'Disabled'}")
+        logger.info(f"SNMP Traps: Enabled (port 162)")
         logger.info(f"SIEM Backend: {self.config.siem.server_url}")
 
         # Wait for shutdown signal
@@ -163,6 +186,14 @@ class NetworkMonitor:
                 if self.syslog_receiver:
                     stats["syslog"] = self.syslog_receiver.get_stats()
 
+                # Add NetFlow stats
+                if self.netflow_collector:
+                    stats["netflow"] = self.netflow_collector.get_stats()
+
+                # Add SNMP traps stats
+                if self.snmp_traps:
+                    stats["snmp_traps"] = self.snmp_traps.get_stats()
+
                 # Send heartbeat
                 await self.api_client.send_heartbeat(stats)
 
@@ -193,6 +224,21 @@ class NetworkMonitor:
                     logger.info(f"Syslog: {stats['messages_received']} received, "
                                 f"{stats['messages_parsed']} parsed, "
                                 f"{stats['messages_dropped']} dropped")
+
+                if self.netflow_collector:
+                    stats = self.netflow_collector.get_stats()
+                    logger.info(f"NetFlow: {stats['packets_received']} packets, "
+                                f"{stats['flows_processed']} flows, "
+                                f"{stats['bytes_total']} bytes")
+
+                if self.snmp_traps:
+                    stats = self.snmp_traps.get_stats()
+                    logger.info(f"SNMP Traps: {stats['traps_received']} received, "
+                                f"{stats['traps_processed']} processed")
+
+                if self.device_discovery:
+                    devices = self.device_discovery.get_discovered_devices()
+                    logger.info(f"Device Discovery: {len(devices)} devices discovered")
 
                 logger.info("=" * 60)
 
