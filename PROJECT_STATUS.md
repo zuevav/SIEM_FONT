@@ -407,6 +407,7 @@
   - Signal handlers для graceful shutdown
   - Event queue для буферизации событий
   - Background tasks (event sender, heartbeat, stats logger)
+  - Интеграция всех коллекторов (SNMP, Syslog, NetFlow, SNMP Traps)
 - ✅ **config.py** - конфигурация с Pydantic
   - 150+ настраиваемых параметров
   - YAML configuration
@@ -458,6 +459,49 @@
   - IP filtering (allowed/blocked lists)
   - Syslog severity mapping в SIEM severity
 
+### NetFlow/IPFIX Collector ⭐ НОВОЕ
+- ✅ **netflow_collector.py** - анализ сетевого трафика
+  - **NetFlow v5** - классический NetFlow от Cisco (статические 48-byte записи)
+  - **NetFlow v9** - template-based NetFlow с динамическими полями
+  - **IPFIX (v10)** - современный стандарт сетевых потоков
+  - Template caching для v9/IPFIX
+  - Suspicious flow detection:
+    - Большие объёмы данных (> 100 MB)
+    - Подключения к подозрительным портам (SSH, RDP, SMB, SQL)
+    - Port scanning detection (много пакетов, мало байт)
+  - Статистика: пакеты, потоки, байты
+  - UDP порт 2055 (настраивается)
+
+### SNMP Traps Receiver ⭐ НОВОЕ
+- ✅ **snmp_traps.py** - приём асинхронных SNMP уведомлений
+  - Listening на UDP порт 162
+  - Поддержка SNMPv2c и SNMPv3
+  - Обработка стандартных trap типов:
+    - coldStart / warmStart (перезагрузка устройства)
+    - linkDown / linkUp (изменение статуса интерфейсов)
+    - authenticationFailure (попытка неавторизованного доступа)
+  - Vendor-specific traps
+  - Автоматическое определение severity
+  - Интеграция с SIEM event system
+
+### Device Discovery ⭐ НОВОЕ
+- ✅ **device_discovery.py** - автоматическое обнаружение устройств
+  - **ICMP ping sweep** для поиска живых хостов в сети
+    - Concurrent scanning с semaphore (50 параллельных ping)
+    - CIDR network support (192.168.1.0/24)
+  - **SNMP probing** для идентификации устройств
+    - Получение sysDescr, sysObjectID, sysName
+    - Timeout 2 секунды на устройство
+  - **Автоопределение типа устройства**:
+    - Принтеры (HP, Canon, Xerox, Brother, Epson)
+    - Коммутаторы (Cisco, HP, Juniper, D-Link)
+    - Роутеры (Cisco, Juniper, Mikrotik, Ubiquiti)
+    - Межсетевые экраны (Fortinet, Checkpoint, Palo Alto, pfSense)
+    - UPS (APC, Eaton, CyberPower, Tripp Lite)
+    - Серверы и неизвестные устройства
+  - Continuous discovery с настраиваемым интервалом
+  - Поддержка множественных подсетей
+
 ### Anomaly Detection
 - ✅ Автоматическое детектирование аномалий:
   - High CPU usage (threshold configurable)
@@ -467,6 +511,8 @@
   - Low UPS battery charge
   - Device unreachable/offline
   - Interface down events
+  - Suspicious network flows (NetFlow analysis)
+  - Port scanning attempts
 
 ### Monitoring Capabilities
 - ✅ **Принтеры**:
@@ -768,6 +814,9 @@ SIEM_FONT/
 │   ├── config.py                    # Configuration (Pydantic)
 │   ├── snmp_collector.py            # SNMP collector
 │   ├── syslog_receiver.py           # Syslog receiver (UDP/TCP)
+│   ├── netflow_collector.py         # ⭐ NetFlow/IPFIX collector (v5/v9/v10)
+│   ├── snmp_traps.py                # ⭐ SNMP Traps receiver (port 162)
+│   ├── device_discovery.py          # ⭐ Automatic device discovery
 │   ├── device_profiles.py           # Device profiles (printer, switch, etc.)
 │   ├── api_client.py                # SIEM API client
 │   ├── requirements.txt             # Python dependencies
@@ -828,14 +877,14 @@ SIEM_FONT/
 13. ✅ **Comprehensive Documentation** - 5 markdown guides
 
 ### Статистика проекта
-- **Общее количество строк кода**: ~18,000+
+- **Общее количество строк кода**: ~18,900+
 - **Backend Python**: ~8,000 строк
 - **Windows Agent Go**: ~2,500 строк
-- **Network Monitor Python**: ~1,500 строк
+- **Network Monitor Python**: ~2,400 строк (включая NetFlow, SNMP Traps, Device Discovery)
 - **Database SQL**: ~2,600 строк
 - **Documentation**: ~3,500 строк
 - **Языки**: Python, Go, SQL, TypeScript (planned)
-- **Commits**: 6 основных этапов разработки
+- **Commits**: 7 основных этапов разработки
 
 ---
 
