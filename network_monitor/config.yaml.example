@@ -1,0 +1,238 @@
+# =====================================================================
+# SIEM Network Monitor - Configuration
+# =====================================================================
+# Мониторинг принтеров, коммутаторов, роутеров, МСЭ и другого сетевого
+# оборудования через SNMP и syslog
+# =====================================================================
+
+# SIEM Backend API
+siem:
+  server_url: "http://localhost:8000"
+  api_key: ""
+
+  # Регистрация при запуске
+  register_on_startup: true
+
+  # Heartbeat интервал (секунды)
+  heartbeat_interval: 60
+
+  # Размер батча для отправки событий
+  batch_size: 100
+
+  # Таймаут отправки (секунды)
+  send_timeout: 30
+
+  # Количество повторных попыток
+  retry_attempts: 3
+
+  # Задержка между попытками (секунды)
+  retry_delay: 5
+
+  # Пропускать проверку SSL сертификата
+  insecure_skip_verify: false
+
+# SNMP Мониторинг
+snmp:
+  enabled: true
+
+  # Интервал опроса (секунды)
+  poll_interval: 60
+
+  # Таймаут SNMP запроса (секунды)
+  timeout: 5
+
+  # Количество повторных попыток
+  retries: 2
+
+  # SNMP версия (2c или 3)
+  version: "2c"
+
+  # Community string для SNMP v2c (default: public)
+  community: "public"
+
+  # SNMP v3 настройки (если version = "3")
+  v3:
+    username: "snmpuser"
+    auth_protocol: "SHA"      # MD5 или SHA
+    auth_password: ""
+    priv_protocol: "AES"      # DES или AES
+    priv_password: ""
+
+  # Устройства для мониторинга
+  devices:
+    # Принтеры
+    - name: "HP-Printer-01"
+      ip: "192.168.1.100"
+      type: "printer"
+      enabled: true
+      community: "public"        # Можно переопределить
+      oids:                      # Специфичные OID для принтера
+        - "1.3.6.1.2.1.43.11.1.1.9.1.1"  # Toner level
+        - "1.3.6.1.2.1.43.10.2.1.4.1.1"  # Page count
+
+    - name: "Canon-Printer-02"
+      ip: "192.168.1.101"
+      type: "printer"
+      enabled: true
+
+    # Коммутаторы
+    - name: "Switch-Core-01"
+      ip: "192.168.1.10"
+      type: "switch"
+      enabled: true
+      community: "private"
+      monitor:
+        - interfaces          # Мониторить интерфейсы
+        - cpu                 # CPU load
+        - memory              # Memory usage
+        - errors              # Interface errors
+
+    - name: "Switch-Access-02"
+      ip: "192.168.1.11"
+      type: "switch"
+      enabled: true
+
+    # Роутеры
+    - name: "Router-Gateway"
+      ip: "192.168.1.1"
+      type: "router"
+      enabled: true
+      monitor:
+        - interfaces
+        - routing_table
+        - cpu
+        - memory
+
+    # Межсетевые экраны
+    - name: "Firewall-Main"
+      ip: "192.168.1.254"
+      type: "firewall"
+      enabled: true
+      monitor:
+        - connections
+        - blocked_packets
+        - vpn_tunnels
+
+    # UPS
+    - name: "UPS-Server-Room"
+      ip: "192.168.1.200"
+      type: "ups"
+      enabled: true
+      monitor:
+        - battery_status
+        - load_percent
+        - voltage
+
+  # Детектирование аномалий
+  anomaly_detection:
+    enabled: true
+
+    # CPU threshold (%)
+    cpu_threshold: 80
+
+    # Memory threshold (%)
+    memory_threshold: 85
+
+    # Interface errors (в минуту)
+    interface_errors_threshold: 100
+
+    # Принтер: низкий уровень тонера (%)
+    toner_low_threshold: 20
+
+    # UPS: низкий заряд батареи (%)
+    battery_low_threshold: 30
+
+# Syslog Receiver
+syslog:
+  enabled: true
+
+  # Порты для приема syslog (может быть несколько)
+  listeners:
+    - protocol: "udp"
+      port: 514
+      bind: "0.0.0.0"
+
+    - protocol: "tcp"
+      port: 514
+      bind: "0.0.0.0"
+
+  # Форматы syslog
+  formats:
+    - "rfc3164"  # BSD syslog
+    - "rfc5424"  # Structured syslog
+
+  # Фильтры по источникам
+  sources:
+    # Принимать от всех устройств из SNMP списка
+    use_snmp_devices: true
+
+    # Дополнительные IP адреса
+    allowed_ips:
+      - "192.168.1.0/24"
+      - "10.0.0.0/8"
+
+    # Заблокированные IP
+    blocked_ips: []
+
+  # Парсеры для специфичных устройств
+  parsers:
+    # Cisco
+    - vendor: "cisco"
+      pattern: "^%([A-Z_]+)-(\d+)-([A-Z_]+):"
+      enabled: true
+
+    # Fortinet
+    - vendor: "fortinet"
+      pattern: "^logver="
+      enabled: true
+
+    # Juniper
+    - vendor: "juniper"
+      pattern: "^<[0-9]+>"
+      enabled: true
+
+# NetFlow/sFlow (опционально, для будущих версий)
+netflow:
+  enabled: false
+  port: 2055
+  version: 5  # 5, 9, или 10 (IPFIX)
+
+# Производительность
+performance:
+  # Максимальный размер очереди событий
+  max_queue_size: 10000
+
+  # Воркеры для SNMP опроса
+  snmp_workers: 5
+
+  # Воркеры для отправки в SIEM
+  send_workers: 3
+
+  # Максимальное использование CPU (%)
+  max_cpu_percent: 70
+
+  # Максимальное использование RAM (MB)
+  max_memory_mb: 1024
+
+# Логирование
+logging:
+  level: "info"  # debug, info, warning, error
+  file: "/var/log/siem/network_monitor.log"
+  max_size_mb: 100
+  max_backups: 5
+  format: "json"  # json или text
+
+  # Логировать все SNMP запросы (для отладки)
+  log_snmp_queries: false
+
+  # Логировать все syslog сообщения
+  log_syslog_messages: false
+
+# Хранилище (локальный кэш, если SIEM недоступен)
+storage:
+  enabled: true
+  path: "/var/lib/siem/network_monitor"
+  max_size_mb: 500
+
+  # TTL для событий в кэше (часы)
+  event_ttl_hours: 24

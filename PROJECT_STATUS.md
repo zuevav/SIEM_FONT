@@ -1,6 +1,6 @@
 # SIEM System - Project Status
 
-## 📊 Общее состояние проекта: ~85% завершено
+## 📊 Общее состояние проекта: ~90% завершено
 
 ### ✅ Завершённые этапы
 
@@ -399,6 +399,134 @@
 
 ---
 
+## 🌐 **ЭТАП 8: Network Device Monitor (Python) (100%)**
+
+### Core Components
+- ✅ **main.py** - главный entry point
+  - Async event loop с asyncio
+  - Signal handlers для graceful shutdown
+  - Event queue для буферизации событий
+  - Background tasks (event sender, heartbeat, stats logger)
+- ✅ **config.py** - конфигурация с Pydantic
+  - 150+ настраиваемых параметров
+  - YAML configuration
+  - Валидация настроек
+- ✅ **api_client.py** - HTTP client для SIEM API
+  - Регистрация monitor
+  - Отправка событий батчами
+  - Heartbeat mechanism
+  - Retry logic с exponential backoff
+
+### SNMP Monitoring
+- ✅ **snmp_collector.py** - SNMP collector
+  - Async SNMP polling с pysnmp
+  - Batch polling множества устройств
+  - Metrics caching
+  - Anomaly detection
+- ✅ **device_profiles.py** - профили устройств
+  - **PrinterProfile** - принтеры (HP, Canon, etc.)
+    - Status, toner levels, page counts
+    - Cover/tray status
+    - Error detection
+  - **SwitchProfile** - коммутаторы
+    - CPU, Memory usage
+    - Interface status (up/down)
+    - Traffic statistics
+    - Interface errors
+  - **RouterProfile** - роутеры (extends SwitchProfile)
+    - Routing table monitoring
+    - BGP peer status
+    - IP forwarding
+  - **FirewallProfile** - межсетевые экраны
+    - Active connections
+    - Blocked packets
+    - VPN tunnels (vendor-specific)
+  - **UPSProfile** - UPS devices
+    - Battery status and charge level
+    - Load percentage
+    - Input/output voltage
+    - Time on battery
+  - Поддержка custom OIDs
+  - Vendor-specific parsing (Cisco, Fortinet, HP, APC)
+
+### Syslog Receiver
+- ✅ **syslog_receiver.py** - прием syslog
+  - UDP и TCP listeners (порт 514)
+  - RFC 3164 (BSD syslog) parser
+  - RFC 5424 (structured syslog) parser
+  - Vendor-specific parsers (Cisco, Fortinet, Juniper)
+  - IP filtering (allowed/blocked lists)
+  - Syslog severity mapping в SIEM severity
+
+### Anomaly Detection
+- ✅ Автоматическое детектирование аномалий:
+  - High CPU usage (threshold configurable)
+  - High Memory usage
+  - Interface errors (count/minute)
+  - Low printer toner levels
+  - Low UPS battery charge
+  - Device unreachable/offline
+  - Interface down events
+
+### Monitoring Capabilities
+- ✅ **Принтеры**:
+  - Printer status (idle/printing/error)
+  - Toner/ink levels (%)
+  - Page counter
+  - Paper tray status
+  - Error states
+- ✅ **Коммутаторы**:
+  - CPU и Memory usage
+  - Interface status (operational/admin)
+  - Traffic (in/out octets)
+  - Errors и Discards
+  - Port speed
+- ✅ **Роутеры**:
+  - All switch features +
+  - Routing table
+  - BGP peers
+  - IP forwarding status
+- ✅ **МСЭ (Firewalls)**:
+  - Session count
+  - CPU/Memory usage
+  - VPN tunnel status
+  - Vendor-specific metrics
+- ✅ **UPS**:
+  - Battery status
+  - Estimated runtime
+  - Load percentage
+  - Input/output voltage
+  - Temperature
+
+### Build & Installation
+- ✅ **requirements.txt** - Python dependencies
+  - pysnmp, puresnmp для SNMP
+  - syslog-rfc5424-parser для syslog
+  - aiohttp для async HTTP
+  - pydantic для конфигурации
+- ✅ **install.sh** - автоматическая установка
+  - Создание пользователя siem
+  - Python venv setup
+  - Установка зависимостей
+  - Systemd service установка
+  - Firewall configuration
+- ✅ **siem-network-monitor.service** - systemd unit
+  - Auto-restart
+  - Security hardening
+  - Resource limits
+
+### Documentation
+- ✅ **network_monitor/README.md** - полная документация
+  - Возможности (SNMP, syslog, anomalies)
+  - Системные требования
+  - Быстрый старт
+  - Конфигурация устройств всех типов
+  - Установка как systemd service
+  - Troubleshooting guide
+  - Поддерживаемые устройства (30+ моделей)
+
+---
+
 ## 📋 **Соответствие требованиям ЦБ РФ**
 
 ### 683-П (Хранение и защита данных)
@@ -426,7 +554,7 @@
 
 ---
 
-## 🚧 **Что осталось сделать (15%)**
+## 🚧 **Что осталось сделать (10%)**
 
 ### Backend (осталось минимум)
 - ⏳ Email/Telegram уведомления (опционально)
@@ -476,6 +604,7 @@
 - ✅ WebSocket Guide (WEBSOCKET_GUIDE.md)
 - ✅ AI Provider Setup (AI_PROVIDER_SETUP.md)
 - ✅ Windows Agent documentation (agent/README.md)
+- ✅ Network Monitor documentation (network_monitor/README.md)
 - ✅ Project Status (PROJECT_STATUS.md)
 - ⏳ Installation guide (полная инструкция по установке всех компонентов)
 - ⏳ User manual (руководство пользователя)
@@ -537,14 +666,15 @@
 1. ✅ ~~WebSocket integration~~ - **ГОТОВО**
 2. ✅ ~~Background AI processing~~ - **ГОТОВО**
 3. ✅ ~~Windows Agent~~ - **ГОТОВО**
-4. **Frontend (React + TypeScript)** - основная оставшаяся задача
+4. ✅ ~~Network Device Monitor~~ - **ГОТОВО**
+5. **Frontend (React + TypeScript)** - основная оставшаяся задача
    - Login и authentication flow
    - Dashboard с real-time обновлениями
    - Events, Alerts, Incidents management
-   - Agents monitoring
+   - Agents и Network devices monitoring
    - User management
-5. **Testing** - unit tests, integration tests, load tests
-6. **Documentation** - user manual, admin guide, installation guide
+6. **Testing** - unit tests, integration tests, load tests
+7. **Documentation** - user manual, admin guide, installation guide
 
 ---
 
@@ -633,6 +763,19 @@ SIEM_FONT/
 │   ├── config.yaml.example          # Configuration template
 │   └── README.md                    # Agent documentation
 │
+├── network_monitor/                 # Network Device Monitor (Python)
+│   ├── main.py                      # Entry point
+│   ├── config.py                    # Configuration (Pydantic)
+│   ├── snmp_collector.py            # SNMP collector
+│   ├── syslog_receiver.py           # Syslog receiver (UDP/TCP)
+│   ├── device_profiles.py           # Device profiles (printer, switch, etc.)
+│   ├── api_client.py                # SIEM API client
+│   ├── requirements.txt             # Python dependencies
+│   ├── config.yaml.example          # Configuration template
+│   ├── install.sh                   # Installation script
+│   ├── siem-network-monitor.service # Systemd service
+│   └── README.md                    # Monitor documentation
+│
 ├── install.ps1                      # Windows installer
 ├── install.sh                       # Linux installer
 ├── README.md                        # Main documentation
@@ -676,21 +819,23 @@ SIEM_FONT/
 4. ✅ **Real-time WebSocket** - 6 каналов для live обновлений
 5. ✅ **Background Tasks** - автоматический AI-анализ и dashboard updates
 6. ✅ **Windows Agent (Go)** - полноценный сбор событий и инвентаря
-7. ✅ **RBAC** с иерархией ролей (admin > analyst > viewer)
-8. ✅ **JWT аутентификация** с сессиями
-9. ✅ **Автоматические скрипты установки** для Windows и Linux
-10. ✅ **Защита данных** через триггеры и аудит (CBR compliance)
-11. ✅ **Stored procedures** для высокой производительности (10,000+ events/sec)
-12. ✅ **Comprehensive Documentation** - 4 markdown guides
+7. ✅ **Network Monitor (Python)** - SNMP/syslog мониторинг принтеров и сетевого оборудования
+8. ✅ **RBAC** с иерархией ролей (admin > analyst > viewer)
+9. ✅ **JWT аутентификация** с сессиями
+10. ✅ **Автоматические скрипты установки** для Windows и Linux
+11. ✅ **Защита данных** через триггеры и аудит (CBR compliance)
+12. ✅ **Stored procedures** для высокой производительности (10,000+ events/sec)
+13. ✅ **Comprehensive Documentation** - 5 markdown guides
 
 ### Статистика проекта
-- **Общее количество строк кода**: ~15,000+
+- **Общее количество строк кода**: ~18,000+
 - **Backend Python**: ~8,000 строк
 - **Windows Agent Go**: ~2,500 строк
+- **Network Monitor Python**: ~1,500 строк
 - **Database SQL**: ~2,600 строк
-- **Documentation**: ~2,000 строк
+- **Documentation**: ~3,500 строк
 - **Языки**: Python, Go, SQL, TypeScript (planned)
-- **Commits**: 5 основных этапов разработки
+- **Commits**: 6 основных этапов разработки
 
 ---
 
@@ -698,6 +843,6 @@ SIEM_FONT/
 
 Проект разработан для мониторинга Windows-инфраструктуры с соблюдением требований ЦБ РФ.
 
-**Версия:** 0.85.0 (Beta)
+**Версия:** 0.90.0 (Beta)
 **Дата обновления:** 2025-12-02
-**Готовность**: 85% (Backend и Agent готовы, осталось Frontend)
+**Готовность**: 90% (Backend, Agent, и Network Monitor готовы, осталось Frontend)
