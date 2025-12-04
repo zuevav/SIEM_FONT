@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  # =====================================================================
+  # PostgreSQL + TimescaleDB
+  # =====================================================================
+  postgres:
+    image: timescale/timescaledb:latest-pg15
+    container_name: siem-postgres
+    environment:
+      POSTGRES_DB: siem_db
+      POSTGRES_USER: siem_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+      # TimescaleDB
+      TIMESCALEDB_TELEMETRY: 'off'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database_postgresql:/docker-entrypoint-initdb.d:ro
+      # SQL scripts будут выполнены автоматически при первом запуске
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U siem_app -d siem_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - siem-network
+
+  # =====================================================================
+  # Backend (FastAPI)
+  # =====================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: siem-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_TYPE: postgresql
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: siem_db
+      POSTGRES_USER: siem_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction123!}
+
+      # AI Provider
+      AI_PROVIDER: ${AI_PROVIDER:-deepseek}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      YANDEX_GPT_API_KEY: ${YANDEX_GPT_API_KEY:-}
+      YANDEX_GPT_FOLDER_ID: ${YANDEX_GPT_FOLDER_ID:-}
+
+      # Security
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-generate_random_32_char_string_CHANGE_ME}
+      JWT_EXPIRATION_MINUTES: 480
+
+      # Organization (для CBR отчётов)
+      ORG_NAME: ${ORG_NAME:-ООО "Компания"}
+      ORG_INN: ${ORG_INN:-1234567890}
+      ORG_OGRN: ${ORG_OGRN:-1234567890123}
+
+      # Performance
+      WORKER_COUNT: ${WORKER_COUNT:-4}
+      DB_POOL_SIZE: 20
+      DB_POOL_MAX_OVERFLOW: 10
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - siem-network
+
+  # =====================================================================
+  # Frontend (Nginx + React)
+  # =====================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: siem-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - siem-network
+
+  # =====================================================================
+  # Redis (опционально, для кэширования)
+  # =====================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: siem-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-ChangeMeRedis123!}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - siem-network
+
+  # =====================================================================
+  # pgAdmin (опционально, для управления PostgreSQL)
+  # =====================================================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: siem-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@siem.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-Admin123!}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - siem-network
+    profiles:
+      - admin  # Запускается только если указан профиль: docker-compose --profile admin up
+
+# =====================================================================
+# Volumes (persistent data)
+# =====================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+# =====================================================================
+# Networks
+# =====================================================================
+networks:
+  siem-network:
+    driver: bridge
