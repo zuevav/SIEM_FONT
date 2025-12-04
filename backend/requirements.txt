@@ -9,6 +9,14 @@ python-multipart==0.0.6
 
 # Database
 sqlalchemy==2.0.25
+
+# PostgreSQL drivers (рекомендуется)
+psycopg2-binary==2.9.9
+# PostgreSQL adapter (binary includes libpq)
+asyncpg==0.29.0
+# Async PostgreSQL driver (для async/await)
+
+# MS SQL Server drivers (legacy support)
 pyodbc==5.0.1
 # MS SQL Server driver: ODBC Driver 18 for SQL Server
 
@@ -139,12 +147,26 @@ psutil==5.9.7
 # For development:
 #   pip install -r requirements-dev.txt
 #
-# MS SQL Server ODBC Driver:
+# Database Support:
+#   - PostgreSQL 15+ (рекомендуется): psycopg2-binary, asyncpg
+#   - MS SQL Server 2019+ (legacy): pyodbc + ODBC Driver
+#
+# PostgreSQL Installation:
+#   Ubuntu/Debian:
+#     apt-get install -y postgresql-15 postgresql-15-timescaledb-2.12
+#     pip install psycopg2-binary asyncpg
+#   RHEL/CentOS:
+#     dnf install -y postgresql15-server timescaledb-2-postgresql-15
+#     pip install psycopg2-binary asyncpg
+#
+# MS SQL Server ODBC Driver (если используется MS SQL):
 #   Linux: https://learn.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server
 #   Windows: https://learn.microsoft.com/en-us/sql/connect/odbc/windows/microsoft-odbc-driver-for-sql-server-on-windows
 #
 # System dependencies (Ubuntu/Debian):
-#   apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 unixodbc-dev
+#   apt-get install -y \
+#     libpango-1.0-0 libpangoft2-1.0-0 libcairo2 \
+#     libpq-dev unixodbc-dev
 #
 # Python version: 3.11+
 # =====================================================================
