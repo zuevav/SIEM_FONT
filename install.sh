@@ -1,490 +1,605 @@
 #!/bin/bash
-# =====================================================================
-# SIEM SYSTEM - AUTOMATED INSTALLER FOR LINUX
-# =====================================================================
-# Bash script for easy installation on Linux
-# Run with sudo
-# =====================================================================
 
-set -e
+###############################################################################
+# SIEM System - Automated Installer
+# Click-to-run installation script
+#
+# Usage: curl -sSL https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.sh | bash
+# Or: wget -qO- https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.sh | bash
+###############################################################################
 
-# Colors
+set -e  # Exit on error
+
+# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Functions
-print_success() { echo -e "${GREEN}✓ $1${NC}"; }
-print_error() { echo -e "${RED}✗ $1${NC}"; }
-print_info() { echo -e "${CYAN}ℹ $1${NC}"; }
-print_warning() { echo -e "${YELLOW}⚠ $1${NC}"; }
-print_step() { echo -e "\n${YELLOW}===> $1${NC}"; }
+# Configuration
+GITHUB_REPO="zuevav/SIEM_FONT"
+GITHUB_BRANCH="main"
+INSTALL_DIR="/opt/siem"
+SERVICE_NAME="siem"
+MIN_DOCKER_VERSION="20.10"
+MIN_COMPOSE_VERSION="1.29"
 
-# Parse arguments
-SKIP_DB=false
-SKIP_BACKEND=false
-SKIP_FRONTEND=false
-SQL_SERVER="localhost"
-SQL_USER=""
-SQL_PASSWORD=""
+###############################################################################
+# Helper Functions
+###############################################################################
 
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --skip-db) SKIP_DB=true; shift ;;
-        --skip-backend) SKIP_BACKEND=true; shift ;;
-        --skip-frontend) SKIP_FRONTEND=true; shift ;;
-        --sql-server) SQL_SERVER="$2"; shift 2 ;;
-        --sql-user) SQL_USER="$2"; shift 2 ;;
-        --sql-password) SQL_PASSWORD="$2"; shift 2 ;;
-        *) echo "Unknown option: $1"; exit 1 ;;
-    esac
-done
+print_banner() {
+    echo -e "${BLUE}"
+    cat << "EOF"
+   _____ _____ ______ __  __   _____           _        _ _
+  / ____|_   _|  ____|  \/  | |_   _|         | |      | | |
+ | (___   | | | |__  | \  / |   | |  _ __  ___| |_ __ _| | | ___ _ __
+  \___ \  | | |  __| | |\/| |   | | | '_ \/ __| __/ _` | | |/ _ \ '__|
+  ____) |_| |_| |____| |  | |  _| |_| | | \__ \ || (_| | | |  __/ |
+ |_____/|_____|______|_|  |_| |_____|_| |_|___/\__\__,_|_|_|\___|_|
 
-# Banner
-cat << "EOF"
-╔═══════════════════════════════════════════════════════════╗
-║          SIEM SYSTEM - AUTOMATED INSTALLER               ║
-║          Version 1.0.0                                    ║
-╚═══════════════════════════════════════════════════════════╝
 EOF
+    echo -e "${NC}"
+    echo -e "${GREEN}Security Information and Event Management System${NC}"
+    echo -e "${BLUE}Version: 1.0 | Automated Installer${NC}"
+    echo ""
+}
 
-print_info "Starting installation process..."
-print_info "Current directory: $(pwd)"
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
 
-# =====================================================================
-# STEP 1: CHECK PREREQUISITES
-# =====================================================================
+log_success() {
+    echo -e "${GREEN}[✓]${NC} $1"
+}
 
-print_step "Step 1: Checking prerequisites"
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
 
-# Check if running as root
-if [[ $EUID -ne 0 ]]; then
-   print_error "This script must be run as root (use sudo)"
-   exit 1
-fi
-print_success "Running as root"
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
 
-# Detect OS
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=$ID
-    VER=$VERSION_ID
-    print_success "Detected OS: $OS $VER"
-else
-    print_error "Cannot detect OS"
-    exit 1
-fi
-
-# Check Python
-if command -v python3 &> /dev/null; then
-    PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
-    PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-    PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-    if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 11 ]; then
-        print_success "Python version: $PYTHON_VERSION"
-    else
-        print_error "Python 3.11+ required. Current: $PYTHON_VERSION"
-        print_info "Install with: sudo apt install python3.11 python3.11-venv python3-pip"
+check_root() {
+    if [ "$EUID" -ne 0 ]; then
+        log_error "This script must be run as root or with sudo"
+        log_info "Please run: sudo $0"
         exit 1
     fi
-else
-    print_error "Python 3 not found"
-    exit 1
-fi
+}
 
-# Check pip
-if ! command -v pip3 &> /dev/null; then
-    print_warning "pip3 not found, installing..."
-    if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
-        apt-get update
-        apt-get install -y python3-pip
-    elif [ "$OS" = "centos" ] || [ "$OS" = "rhel" ]; then
-        yum install -y python3-pip
-    fi
-    print_success "pip3 installed"
-else
-    print_success "pip3 installed"
-fi
+check_os() {
+    log_info "Checking operating system..."
 
-# Check Node.js
-if [ "$SKIP_FRONTEND" = false ]; then
-    if command -v node &> /dev/null; then
-        NODE_VERSION=$(node --version)
-        print_success "Node.js version: $NODE_VERSION"
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$ID
+        OS_VERSION=$VERSION_ID
+        log_success "Detected: $PRETTY_NAME"
     else
-        print_warning "Node.js not found. Frontend will be skipped."
-        print_info "Install Node.js 18+ from: https://nodejs.org/"
-        SKIP_FRONTEND=true
+        log_error "Cannot detect OS. Only Linux is supported."
+        exit 1
     fi
-fi
 
-# Install system dependencies
-print_step "Installing system dependencies"
+    case "$OS" in
+        ubuntu|debian)
+            PACKAGE_MANAGER="apt-get"
+            ;;
+        centos|rhel|fedora|rocky|almalinux)
+            PACKAGE_MANAGER="yum"
+            ;;
+        *)
+            log_warning "Unsupported OS: $OS. Installation may fail."
+            PACKAGE_MANAGER="apt-get"
+            ;;
+    esac
+}
 
-if [ "$OS" = "ubuntu" ] || [ "$OS" = "debian" ]; then
-    print_info "Installing packages for Ubuntu/Debian..."
-    apt-get update
-    apt-get install -y \
-        build-essential \
-        libpq-dev \
-        unixodbc-dev \
-        libpango-1.0-0 \
-        libpangoft2-1.0-0 \
-        libcairo2 \
-        curl \
-        wget \
-        git
+version_compare() {
+    [ "$1" = "$2" ] && return 0
+    local IFS=.
+    local i ver1=($1) ver2=($2)
+    for ((i=0; i<${#ver1[@]}; i++)); do
+        if [[ -z ${ver2[i]} ]]; then
+            return 0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]})); then
+            return 0
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]})); then
+            return 1
+        fi
+    done
+    return 0
+}
 
-    # Install MS SQL ODBC Driver
-    if [ "$SKIP_DB" = false ]; then
-        print_info "Installing MS SQL ODBC Driver..."
-        if ! odbcinst -q -d -n "ODBC Driver 18 for SQL Server" &> /dev/null; then
-            curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-            curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list > /etc/apt/sources.list.d/mssql-release.list
-            apt-get update
-            ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18
-            echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' >> ~/.bashrc
-            print_success "MS SQL ODBC Driver installed"
+check_dependencies() {
+    log_info "Checking dependencies..."
+
+    local missing_deps=()
+
+    # Check Docker
+    if ! command -v docker &> /dev/null; then
+        log_warning "Docker not found"
+        missing_deps+=("docker")
+    else
+        DOCKER_VERSION=$(docker --version | grep -oP '\d+\.\d+\.\d+' | head -1)
+        if version_compare "$DOCKER_VERSION" "$MIN_DOCKER_VERSION"; then
+            log_success "Docker $DOCKER_VERSION installed"
         else
-            print_success "MS SQL ODBC Driver already installed"
+            log_warning "Docker $DOCKER_VERSION is too old (minimum: $MIN_DOCKER_VERSION)"
+            missing_deps+=("docker")
         fi
     fi
 
-elif [ "$OS" = "centos" ] || [ "$OS" = "rhel" ]; then
-    print_info "Installing packages for CentOS/RHEL..."
-    yum install -y \
-        gcc \
-        gcc-c++ \
-        make \
-        postgresql-devel \
-        unixODBC-devel \
-        curl \
-        wget \
-        git
-
-    if [ "$SKIP_DB" = false ]; then
-        print_info "Installing MS SQL ODBC Driver..."
-        curl https://packages.microsoft.com/config/rhel/8/prod.repo > /etc/yum.repos.d/mssql-release.repo
-        yum remove -y unixODBC-utf16 unixODBC-utf16-devel
-        ACCEPT_EULA=Y yum install -y msodbcsql18 mssql-tools18
-        print_success "MS SQL ODBC Driver installed"
-    fi
-else
-    print_warning "Unsupported OS: $OS. Some dependencies might be missing."
-fi
-
-print_success "System dependencies installed"
-
-# =====================================================================
-# STEP 2: CREATE ENVIRONMENT FILE
-# =====================================================================
-
-print_step "Step 2: Setting up environment configuration"
-
-ENV_FILE=".env"
-ENV_EXAMPLE=".env.example"
-
-if [ ! -f "$ENV_EXAMPLE" ]; then
-    print_error "$ENV_EXAMPLE not found"
-    exit 1
-fi
-
-if [ -f "$ENV_FILE" ]; then
-    print_warning ".env file already exists"
-    read -p "Overwrite? (y/N): " overwrite
-    if [ "$overwrite" = "y" ] || [ "$overwrite" = "Y" ]; then
-        cp "$ENV_EXAMPLE" "$ENV_FILE"
-        print_success "Created .env from template"
+    # Check Docker Compose
+    if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+        log_warning "Docker Compose not found"
+        missing_deps+=("docker-compose")
     else
-        print_info "Keeping existing .env file"
-    fi
-else
-    cp "$ENV_EXAMPLE" "$ENV_FILE"
-    print_success "Created .env from template"
-fi
-
-# Update SQL Server settings
-if [ "$SKIP_DB" = false ]; then
-    print_info "Updating SQL Server connection settings in .env..."
-    sed -i "s/^MSSQL_SERVER=.*/MSSQL_SERVER=$SQL_SERVER/" "$ENV_FILE"
-
-    if [ -n "$SQL_USER" ]; then
-        sed -i "s/^MSSQL_USER=.*/MSSQL_USER=$SQL_USER/" "$ENV_FILE"
-        sed -i "s/^MSSQL_PASSWORD=.*/MSSQL_PASSWORD=$SQL_PASSWORD/" "$ENV_FILE"
+        if docker compose version &> /dev/null; then
+            COMPOSE_VERSION=$(docker compose version | grep -oP '\d+\.\d+\.\d+' | head -1)
+            log_success "Docker Compose $COMPOSE_VERSION installed (v2)"
+        else
+            COMPOSE_VERSION=$(docker-compose --version | grep -oP '\d+\.\d+\.\d+')
+            log_success "Docker Compose $COMPOSE_VERSION installed (v1)"
+        fi
     fi
 
-    print_success "Updated .env with SQL Server settings"
-fi
+    # Check Git
+    if ! command -v git &> /dev/null; then
+        log_warning "Git not found"
+        missing_deps+=("git")
+    else
+        log_success "Git installed"
+    fi
 
-print_warning "IMPORTANT: Please edit .env file and configure:"
-print_info "  - Yandex GPT API keys"
-print_info "  - SMTP settings"
-print_info "  - Organization info for CBR reports"
-print_info "  - JWT_SECRET_KEY"
+    # Check curl
+    if ! command -v curl &> /dev/null; then
+        log_warning "curl not found"
+        missing_deps+=("curl")
+    else
+        log_success "curl installed"
+    fi
 
-read -p "Press Enter to continue after editing .env, or type 'skip' to continue: " continue_install
-
-# =====================================================================
-# STEP 3: INSTALL DATABASE
-# =====================================================================
-
-if [ "$SKIP_DB" = false ]; then
-    print_step "Step 3: Installing database schema"
-
-    DB_SCRIPTS=(
-        "database/schema.sql"
-        "database/procedures.sql"
-        "database/triggers.sql"
-        "database/seed.sql"
-        "database/jobs.sql"
-    )
-
-    for script in "${DB_SCRIPTS[@]}"; do
-        if [ ! -f "$script" ]; then
-            print_error "Script not found: $script"
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        log_warning "Missing dependencies: ${missing_deps[*]}"
+        read -p "Do you want to install missing dependencies? (y/N) " -r
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            install_dependencies "${missing_deps[@]}"
+        else
+            log_error "Cannot continue without dependencies"
             exit 1
         fi
+    else
+        log_success "All dependencies satisfied"
+    fi
+}
 
-        print_info "Executing $script..."
+install_dependencies() {
+    log_info "Installing dependencies..."
 
-        if [ -n "$SQL_USER" ]; then
-            /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER" -U "$SQL_USER" -P "$SQL_PASSWORD" -i "$script" -b
-        else
-            /opt/mssql-tools18/bin/sqlcmd -S "$SQL_SERVER" -E -i "$script" -b
+    case "$PACKAGE_MANAGER" in
+        apt-get)
+            apt-get update -qq
+            for dep in "$@"; do
+                case "$dep" in
+                    docker)
+                        log_info "Installing Docker..."
+                        curl -fsSL https://get.docker.com | sh
+                        systemctl enable docker
+                        systemctl start docker
+                        usermod -aG docker $SUDO_USER 2>/dev/null || true
+                        log_success "Docker installed"
+                        ;;
+                    docker-compose)
+                        log_info "Installing Docker Compose..."
+                        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                        chmod +x /usr/local/bin/docker-compose
+                        log_success "Docker Compose installed"
+                        ;;
+                    git)
+                        apt-get install -y git
+                        log_success "Git installed"
+                        ;;
+                    curl)
+                        apt-get install -y curl
+                        log_success "curl installed"
+                        ;;
+                esac
+            done
+            ;;
+        yum)
+            for dep in "$@"; do
+                case "$dep" in
+                    docker)
+                        log_info "Installing Docker..."
+                        yum install -y yum-utils
+                        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+                        yum install -y docker-ce docker-ce-cli containerd.io
+                        systemctl enable docker
+                        systemctl start docker
+                        usermod -aG docker $SUDO_USER 2>/dev/null || true
+                        log_success "Docker installed"
+                        ;;
+                    docker-compose)
+                        log_info "Installing Docker Compose..."
+                        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                        chmod +x /usr/local/bin/docker-compose
+                        log_success "Docker Compose installed"
+                        ;;
+                    git)
+                        yum install -y git
+                        log_success "Git installed"
+                        ;;
+                    curl)
+                        yum install -y curl
+                        log_success "curl installed"
+                        ;;
+                esac
+            done
+            ;;
+    esac
+}
+
+download_siem() {
+    log_info "Downloading SIEM from GitHub..."
+
+    # Create install directory
+    mkdir -p "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+
+    # Clone repository
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        log_info "SIEM already exists, updating..."
+        git pull origin "$GITHUB_BRANCH"
+    else
+        log_info "Cloning repository..."
+        git clone -b "$GITHUB_BRANCH" "https://github.com/$GITHUB_REPO.git" .
+    fi
+
+    log_success "SIEM downloaded to $INSTALL_DIR"
+}
+
+configure_siem() {
+    log_info "Starting configuration wizard..."
+    echo ""
+
+    cd "$INSTALL_DIR"
+
+    # Check if .env already exists
+    if [ -f ".env" ]; then
+        log_warning "Configuration file (.env) already exists"
+        read -p "Do you want to reconfigure? (y/N) " -r
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Keeping existing configuration"
+            return
         fi
+    fi
 
-        print_success "Executed $script"
+    # Create .env file
+    log_info "Creating configuration file..."
+
+    # Generate secure passwords
+    DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
+    JWT_SECRET=$(openssl rand -base64 64 | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+    # Get user input
+    echo ""
+    echo -e "${BLUE}=== Admin User ===${NC}"
+    read -p "Admin username [admin]: " ADMIN_USER
+    ADMIN_USER=${ADMIN_USER:-admin}
+    read -p "Admin password [admin123]: " -s ADMIN_PASS
+    echo ""
+    ADMIN_PASS=${ADMIN_PASS:-admin123}
+
+    echo ""
+    echo -e "${BLUE}=== Network Configuration ===${NC}"
+    read -p "API Port [8000]: " API_PORT
+    API_PORT=${API_PORT:-8000}
+    read -p "Frontend Port [3000]: " FRONTEND_PORT
+    FRONTEND_PORT=${FRONTEND_PORT:-3000}
+
+    echo ""
+    echo -e "${BLUE}=== AI Configuration ===${NC}"
+    echo "Choose AI provider:"
+    echo "1) DeepSeek (free, recommended)"
+    echo "2) Yandex GPT (requires API key)"
+    echo "3) None (skip AI features)"
+    read -p "Choice [1]: " AI_CHOICE
+    AI_CHOICE=${AI_CHOICE:-1}
+
+    AI_PROVIDER="none"
+    AI_API_KEY=""
+
+    case "$AI_CHOICE" in
+        1)
+            AI_PROVIDER="deepseek"
+            read -p "DeepSeek API Key (or press Enter to skip): " AI_API_KEY
+            ;;
+        2)
+            AI_PROVIDER="yandex_gpt"
+            read -p "Yandex GPT API Key: " AI_API_KEY
+            read -p "Yandex GPT Folder ID: " YANDEX_FOLDER_ID
+            ;;
+        3)
+            AI_PROVIDER="none"
+            ;;
+    esac
+
+    # Create .env file
+    cat > .env << EOF
+# SIEM Configuration File
+# Generated: $(date)
+
+# Database
+POSTGRES_USER=siem
+POSTGRES_PASSWORD=$DB_PASSWORD
+POSTGRES_DB=siem_db
+DATABASE_URL=postgresql://siem:$DB_PASSWORD@db:5432/siem_db
+
+# Backend
+JWT_SECRET=$JWT_SECRET
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION=7200
+
+# Admin User
+DEFAULT_ADMIN_USERNAME=$ADMIN_USER
+DEFAULT_ADMIN_PASSWORD=$ADMIN_PASS
+
+# AI Configuration
+AI_PROVIDER=$AI_PROVIDER
+EOF
+
+    if [ "$AI_PROVIDER" = "deepseek" ] && [ -n "$AI_API_KEY" ]; then
+        echo "DEEPSEEK_API_KEY=$AI_API_KEY" >> .env
+    fi
+
+    if [ "$AI_PROVIDER" = "yandex_gpt" ]; then
+        echo "YANDEX_GPT_API_KEY=$AI_API_KEY" >> .env
+        echo "YANDEX_GPT_FOLDER_ID=$YANDEX_FOLDER_ID" >> .env
+    fi
+
+    cat >> .env << EOF
+
+# Network
+API_PORT=$API_PORT
+FRONTEND_PORT=$FRONTEND_PORT
+
+# Logging
+LOG_LEVEL=INFO
+
+# Security
+CORS_ORIGINS=http://localhost:$FRONTEND_PORT,http://127.0.0.1:$FRONTEND_PORT
+EOF
+
+    chmod 600 .env
+    log_success "Configuration saved to .env"
+}
+
+build_and_start() {
+    log_info "Building and starting SIEM..."
+
+    cd "$INSTALL_DIR"
+
+    # Check docker-compose command
+    if command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+    else
+        COMPOSE_CMD="docker compose"
+    fi
+
+    # Pull images
+    log_info "Pulling Docker images..."
+    $COMPOSE_CMD pull
+
+    # Build custom images
+    log_info "Building SIEM images..."
+    $COMPOSE_CMD build
+
+    # Start services
+    log_info "Starting services..."
+    $COMPOSE_CMD up -d
+
+    log_success "SIEM started"
+}
+
+wait_for_services() {
+    log_info "Waiting for services to be ready..."
+
+    local max_attempts=60
+    local attempt=0
+
+    while [ $attempt -lt $max_attempts ]; do
+        if curl -s http://localhost:${API_PORT:-8000}/health > /dev/null 2>&1; then
+            log_success "Backend is ready"
+            return 0
+        fi
+        attempt=$((attempt + 1))
+        echo -n "."
+        sleep 2
     done
 
-    print_success "Database installation completed!"
+    log_warning "Backend did not start in time. Check logs with: cd $INSTALL_DIR && docker-compose logs backend"
+    echo ""
+}
 
-else
-    print_warning "Skipping database installation"
-fi
+run_health_check() {
+    log_info "Running health checks..."
 
-# =====================================================================
-# STEP 4: INSTALL BACKEND
-# =====================================================================
+    cd "$INSTALL_DIR"
 
-if [ "$SKIP_BACKEND" = false ]; then
-    print_step "Step 4: Installing backend dependencies"
-
-    cd backend
-
-    # Create virtual environment
-    print_info "Creating Python virtual environment..."
-    python3 -m venv venv
-
-    # Activate and install
-    print_info "Installing Python packages..."
-    source venv/bin/activate
-
-    pip install --upgrade pip
-    pip install -r requirements.txt
-
-    deactivate
-    cd ..
-
-    print_success "Backend installation completed!"
-
-else
-    print_warning "Skipping backend installation"
-fi
-
-# =====================================================================
-# STEP 5: INSTALL FRONTEND
-# =====================================================================
-
-if [ "$SKIP_FRONTEND" = false ]; then
-    print_step "Step 5: Installing frontend dependencies"
-
-    if [ -f "frontend/package.json" ]; then
-        cd frontend
-        print_info "Installing npm packages..."
-        npm install
-        cd ..
-        print_success "Frontend dependencies installed"
+    # Check docker-compose command
+    if command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
     else
-        print_warning "Frontend not found, skipping"
+        COMPOSE_CMD="docker compose"
     fi
-else
-    print_warning "Skipping frontend installation"
-fi
 
-# =====================================================================
-# STEP 6: INSTALL NETWORK MONITOR
-# =====================================================================
+    # Check containers
+    local failed=0
 
-print_step "Step 6: Installing Network Monitor (optional)"
-
-if [ -d "network_monitor" ]; then
-    read -p "Install Network Monitor for SNMP/Syslog/NetFlow monitoring? (y/N): " install_netmon
-
-    if [ "$install_netmon" = "y" ] || [ "$install_netmon" = "Y" ]; then
-        cd network_monitor
-
-        # Create virtual environment
-        print_info "Creating Python virtual environment for Network Monitor..."
-        python3 -m venv venv
-
-        # Activate and install
-        print_info "Installing Network Monitor dependencies..."
-        source venv/bin/activate
-
-        pip install --upgrade pip
-        pip install -r requirements.txt
-
-        deactivate
-
-        # Create config from template
-        if [ ! -f "config.yaml" ]; then
-            if [ -f "config.yaml.example" ]; then
-                cp config.yaml.example config.yaml
-                print_success "Created config.yaml from template"
-                print_warning "Edit network_monitor/config.yaml before starting!"
-            fi
+    for service in db backend frontend; do
+        if $COMPOSE_CMD ps | grep "$service" | grep -q "Up"; then
+            log_success "$service is running"
+        else
+            log_error "$service is not running"
+            failed=1
         fi
+    done
 
-        cd ..
-        print_success "Network Monitor installed successfully!"
-        print_info "Configure network_monitor/config.yaml with:"
-        print_info "  - SIEM server URL and API key"
-        print_info "  - SNMP devices list"
-        print_info "  - Syslog and NetFlow settings"
-        print_info "To install as systemd service: cd network_monitor && sudo ./install.sh"
+    # Check API health
+    if curl -s http://localhost:${API_PORT:-8000}/health | grep -q "healthy"; then
+        log_success "API health check passed"
     else
-        print_info "Skipping Network Monitor installation"
+        log_warning "API health check failed (service may still be starting)"
     fi
-else
-    print_warning "Network Monitor directory not found, skipping"
-fi
 
-# =====================================================================
-# STEP 7: CREATE HELPER SCRIPTS
-# =====================================================================
+    return $failed
+}
 
-print_step "Step 7: Creating helper scripts"
+create_systemd_service() {
+    log_info "Creating systemd service..."
 
-# Start backend script
-cat > start_backend.sh << 'EOF'
-#!/bin/bash
-cd backend
-source venv/bin/activate
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-EOF
+    # Check docker-compose command
+    if command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="/usr/local/bin/docker-compose"
+    else
+        COMPOSE_CMD="/usr/bin/docker"
+        COMPOSE_ARGS="compose"
+    fi
 
-chmod +x start_backend.sh
-print_success "Created start_backend.sh"
-
-# Start frontend script
-if [ "$SKIP_FRONTEND" = false ] && [ -d "frontend" ]; then
-    cat > start_frontend.sh << 'EOF'
-#!/bin/bash
-cd frontend
-npm run dev
-EOF
-    chmod +x start_frontend.sh
-    print_success "Created start_frontend.sh"
-fi
-
-# Start network monitor script
-if [ -d "network_monitor" ]; then
-    cat > start_network_monitor.sh << 'EOF'
-#!/bin/bash
-cd network_monitor
-source venv/bin/activate
-python main.py
-EOF
-    chmod +x start_network_monitor.sh
-    print_success "Created start_network_monitor.sh"
-fi
-
-# Stop all script
-cat > stop_all.sh << 'EOF'
-#!/bin/bash
-echo "Stopping SIEM services..."
-pkill -f "uvicorn app.main:app"
-pkill -f "npm run dev"
-echo "Done."
-EOF
-
-chmod +x stop_all.sh
-print_success "Created stop_all.sh"
-
-# Systemd service (optional)
-if command -v systemctl &> /dev/null; then
-    print_info "Creating systemd service..."
-
-    cat > /etc/systemd/system/siem-backend.service << EOF
+    cat > /etc/systemd/system/siem.service << EOF
 [Unit]
-Description=SIEM Backend API
-After=network.target
+Description=SIEM System
+Requires=docker.service
+After=docker.service
 
 [Service]
-Type=simple
-User=$(logname)
-WorkingDirectory=$(pwd)/backend
-Environment="PATH=$(pwd)/backend/venv/bin"
-ExecStart=$(pwd)/backend/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
-Restart=always
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$COMPOSE_CMD ${COMPOSE_ARGS:-} up -d
+ExecStop=$COMPOSE_CMD ${COMPOSE_ARGS:-} down
+TimeoutStartSec=300
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
     systemctl daemon-reload
-    print_success "Created systemd service: siem-backend.service"
-    print_info "Enable with: sudo systemctl enable siem-backend"
-    print_info "Start with: sudo systemctl start siem-backend"
-fi
+    systemctl enable siem.service
 
-# =====================================================================
-# COMPLETION
-# =====================================================================
+    log_success "Systemd service created and enabled"
+}
 
-cat << "EOF"
+print_summary() {
+    echo ""
+    echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${GREEN}║                                                            ║${NC}"
+    echo -e "${GREEN}║  ${BLUE}🎉 SIEM Installation Complete!${GREEN}                         ║${NC}"
+    echo -e "${GREEN}║                                                            ║${NC}"
+    echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${BLUE}Installation Directory:${NC} $INSTALL_DIR"
+    echo -e "${BLUE}Configuration File:${NC} $INSTALL_DIR/.env"
+    echo ""
+    echo -e "${BLUE}Access URLs:${NC}"
+    echo -e "  • Frontend: ${GREEN}http://localhost:${FRONTEND_PORT:-3000}${NC}"
+    echo -e "  • API:      ${GREEN}http://localhost:${API_PORT:-8000}${NC}"
+    echo -e "  • API Docs: ${GREEN}http://localhost:${API_PORT:-8000}/docs${NC}"
+    echo ""
+    echo -e "${BLUE}Default Credentials:${NC}"
+    echo -e "  • Username: ${GREEN}$ADMIN_USER${NC}"
+    echo -e "  • Password: ${GREEN}$ADMIN_PASS${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠️  IMPORTANT: Change default password after first login!${NC}"
+    echo ""
+    echo -e "${BLUE}Useful Commands:${NC}"
+    echo -e "  • View logs:      ${GREEN}cd $INSTALL_DIR && docker-compose logs -f${NC}"
+    echo -e "  • Stop SIEM:      ${GREEN}sudo systemctl stop siem${NC}"
+    echo -e "  • Start SIEM:     ${GREEN}sudo systemctl start siem${NC}"
+    echo -e "  • Restart SIEM:   ${GREEN}sudo systemctl restart siem${NC}"
+    echo -e "  • SIEM status:    ${GREEN}sudo systemctl status siem${NC}"
+    echo -e "  • Update SIEM:    ${GREEN}cd $INSTALL_DIR && git pull && docker-compose up -d --build${NC}"
+    echo ""
+    echo -e "${BLUE}Next Steps:${NC}"
+    echo "  1. Access the web interface at http://localhost:${FRONTEND_PORT:-3000}"
+    echo "  2. Login with default credentials"
+    echo "  3. Install Windows Agent on endpoints (see $INSTALL_DIR/agent/)"
+    echo "  4. Configure detection rules (10 rules pre-installed)"
+    echo "  5. Monitor Dashboard for events and alerts"
+    echo ""
+    echo -e "${GREEN}Documentation: $INSTALL_DIR/docs/${NC}"
+    echo -e "${GREEN}Support: https://github.com/$GITHUB_REPO/issues${NC}"
+    echo ""
+}
 
-╔═══════════════════════════════════════════════════════════╗
-║          INSTALLATION COMPLETED SUCCESSFULLY!             ║
-╚═══════════════════════════════════════════════════════════╝
+cleanup_on_error() {
+    log_error "Installation failed. Cleaning up..."
 
-EOF
+    if [ -d "$INSTALL_DIR" ]; then
+        cd "$INSTALL_DIR"
+        if command -v docker-compose &> /dev/null; then
+            docker-compose down 2>/dev/null || true
+        else
+            docker compose down 2>/dev/null || true
+        fi
+    fi
 
-print_success "SIEM System has been installed!"
+    log_info "Check the error messages above and try again"
+    exit 1
+}
 
-print_info "\nNext steps:"
-echo "1. Edit .env file with your configuration"
-echo "2. Start backend:  ./start_backend.sh"
+###############################################################################
+# Main Installation Flow
+###############################################################################
 
-if [ "$SKIP_FRONTEND" = false ]; then
-    echo "3. Start frontend: ./start_frontend.sh"
-fi
+main() {
+    # Set trap for errors
+    trap cleanup_on_error ERR
 
-if [ -d "network_monitor" ] && [ "$install_netmon" = "y" ]; then
-    echo "4. Configure network_monitor/config.yaml"
-    echo "5. Start network monitor: ./start_network_monitor.sh"
-    echo "   Or install as systemd service: cd network_monitor && sudo ./install.sh"
-fi
+    # Print banner
+    print_banner
 
-echo -e "\n${CYAN}Access the system:${NC}"
-echo "  Backend API:  http://localhost:8000"
-echo "  API Docs:     http://localhost:8000/docs"
+    # Check root
+    check_root
 
-if [ "$SKIP_FRONTEND" = false ]; then
-    echo "  Frontend:     http://localhost:5173"
-fi
+    # Check OS
+    check_os
 
-echo -e "\n${CYAN}Default credentials:${NC}"
-echo "  Username: admin"
-echo "  Password: Admin123!"
+    # Check dependencies
+    check_dependencies
 
-print_warning "\n⚠ SECURITY:"
-print_info "  - Change default passwords"
-print_info "  - Configure JWT_SECRET_KEY in .env"
-print_info "  - Set up Yandex GPT API keys"
-print_info "  - Configure SMTP for notifications"
+    # Download SIEM
+    download_siem
 
-echo -e "\nFor help, see README.md"
+    # Configure
+    configure_siem
+
+    # Build and start
+    build_and_start
+
+    # Wait for services
+    wait_for_services
+
+    # Health check
+    if ! run_health_check; then
+        log_warning "Some health checks failed. Check logs for details."
+    fi
+
+    # Create systemd service
+    if command -v systemctl &> /dev/null; then
+        create_systemd_service
+    fi
+
+    # Print summary
+    print_summary
+
+    log_success "Installation completed successfully!"
+}
+
+# Run main function
+main "$@"

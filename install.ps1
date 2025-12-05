@@ -1,409 +1,482 @@
-# =====================================================================
-# SIEM SYSTEM - AUTOMATED INSTALLER FOR WINDOWS
-# =====================================================================
-# PowerShell script for easy installation on Windows
-# Run as Administrator
-# =====================================================================
+<#
+.SYNOPSIS
+    SIEM System - Automated Installer for Windows
+    
+.DESCRIPTION
+    Click-to-run installation script for Windows with Docker Desktop
+    
+.EXAMPLE
+    # Download and run:
+    Invoke-WebRequest -Uri https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.ps1 -OutFile install.ps1
+    PowerShell -ExecutionPolicy Bypass -File install.ps1
+    
+.NOTES
+    Requires: Windows 10/11 or Windows Server 2019/2022
+    Requires: Administrator privileges
+#>
+
+param(
+    [string]$InstallPath = "C:\SIEM",
+    [string]$GitHubRepo = "zuevav/SIEM_FONT",
+    [string]$Branch = "main"
+)
 
 #Requires -RunAsAdministrator
 
-param(
-    [switch]$SkipDB = $false,
-    [switch]$SkipBackend = $false,
-    [switch]$SkipFrontend = $false,
-    [string]$SqlServer = "localhost",
-    [string]$SqlUser = "",
-    [string]$SqlPassword = ""
-)
-
+# Configuration
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Colors
-function Write-Success { Write-Host "✓ $args" -ForegroundColor Green }
-function Write-Error { Write-Host "✗ $args" -ForegroundColor Red }
-function Write-Info { Write-Host "ℹ $args" -ForegroundColor Cyan }
-function Write-Warning { Write-Host "⚠ $args" -ForegroundColor Yellow }
-function Write-Step { Write-Host "`n===> $args" -ForegroundColor Yellow }
+###############################################################################
+# Helper Functions
+###############################################################################
 
-# Banner
-Write-Host @"
-╔═══════════════════════════════════════════════════════════╗
-║          SIEM SYSTEM - AUTOMATED INSTALLER               ║
-║          Version 1.0.0                                    ║
-╚═══════════════════════════════════════════════════════════╝
-"@ -ForegroundColor Cyan
+function Write-Banner {
+    Write-Host ""
+    Write-Host "   _____ _____ ______ __  __   _____           _        _ _" -ForegroundColor Cyan
+    Write-Host "  / ____|_   _|  ____|  \/  | |_   _|         | |      | | |" -ForegroundColor Cyan
+    Write-Host " | (___   | | | |__  | \  / |   | |  _ __  ___| |_ __ _| | | ___ _ __" -ForegroundColor Cyan
+    Write-Host "  \___ \  | | |  __| | |\/| |   | | | '_ \/ __| __/ _\` | | |/ _ \ '__|" -ForegroundColor Cyan
+    Write-Host "  ____) |_| |_| |____| |  | |  _| |_| | | \__ \ || (_| | | |  __/ |" -ForegroundColor Cyan
+    Write-Host " |_____/|_____|______|_|  |_| |_____|_| |_|___/\__\__,_|_|_|\___|_|" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Security Information and Event Management System" -ForegroundColor Green
+    Write-Host "Version: 1.0 | Windows Installer" -ForegroundColor Blue
+    Write-Host ""
+}
 
-Write-Info "Starting installation process..."
-Write-Info "Current directory: $(Get-Location)"
+function Write-Info {
+    param([string]$Message)
+    Write-Host "[INFO] $Message" -ForegroundColor Blue
+}
 
-# =====================================================================
-# STEP 1: CHECK PREREQUISITES
-# =====================================================================
+function Write-Success {
+    param([string]$Message)
+    Write-Host "[✓] $Message" -ForegroundColor Green
+}
 
-Write-Step "Step 1: Checking prerequisites"
+function Write-Warning {
+    param([string]$Message)
+    Write-Host "[WARNING] $Message" -ForegroundColor Yellow
+}
 
-# Check PowerShell version
-$psVersion = $PSVersionTable.PSVersion
-if ($psVersion.Major -lt 5) {
-    Write-Error "PowerShell 5.0+ required. Current version: $psVersion"
+function Write-Error {
+    param([string]$Message)
+    Write-Host "[ERROR] $Message" -ForegroundColor Red
+}
+
+function Test-Administrator {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Test-DockerDesktop {
+    Write-Info "Checking Docker Desktop..."
+    
+    if (Get-Command docker -ErrorAction SilentlyContinue) {
+        $dockerVersion = docker --version
+        Write-Success "Docker found: $dockerVersion"
+        return $true
+    }
+    
+    Write-Warning "Docker Desktop not found"
+    return $false
+}
+
+function Install-DockerDesktop {
+    Write-Info "Docker Desktop is required for SIEM"
+    Write-Info "Please install Docker Desktop manually:"
+    Write-Host "  1. Visit: https://www.docker.com/products/docker-desktop/" -ForegroundColor Cyan
+    Write-Host "  2. Download Docker Desktop for Windows" -ForegroundColor Cyan
+    Write-Host "  3. Install and restart your computer" -ForegroundColor Cyan
+    Write-Host "  4. Run this installer again" -ForegroundColor Cyan
+    Write-Host ""
+    
+    $openBrowser = Read-Host "Open Docker Desktop download page in browser? (Y/n)"
+    if ($openBrowser -eq "" -or $openBrowser -eq "y" -or $openBrowser -eq "Y") {
+        Start-Process "https://www.docker.com/products/docker-desktop/"
+    }
+    
     exit 1
 }
-Write-Success "PowerShell version: $psVersion"
 
-# Check if running as admin
-$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Error "This script must be run as Administrator"
-    exit 1
+function Test-Git {
+    Write-Info "Checking Git..."
+    
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $gitVersion = git --version
+        Write-Success "Git found: $gitVersion"
+        return $true
+    }
+    
+    Write-Warning "Git not found"
+    return $false
 }
-Write-Success "Running as Administrator"
 
-# Check Python
-try {
-    $pythonVersion = python --version 2>&1
-    if ($pythonVersion -match "Python (\d+)\.(\d+)") {
-        $major = [int]$Matches[1]
-        $minor = [int]$Matches[2]
-        if ($major -eq 3 -and $minor -ge 11) {
-            Write-Success "Python version: $pythonVersion"
-        } else {
-            Write-Error "Python 3.11+ required. Current: $pythonVersion"
-            Write-Info "Download from: https://www.python.org/downloads/"
+function Install-Git {
+    Write-Info "Installing Git for Windows..."
+    
+    $gitInstaller = "$env:TEMP\Git-Installer.exe"
+    Write-Info "Downloading Git installer..."
+    
+    Invoke-WebRequest -Uri "https://github.com/git-for-windows/git/releases/latest/download/Git-2.43.0-64-bit.exe" `
+        -OutFile $gitInstaller
+    
+    Write-Info "Running Git installer..."
+    Start-Process -FilePath $gitInstaller -ArgumentList "/VERYSILENT /NORESTART" -Wait
+    
+    Write-Success "Git installed"
+    
+    # Refresh PATH
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+}
+
+function Get-SIEMFromGitHub {
+    Write-Info "Downloading SIEM from GitHub..."
+    
+    if (!(Test-Path $InstallPath)) {
+        New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
+    }
+    
+    Set-Location $InstallPath
+    
+    if (Test-Path "$InstallPath\.git") {
+        Write-Info "SIEM already exists, updating..."
+        git pull origin $Branch
+    }
+    else {
+        Write-Info "Cloning repository..."
+        git clone -b $Branch "https://github.com/$GitHubRepo.git" .
+    }
+    
+    Write-Success "SIEM downloaded to $InstallPath"
+}
+
+function New-SIEMConfiguration {
+    Write-Info "Starting configuration wizard..."
+    Write-Host ""
+    
+    Set-Location $InstallPath
+    
+    if (Test-Path ".env") {
+        Write-Warning "Configuration file (.env) already exists"
+        $reconfigure = Read-Host "Do you want to reconfigure? (y/N)"
+        if ($reconfigure -ne "y" -and $reconfigure -ne "Y") {
+            Write-Info "Keeping existing configuration"
+            return
+        }
+    }
+    
+    Write-Info "Creating configuration file..."
+    
+    # Generate secure passwords
+    $dbPassword = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object {[char]$_})
+    $jwtSecret = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | ForEach-Object {[char]$_})
+    
+    # Get user input
+    Write-Host ""
+    Write-Host "=== Admin User ===" -ForegroundColor Blue
+    $adminUser = Read-Host "Admin username [admin]"
+    if ([string]::IsNullOrEmpty($adminUser)) { $adminUser = "admin" }
+    
+    $adminPass = Read-Host "Admin password [admin123]" -AsSecureString
+    $adminPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto(
+        [Runtime.InteropServices.Marshal]::SecureStringToBSTR($adminPass)
+    )
+    if ([string]::IsNullOrEmpty($adminPassPlain)) { $adminPassPlain = "admin123" }
+    
+    Write-Host ""
+    Write-Host "=== Network Configuration ===" -ForegroundColor Blue
+    $apiPort = Read-Host "API Port [8000]"
+    if ([string]::IsNullOrEmpty($apiPort)) { $apiPort = "8000" }
+    
+    $frontendPort = Read-Host "Frontend Port [3000]"
+    if ([string]::IsNullOrEmpty($frontendPort)) { $frontendPort = "3000" }
+    
+    Write-Host ""
+    Write-Host "=== AI Configuration ===" -ForegroundColor Blue
+    Write-Host "Choose AI provider:"
+    Write-Host "1) DeepSeek (free, recommended)"
+    Write-Host "2) Yandex GPT (requires API key)"
+    Write-Host "3) None (skip AI features)"
+    $aiChoice = Read-Host "Choice [1]"
+    if ([string]::IsNullOrEmpty($aiChoice)) { $aiChoice = "1" }
+    
+    $aiProvider = "none"
+    $aiApiKey = ""
+    
+    switch ($aiChoice) {
+        "1" {
+            $aiProvider = "deepseek"
+            $aiApiKey = Read-Host "DeepSeek API Key (or press Enter to skip)"
+        }
+        "2" {
+            $aiProvider = "yandex_gpt"
+            $aiApiKey = Read-Host "Yandex GPT API Key"
+            $yandexFolderId = Read-Host "Yandex GPT Folder ID"
+        }
+        "3" {
+            $aiProvider = "none"
+        }
+    }
+    
+    # Create .env file
+    $envContent = @"
+# SIEM Configuration File
+# Generated: $(Get-Date)
+
+# Database
+POSTGRES_USER=siem
+POSTGRES_PASSWORD=$dbPassword
+POSTGRES_DB=siem_db
+DATABASE_URL=postgresql://siem:$dbPassword@db:5432/siem_db
+
+# Backend
+JWT_SECRET=$jwtSecret
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION=7200
+
+# Admin User
+DEFAULT_ADMIN_USERNAME=$adminUser
+DEFAULT_ADMIN_PASSWORD=$adminPassPlain
+
+# AI Configuration
+AI_PROVIDER=$aiProvider
+"@
+    
+    if ($aiProvider -eq "deepseek" -and ![string]::IsNullOrEmpty($aiApiKey)) {
+        $envContent += "`nDEEPSEEK_API_KEY=$aiApiKey"
+    }
+    
+    if ($aiProvider -eq "yandex_gpt") {
+        $envContent += "`nYANDEX_GPT_API_KEY=$aiApiKey"
+        $envContent += "`nYANDEX_GPT_FOLDER_ID=$yandexFolderId"
+    }
+    
+    $envContent += @"
+
+# Network
+API_PORT=$apiPort
+FRONTEND_PORT=$frontendPort
+
+# Logging
+LOG_LEVEL=INFO
+
+# Security
+CORS_ORIGINS=http://localhost:$frontendPort,http://127.0.0.1:$frontendPort
+"@
+    
+    Set-Content -Path ".env" -Value $envContent
+    Write-Success "Configuration saved to .env"
+    
+    # Store variables for summary
+    $script:AdminUser = $adminUser
+    $script:AdminPass = $adminPassPlain
+    $script:ApiPort = $apiPort
+    $script:FrontendPort = $frontendPort
+}
+
+function Start-SIEMContainers {
+    Write-Info "Building and starting SIEM..."
+    
+    Set-Location $InstallPath
+    
+    # Check if docker compose or docker-compose
+    $composeCmd = if (docker compose version 2>$null) { "docker compose" } else { "docker-compose" }
+    
+    Write-Info "Pulling Docker images..."
+    Invoke-Expression "$composeCmd pull"
+    
+    Write-Info "Building SIEM images..."
+    Invoke-Expression "$composeCmd build"
+    
+    Write-Info "Starting services..."
+    Invoke-Expression "$composeCmd up -d"
+    
+    Write-Success "SIEM started"
+}
+
+function Wait-ForServices {
+    Write-Info "Waiting for services to be ready..."
+    
+    $maxAttempts = 60
+    $attempt = 0
+    
+    while ($attempt -lt $maxAttempts) {
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:$($script:ApiPort)/health" -UseBasicParsing -TimeoutSec 1
+            if ($response.StatusCode -eq 200) {
+                Write-Success "Backend is ready"
+                return
+            }
+        }
+        catch {
+            Write-Host "." -NoNewline
+        }
+        
+        $attempt++
+        Start-Sleep -Seconds 2
+    }
+    
+    Write-Host ""
+    Write-Warning "Backend did not start in time. Check logs with: docker-compose logs backend"
+}
+
+function Test-SIEMHealth {
+    Write-Info "Running health checks..."
+    
+    Set-Location $InstallPath
+    
+    $composeCmd = if (docker compose version 2>$null) { "docker compose" } else { "docker-compose" }
+    
+    $services = @("db", "backend", "frontend")
+    $allHealthy = $true
+    
+    foreach ($service in $services) {
+        $status = Invoke-Expression "$composeCmd ps $service" | Select-String "Up"
+        if ($status) {
+            Write-Success "$service is running"
+        }
+        else {
+            Write-Error "$service is not running"
+            $allHealthy = $false
+        }
+    }
+    
+    try {
+        $response = Invoke-WebRequest -Uri "http://localhost:$($script:ApiPort)/health" -UseBasicParsing
+        if ($response.Content -like "*healthy*") {
+            Write-Success "API health check passed"
+        }
+    }
+    catch {
+        Write-Warning "API health check failed (service may still be starting)"
+        $allHealthy = $false
+    }
+    
+    return $allHealthy
+}
+
+function New-WindowsService {
+    Write-Info "Creating Windows scheduled task for auto-start..."
+    
+    $taskName = "SIEM System"
+    $action = New-ScheduledTaskAction -Execute "docker-compose" -Argument "up -d" -WorkingDirectory $InstallPath
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Force | Out-Null
+    
+    Write-Success "Scheduled task created for auto-start"
+}
+
+function Write-Summary {
+    Write-Host ""
+    Write-Host "╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+    Write-Host "║                                                            ║" -ForegroundColor Green
+    Write-Host "║  🎉 SIEM Installation Complete!                           ║" -ForegroundColor Green
+    Write-Host "║                                                            ║" -ForegroundColor Green
+    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Installation Directory: " -NoNewline -ForegroundColor Blue
+    Write-Host $InstallPath
+    Write-Host "Configuration File: " -NoNewline -ForegroundColor Blue
+    Write-Host "$InstallPath\.env"
+    Write-Host ""
+    Write-Host "Access URLs:" -ForegroundColor Blue
+    Write-Host "  • Frontend: " -NoNewline -ForegroundColor Blue
+    Write-Host "http://localhost:$($script:FrontendPort)" -ForegroundColor Green
+    Write-Host "  • API:      " -NoNewline -ForegroundColor Blue
+    Write-Host "http://localhost:$($script:ApiPort)" -ForegroundColor Green
+    Write-Host "  • API Docs: " -NoNewline -ForegroundColor Blue
+    Write-Host "http://localhost:$($script:ApiPort)/docs" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Default Credentials:" -ForegroundColor Blue
+    Write-Host "  • Username: " -NoNewline -ForegroundColor Blue
+    Write-Host $script:AdminUser -ForegroundColor Green
+    Write-Host "  • Password: " -NoNewline -ForegroundColor Blue
+    Write-Host $script:AdminPass -ForegroundColor Green
+    Write-Host ""
+    Write-Host "⚠️  IMPORTANT: Change default password after first login!" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "Useful Commands:" -ForegroundColor Blue
+    Write-Host "  • View logs:      docker-compose logs -f" -ForegroundColor Green
+    Write-Host "  • Stop SIEM:      docker-compose stop" -ForegroundColor Green
+    Write-Host "  • Start SIEM:     docker-compose start" -ForegroundColor Green
+    Write-Host "  • Restart SIEM:   docker-compose restart" -ForegroundColor Green
+    Write-Host "  • Update SIEM:    git pull && docker-compose up -d --build" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Next Steps:" -ForegroundColor Blue
+    Write-Host "  1. Access the web interface"
+    Write-Host "  2. Login with default credentials"
+    Write-Host "  3. Install Windows Agent on endpoints"
+    Write-Host "  4. Configure detection rules"
+    Write-Host "  5. Monitor Dashboard"
+    Write-Host ""
+    Write-Host "Documentation: $InstallPath\docs\" -ForegroundColor Green
+    Write-Host "Support: https://github.com/$GitHubRepo/issues" -ForegroundColor Green
+    Write-Host ""
+}
+
+###############################################################################
+# Main Installation Flow
+###############################################################################
+
+function Main {
+    try {
+        # Print banner
+        Write-Banner
+        
+        # Check administrator
+        if (!(Test-Administrator)) {
+            Write-Error "This script must be run as Administrator"
+            Write-Info "Right-click PowerShell and select 'Run as Administrator'"
             exit 1
         }
-    }
-} catch {
-    Write-Error "Python not found. Please install Python 3.11+"
-    Write-Info "Download from: https://www.python.org/downloads/"
-    exit 1
-}
-
-# Check pip
-try {
-    $pipVersion = python -m pip --version
-    Write-Success "pip installed: $pipVersion"
-} catch {
-    Write-Error "pip not found"
-    exit 1
-}
-
-# Check Node.js (optional for frontend)
-if (-not $SkipFrontend) {
-    try {
-        $nodeVersion = node --version
-        Write-Success "Node.js version: $nodeVersion"
-    } catch {
-        Write-Warning "Node.js not found. Frontend will be skipped."
-        Write-Info "Install Node.js 18+ from: https://nodejs.org/"
-        $SkipFrontend = $true
-    }
-}
-
-# Check SQL Server connection
-if (-not $SkipDB) {
-    Write-Info "Checking SQL Server connection..."
-    try {
-        $sqlcmdVersion = sqlcmd -?
-        Write-Success "sqlcmd utility found"
-
-        # Test connection
-        Write-Info "Testing connection to SQL Server: $SqlServer"
-
-        if ($SqlUser) {
-            sqlcmd -S $SqlServer -U $SqlUser -P $SqlPassword -Q "SELECT @@VERSION" -b | Out-Null
-        } else {
-            sqlcmd -S $SqlServer -E -Q "SELECT @@VERSION" -b | Out-Null
+        
+        # Check Docker Desktop
+        if (!(Test-DockerDesktop)) {
+            Install-DockerDesktop
+            exit 1
         }
-
-        Write-Success "SQL Server connection successful"
-    } catch {
-        Write-Error "Cannot connect to SQL Server: $SqlServer"
-        Write-Info "Install SQL Server tools from: https://aka.ms/ssmsfullsetup"
-        Write-Info "Or skip database installation with -SkipDB flag"
+        
+        # Check Git
+        if (!(Test-Git)) {
+            Install-Git
+        }
+        
+        # Download SIEM
+        Get-SIEMFromGitHub
+        
+        # Configure
+        New-SIEMConfiguration
+        
+        # Build and start
+        Start-SIEMContainers
+        
+        # Wait for services
+        Wait-ForServices
+        
+        # Health check
+        if (!(Test-SIEMHealth)) {
+            Write-Warning "Some health checks failed. Check logs for details."
+        }
+        
+        # Create scheduled task
+        New-WindowsService
+        
+        # Print summary
+        Write-Summary
+        
+        Write-Success "Installation completed successfully!"
+    }
+    catch {
+        Write-Error "Installation failed: $_"
+        Write-Error $_.ScriptStackTrace
         exit 1
     }
 }
 
-# =====================================================================
-# STEP 2: CREATE ENVIRONMENT FILE
-# =====================================================================
-
-Write-Step "Step 2: Setting up environment configuration"
-
-$envFile = ".env"
-$envExample = ".env.example"
-
-if (-not (Test-Path $envExample)) {
-    Write-Error "$envExample not found"
-    exit 1
-}
-
-if (Test-Path $envFile) {
-    Write-Warning ".env file already exists"
-    $overwrite = Read-Host "Overwrite? (y/N)"
-    if ($overwrite -ne "y") {
-        Write-Info "Keeping existing .env file"
-    } else {
-        Copy-Item $envExample $envFile -Force
-        Write-Success "Created .env from template"
-    }
-} else {
-    Copy-Item $envExample $envFile
-    Write-Success "Created .env from template"
-}
-
-# Update .env with SQL Server connection
-if (-not $SkipDB) {
-    Write-Info "Updating SQL Server connection settings in .env..."
-
-    $envContent = Get-Content $envFile
-    $envContent = $envContent -replace '^MSSQL_SERVER=.*', "MSSQL_SERVER=$SqlServer"
-
-    if ($SqlUser) {
-        $envContent = $envContent -replace '^MSSQL_USER=.*', "MSSQL_USER=$SqlUser"
-        $envContent = $envContent -replace '^MSSQL_PASSWORD=.*', "MSSQL_PASSWORD=$SqlPassword"
-    }
-
-    $envContent | Set-Content $envFile
-    Write-Success "Updated .env with SQL Server settings"
-}
-
-Write-Warning "IMPORTANT: Please edit .env file and configure:"
-Write-Info "  - Yandex GPT API keys (YANDEX_GPT_API_KEY, YANDEX_GPT_FOLDER_ID)"
-Write-Info "  - SMTP settings for email notifications"
-Write-Info "  - Organization info for CBR reports"
-Write-Info "  - JWT_SECRET_KEY (change from default!)"
-
-$continue = Read-Host "`nPress Enter to continue after editing .env, or type 'skip' to continue without editing"
-if ($continue -eq "skip") {
-    Write-Warning "Continuing with default settings. You can edit .env later."
-}
-
-# =====================================================================
-# STEP 3: INSTALL DATABASE
-# =====================================================================
-
-if (-not $SkipDB) {
-    Write-Step "Step 3: Installing database schema"
-
-    $dbScripts = @(
-        "database/schema.sql",
-        "database/procedures.sql",
-        "database/triggers.sql",
-        "database/seed.sql",
-        "database/jobs.sql"
-    )
-
-    foreach ($script in $dbScripts) {
-        if (-not (Test-Path $script)) {
-            Write-Error "Script not found: $script"
-            exit 1
-        }
-
-        Write-Info "Executing $script..."
-
-        try {
-            if ($SqlUser) {
-                sqlcmd -S $SqlServer -U $SqlUser -P $SqlPassword -i $script -b
-            } else {
-                sqlcmd -S $SqlServer -E -i $script -b
-            }
-            Write-Success "Executed $script"
-        } catch {
-            Write-Error "Failed to execute $script"
-            Write-Error $_.Exception.Message
-            exit 1
-        }
-    }
-
-    Write-Success "Database installation completed!"
-    Write-Info "Database: SIEM_DB"
-    Write-Info "Default users created:"
-    Write-Info "  - admin / Admin123!"
-    Write-Info "  - analyst / Admin123!"
-    Write-Info "  - viewer / Admin123!"
-    Write-Warning "CHANGE DEFAULT PASSWORDS after first login!"
-
-} else {
-    Write-Warning "Skipping database installation"
-}
-
-# =====================================================================
-# STEP 4: INSTALL BACKEND
-# =====================================================================
-
-if (-not $SkipBackend) {
-    Write-Step "Step 4: Installing backend dependencies"
-
-    Set-Location backend
-
-    # Create virtual environment
-    Write-Info "Creating Python virtual environment..."
-    python -m venv venv
-
-    # Activate venv and install dependencies
-    Write-Info "Installing Python packages..."
-    .\venv\Scripts\Activate.ps1
-
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
-
-    Write-Success "Backend dependencies installed"
-
-    # Initialize database models (if script exists)
-    if (Test-Path "scripts/init_db.py") {
-        Write-Info "Initializing database models..."
-        python scripts/init_db.py
-    }
-
-    deactivate
-    Set-Location ..
-
-    Write-Success "Backend installation completed!"
-
-} else {
-    Write-Warning "Skipping backend installation"
-}
-
-# =====================================================================
-# STEP 5: INSTALL FRONTEND
-# =====================================================================
-
-if (-not $SkipFrontend) {
-    Write-Step "Step 5: Installing frontend dependencies"
-
-    if (Test-Path "frontend/package.json") {
-        Set-Location frontend
-
-        Write-Info "Installing npm packages..."
-        npm install
-
-        Write-Success "Frontend dependencies installed"
-
-        Set-Location ..
-    } else {
-        Write-Warning "Frontend not found, skipping"
-    }
-} else {
-    Write-Warning "Skipping frontend installation"
-}
-
-# =====================================================================
-# STEP 6: INSTALL NETWORK MONITOR (Optional - WSL recommended)
-# =====================================================================
-
-Write-Step "Step 6: Network Monitor (optional)"
-
-if (Test-Path "network_monitor") {
-    Write-Warning "Network Monitor is designed for Linux"
-    Write-Info "For Windows, we recommend installing it in WSL (Windows Subsystem for Linux)"
-    Write-Info "Alternatively, you can run it on a separate Linux server"
-
-    $installNetmon = Read-Host "Install Network Monitor in WSL or skip? (wsl/skip) [skip]"
-
-    if ($installNetmon -eq "wsl") {
-        Write-Info "To install Network Monitor in WSL:"
-        Write-Info "1. Install WSL: wsl --install"
-        Write-Info "2. Open WSL: wsl"
-        Write-Info "3. cd /mnt/c/<path-to-project>/network_monitor"
-        Write-Info "4. Run: ./install.sh"
-        Write-Info ""
-        Write-Info "Network Monitor will run on the same machine via WSL"
-    } else {
-        Write-Info "Skipping Network Monitor installation"
-        Write-Info "You can install it later on a Linux server"
-    }
-} else {
-    Write-Warning "Network Monitor directory not found"
-}
-
-# =====================================================================
-# STEP 7: CREATE SHORTCUTS AND SCRIPTS
-# =====================================================================
-
-Write-Step "Step 7: Creating helper scripts"
-
-# Start backend script
-$startBackend = @"
-@echo off
-cd backend
-call venv\Scripts\activate.bat
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-"@
-
-$startBackend | Out-File -FilePath "start_backend.bat" -Encoding ASCII
-Write-Success "Created start_backend.bat"
-
-# Start frontend script
-if (-not $SkipFrontend -and (Test-Path "frontend")) {
-    $startFrontend = @"
-@echo off
-cd frontend
-npm run dev
-"@
-    $startFrontend | Out-File -FilePath "start_frontend.bat" -Encoding ASCII
-    Write-Success "Created start_frontend.bat"
-}
-
-# Stop all script
-$stopAll = @"
-@echo off
-echo Stopping SIEM services...
-taskkill /F /IM python.exe /T 2>nul
-taskkill /F /IM node.exe /T 2>nul
-echo Done.
-pause
-"@
-
-$stopAll | Out-File -FilePath "stop_all.bat" -Encoding ASCII
-Write-Success "Created stop_all.bat"
-
-# =====================================================================
-# COMPLETION
-# =====================================================================
-
-Write-Host @"
-
-╔═══════════════════════════════════════════════════════════╗
-║          INSTALLATION COMPLETED SUCCESSFULLY!             ║
-╚═══════════════════════════════════════════════════════════╝
-
-"@ -ForegroundColor Green
-
-Write-Success "SIEM System has been installed!"
-
-Write-Info "`nNext steps:"
-Write-Host "1. Edit .env file with your configuration" -ForegroundColor Yellow
-Write-Host "2. Start backend:  .\start_backend.bat" -ForegroundColor Yellow
-
-if (-not $SkipFrontend) {
-    Write-Host "3. Start frontend: .\start_frontend.bat" -ForegroundColor Yellow
-}
-
-if ((Test-Path "network_monitor") -and ($installNetmon -eq "wsl")) {
-    Write-Host "4. Install Network Monitor in WSL (see instructions above)" -ForegroundColor Yellow
-}
-
-Write-Host "`nAccess the system:" -ForegroundColor Cyan
-Write-Host "  Backend API:  http://localhost:8000" -ForegroundColor White
-Write-Host "  API Docs:     http://localhost:8000/docs" -ForegroundColor White
-
-if (-not $SkipFrontend) {
-    Write-Host "  Frontend:     http://localhost:5173" -ForegroundColor White
-}
-
-Write-Host "`nDefault credentials:" -ForegroundColor Cyan
-Write-Host "  Username: admin" -ForegroundColor White
-Write-Host "  Password: Admin123!" -ForegroundColor White
-
-Write-Warning "`n⚠ SECURITY:"
-Write-Info "  - Change default passwords after first login"
-Write-Info "  - Configure JWT_SECRET_KEY in .env"
-Write-Info "  - Set up Yandex GPT API keys for AI analysis"
-Write-Info "  - Configure SMTP for email notifications"
-
-Write-Host "`nFor help, see README.md" -ForegroundColor Cyan
-
-Write-Host "`nPress any key to exit..."
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+# Run main function
+Main

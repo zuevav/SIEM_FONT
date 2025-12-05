@@ -117,7 +117,54 @@
 
 ## 🚀 Быстрый старт
 
-### Предварительные требования
+### ⚡ Click-to-Run Установка (Рекомендуется)
+
+**Автоматическая установка за 5 минут!**
+
+#### Linux/Unix (Ubuntu, Debian, CentOS, RHEL, Fedora)
+
+```bash
+# Одна команда для полной установки
+curl -sSL https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | sudo bash
+```
+
+Или с wget:
+```bash
+wget -qO- https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | sudo bash
+```
+
+#### Windows (PowerShell as Administrator)
+
+```powershell
+# Скачать установщик
+Invoke-WebRequest -Uri https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.ps1 -OutFile install.ps1
+
+# Запустить установку
+PowerShell -ExecutionPolicy Bypass -File install.ps1
+```
+
+**Что делает установщик:**
+- ✅ Проверяет зависимости (Docker, Git)
+- ✅ Скачивает последнюю версию с GitHub
+- ✅ Интерактивная настройка (admin, порты, AI)
+- ✅ Генерирует безопасные пароли
+- ✅ Запускает все сервисы
+- ✅ Создаёт systemd service (Linux) или scheduled task (Windows)
+- ✅ Проверяет работоспособность
+
+**После установки:**
+- Frontend: http://localhost:3000
+- API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- Логин: `admin` / `admin123` (измените после входа!)
+
+📖 **Подробная документация**: [docs/QUICK_INSTALL.md](docs/QUICK_INSTALL.md)
+
+---
+
+### 📦 Ручная установка (Docker Compose)
+
+#### Предварительные требования
 
 - **MS SQL Server 2019+** (Standard или Enterprise)
 - **Docker + Docker Compose** (для backend и frontend)
