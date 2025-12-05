@@ -899,3 +899,156 @@ async def get_incident_alerts(
         "alerts": [AlertResponse.from_orm(alert) for alert in alerts],
         "count": len(alerts)
     }
+
+
+# ============================================================================
+# AI ANALYSIS
+# ============================================================================
+
+@router.post("/{incident_id}/ai-analysis")
+async def analyze_incident_with_ai(
+    incident_id: int,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Run AI analysis on incident (if AI provider available)
+    """
+    try:
+        from app.services.ai_service import get_ai_service, AIService
+
+        # Check if AI is available
+        if not AIService.is_available():
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI service is not available. Please configure DeepSeek or Yandex GPT."
+            )
+
+        incident = db.query(Incident).filter(Incident.IncidentId == incident_id).first()
+
+        if not incident:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Incident {incident_id} not found"
+            )
+
+        # Get related alerts
+        alerts = db.query(Alert).filter(Alert.IncidentId == incident_id).all()
+
+        if not alerts:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Incident has no alerts to analyze"
+            )
+
+        # Prepare data for AI
+        incident_data = {
+            "incident_id": incident.IncidentId,
+            "title": incident.Title,
+            "description": incident.Description,
+            "severity": incident.Severity,
+            "category": incident.Category,
+            "start_time": incident.StartTime.isoformat() if incident.StartTime else None,
+            "detected_at": incident.DetectedAt.isoformat(),
+            "status": incident.Status,
+            "mitre_tactics": json.loads(incident.MitreAttackTactics) if incident.MitreAttackTactics else [],
+            "mitre_techniques": json.loads(incident.MitreAttackTechniques) if incident.MitreAttackTechniques else [],
+            "affected_hosts": json.loads(incident.AffectedAgents) if incident.AffectedAgents else [],
+            "affected_users": json.loads(incident.AffectedUsers) if incident.AffectedUsers else [],
+            "event_count": incident.EventCount,
+            "alert_count": incident.AlertCount
+        }
+
+        alerts_data = []
+        for alert in alerts:
+            alerts_data.append({
+                "alert_id": alert.AlertId,
+                "title": alert.Title,
+                "description": alert.Description,
+                "severity": alert.Severity,
+                "category": alert.Category,
+                "first_seen": alert.FirstSeenAt.isoformat(),
+                "computer": alert.Computer,
+                "username": alert.Username,
+                "source_ip": alert.SourceIP,
+                "process_name": alert.ProcessName,
+                "mitre_tactic": alert.MitreAttackTactic,
+                "mitre_technique": alert.MitreAttackTechnique,
+                "event_count": alert.EventCount
+            })
+
+        # Run AI analysis
+        ai_service = get_ai_service()
+        ai_result = await ai_service.analyze_incident(incident_data, alerts_data)
+
+        if not ai_result:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="AI analysis failed to generate results"
+            )
+
+        # Update incident with AI analysis
+        incident.AIAnalysis = json.dumps(ai_result)
+        incident.AIProcessed = True
+        incident.UpdatedAt = datetime.utcnow()
+
+        # Add to work log
+        work_log = json.loads(incident.WorkLog) if incident.WorkLog else []
+        work_log.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "user": current_user.username,
+            "entry": f"AI analysis completed by {current_user.username}",
+            "type": "analysis"
+        })
+        incident.WorkLog = json.dumps(work_log)
+
+        db.commit()
+
+        logger.info(f"AI analysis completed for incident {incident_id} by {current_user.username}")
+
+        return {
+            "success": True,
+            "message": "AI analysis completed",
+            "analysis": ai_result
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in AI analysis: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to analyze incident: {str(e)}"
+        )
+
+
+@router.get("/{incident_id}/ai-analysis")
+async def get_incident_ai_analysis(
+    incident_id: int,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Get AI analysis for incident
+    """
+    incident = db.query(Incident).filter(Incident.IncidentId == incident_id).first()
+
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident {incident_id} not found"
+        )
+
+    if not incident.AIProcessed or not incident.AIAnalysis:
+        return {
+            "incident_id": incident_id,
+            "ai_processed": False,
+            "message": "AI analysis not available for this incident"
+        }
+
+    return {
+        "incident_id": incident_id,
+        "ai_processed": True,
+        "analysis": json.loads(incident.AIAnalysis)
+    }

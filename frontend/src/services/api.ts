@@ -247,6 +247,16 @@ class APIService {
     return response.data
   }
 
+  async analyzeIncidentWithAI(incidentId: number): Promise<{ success: boolean; analysis: any }> {
+    const response = await this.client.post(`/incidents/${incidentId}/ai-analysis`)
+    return response.data
+  }
+
+  async getIncidentAIAnalysis(incidentId: number): Promise<{ ai_processed: boolean; analysis?: any }> {
+    const response = await this.client.get(`/incidents/${incidentId}/ai-analysis`)
+    return response.data
+  }
+
   // ============================================================================
   // Agents API
   // ============================================================================

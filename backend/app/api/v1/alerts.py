@@ -34,6 +34,7 @@ from app.models.incident import DetectionRule, Alert, Incident
 from app.models.event import Event
 from app.models.user import User
 from app.config import settings
+from app.services.incident_correlation import get_correlation_service
 
 logger = logging.getLogger(__name__)
 
@@ -334,6 +335,17 @@ async def create_alert(
         db.refresh(new_alert)
 
         logger.info(f"Alert '{new_alert.Title}' created (ID: {new_alert.AlertId})")
+
+        # Auto-correlate alert with existing alerts and potentially create incident
+        try:
+            correlation_service = get_correlation_service(db)
+            incident = await correlation_service.correlate_new_alert(new_alert)
+            if incident:
+                logger.info(f"Alert {new_alert.AlertId} correlated to incident {incident.IncidentId}")
+                db.refresh(new_alert)  # Refresh to get updated IncidentId
+        except Exception as e:
+            logger.error(f"Error in alert correlation: {e}", exc_info=True)
+            # Don't fail the alert creation if correlation fails
 
         return AlertResponse.from_orm(new_alert)
 

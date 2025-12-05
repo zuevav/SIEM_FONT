@@ -9,6 +9,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Events from './pages/Events'
 import Alerts from './pages/Alerts'
+import Incidents from './pages/Incidents'
 import Agents from './pages/Agents'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
@@ -46,10 +47,7 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="events" element={<Events />} />
             <Route path="alerts" element={<Alerts />} />
-            <Route
-              path="incidents"
-              element={<ComingSoon title="Инциденты" description="Управление инцидентами информационной безопасности" />}
-            />
+            <Route path="incidents" element={<Incidents />} />
             <Route path="agents" element={<Agents />} />
             <Route
               path="network"
