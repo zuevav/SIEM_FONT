@@ -319,6 +319,70 @@ class APIService {
   async deleteUser(userId: number): Promise<void> {
     await this.client.delete(`/auth/users/${userId}`)
   }
+
+  // ============================================================================
+  // Settings API
+  // ============================================================================
+
+  async getSettings(): Promise<any> {
+    const response = await this.client.get('/settings')
+    return response.data
+  }
+
+  async updateSettings(data: any): Promise<any> {
+    const response = await this.client.post('/settings', data)
+    return response.data
+  }
+
+  async testFreeScoutConnection(url: string, apiKey: string): Promise<{ success: boolean; mailbox_name?: string; error?: string }> {
+    const response = await this.client.post('/integrations/freescout/test', { url, api_key: apiKey })
+    return response.data
+  }
+
+  async testEmailSettings(data: any): Promise<{ success: boolean }> {
+    const response = await this.client.post('/settings/test-email', data)
+    return response.data
+  }
+
+  // ============================================================================
+  // System Update API
+  // ============================================================================
+
+  async getSystemInfo(): Promise<{
+    version: string
+    git_branch: string
+    git_commit: string
+    docker_compose_version: string
+    last_update: string
+    update_available: boolean
+  }> {
+    const response = await this.client.get('/system/info')
+    return response.data
+  }
+
+  async checkSystemUpdates(): Promise<{
+    update_available: boolean
+    current_version: string
+    latest_version: string
+    changelog?: string[]
+  }> {
+    const response = await this.client.get('/system/check-updates')
+    return response.data
+  }
+
+  async startSystemUpdate(): Promise<{ success: boolean }> {
+    const response = await this.client.post('/system/update')
+    return response.data
+  }
+
+  // ============================================================================
+  // FreeScout Integration API
+  // ============================================================================
+
+  async createFreeScoutTicket(alertId: number): Promise<{ ticket_number: number; ticket_url: string }> {
+    const response = await this.client.post(`/integrations/freescout/create-ticket`, { alert_id: alertId })
+    return response.data
+  }
 }
 
 // Export singleton instance
