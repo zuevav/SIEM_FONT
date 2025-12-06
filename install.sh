@@ -4,8 +4,8 @@
 # SIEM System - Automated Installer
 # Click-to-run installation script
 #
-# Usage: curl -sSL https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.sh | bash
-# Or: wget -qO- https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | bash
+# Or: wget -qO- https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | bash
 ###############################################################################
 
 set -e  # Exit on error

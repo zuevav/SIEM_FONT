@@ -32,6 +32,7 @@ import {
   ApiOutlined,
   BulbOutlined,
   GlobalOutlined,
+  SecurityScanOutlined,
 } from '@ant-design/icons'
 import apiService from '@/services/api'
 
@@ -61,6 +62,12 @@ interface Settings {
   smtp_from_email: string
   smtp_from_name: string
   smtp_use_tls: boolean
+  email_alert_recipients: string
+  email_alert_min_severity: number
+
+  threat_intel_enabled: boolean
+  virustotal_api_key?: string
+  abuseipdb_api_key?: string
 }
 
 interface SystemInfo {
@@ -527,6 +534,34 @@ docker-compose up -d --build`}
                 <Switch />
               </Form.Item>
 
+              <Divider>Настройки уведомлений</Divider>
+
+              <Form.Item
+                name="email_alert_recipients"
+                label="Получатели уведомлений"
+                rules={[{ required: true, message: 'Введите email получателей' }]}
+                extra="Несколько адресов через запятую: admin@company.com, security@company.com"
+              >
+                <TextArea
+                  rows={2}
+                  placeholder="admin@company.com, security@company.com"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="email_alert_min_severity"
+                label="Минимальный уровень severity для email"
+                extra="Только алерты с указанным и выше уровнем будут отправляться на email"
+              >
+                <Select>
+                  <Option value={0}>Info (0)</Option>
+                  <Option value={1}>Low (1)</Option>
+                  <Option value={2}>Medium (2)</Option>
+                  <Option value={3}>High (3) - Рекомендуется</Option>
+                  <Option value={4}>Critical (4)</Option>
+                </Select>
+              </Form.Item>
+
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
@@ -537,6 +572,23 @@ docker-compose up -d --build`}
                   </Button>
                 </Space>
               </Form.Item>
+
+              <Alert
+                message="Документация"
+                description={
+                  <div>
+                    <p>Подробная инструкция по настройке email:</p>
+                    <ul>
+                      <li><a href="/docs/PHASE1_SETUP.md#2-email-notifications" target="_blank">Email Notifications Setup Guide</a></li>
+                      <li>Gmail: требуется App Password (не обычный пароль!)</li>
+                      <li>Yandex Mail: smtp.yandex.ru:587</li>
+                      <li>Mail.ru: smtp.mail.ru:587</li>
+                    </ul>
+                  </div>
+                }
+                type="warning"
+                showIcon
+              />
             </Form>
           </TabPane>
 
@@ -620,6 +672,95 @@ docker-compose up -d --build`}
                   Сохранить
                 </Button>
               </Form.Item>
+            </Form>
+          </TabPane>
+
+          {/* Threat Intelligence */}
+          <TabPane
+            tab={
+              <span>
+                <SecurityScanOutlined />
+                Threat Intelligence
+              </span>
+            }
+            key="threat_intel"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Threat Intelligence Integration"
+                description="Автоматическое обогащение алертов данными о репутации IP адресов и файлов из VirusTotal и AbuseIPDB."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Form.Item
+                name="threat_intel_enabled"
+                label="Включить Threat Intelligence"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+
+              <Divider>VirusTotal</Divider>
+
+              <Form.Item
+                name="virustotal_api_key"
+                label="VirusTotal API Key"
+                extra={
+                  <a href="https://www.virustotal.com/gui/join-us" target="_blank" rel="noreferrer">
+                    Получить API ключ →
+                  </a>
+                }
+              >
+                <Input.Password placeholder="VirusTotal API Key" />
+              </Form.Item>
+
+              <Divider>AbuseIPDB</Divider>
+
+              <Form.Item
+                name="abuseipdb_api_key"
+                label="AbuseIPDB API Key"
+                extra={
+                  <a href="https://www.abuseipdb.com/register" target="_blank" rel="noreferrer">
+                    Получить API ключ →
+                  </a>
+                }
+              >
+                <Input.Password placeholder="AbuseIPDB API Key" />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                  Сохранить
+                </Button>
+              </Form.Item>
+
+              <Alert
+                message="Документация"
+                description={
+                  <div>
+                    <p>Подробная инструкция по настройке Threat Intelligence:</p>
+                    <ul>
+                      <li>
+                        <a href="/docs/PHASE1_SETUP.md#4-threat-intelligence" target="_blank">
+                          Threat Intelligence Setup Guide
+                        </a>
+                      </li>
+                      <li>VirusTotal: 4 requests/minute (500/day) на бесплатном тарифе</li>
+                      <li>AbuseIPDB: 1,000 requests/day на бесплатном тарифе</li>
+                      <li>Система автоматически кэширует результаты на 24 часа для экономии запросов</li>
+                    </ul>
+                  </div>
+                }
+                type="warning"
+                showIcon
+              />
             </Form>
           </TabPane>
         </Tabs>

@@ -7,7 +7,7 @@
     
 .EXAMPLE
     # Download and run:
-    Invoke-WebRequest -Uri https://raw.githubusercontent.com/YOUR_ORG/SIEM_FONT/main/install.ps1 -OutFile install.ps1
+    Invoke-WebRequest -Uri https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.ps1 -OutFile install.ps1
     PowerShell -ExecutionPolicy Bypass -File install.ps1
     
 .NOTES
