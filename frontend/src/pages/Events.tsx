@@ -28,6 +28,7 @@ import dayjs from 'dayjs'
 import { apiService } from '@/services/api'
 import { formatDateTime, getSeverityColor, getSeverityText, getEventCodeDescription, truncate } from '@/utils/formatters'
 import type { Event, EventFilter } from '@/types'
+import SavedSearchManager from '@/components/SavedSearchManager'
 
 const { RangePicker } = DatePicker
 const { Text, Title } = Typography
@@ -90,6 +91,10 @@ export default function Events() {
     } catch (error) {
       console.error('Export failed:', error)
     }
+  }
+
+  const handleLoadSearch = (savedFilters: Record<string, any>) => {
+    setFilter({ ...filter, ...savedFilters, offset: 0 })
   }
 
   const showEventDetails = (event: Event) => {
@@ -216,6 +221,12 @@ export default function Events() {
               </Space>
             </Col>
           </Row>
+
+          <SavedSearchManager
+            searchType="events"
+            currentFilters={filter}
+            onLoadSearch={handleLoadSearch}
+          />
 
           <Row gutter={[16, 16]}>
             <Col xs={24} md={8}>

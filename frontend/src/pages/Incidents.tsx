@@ -52,6 +52,7 @@ import {
   getMitreTacticName,
 } from '@/utils/formatters'
 import type { Incident, IncidentFilter } from '@/types'
+import SavedSearchManager from '@/components/SavedSearchManager'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -101,6 +102,10 @@ export default function Incidents() {
       severity: filters.Severity,
       status: filters.Status,
     })
+  }
+
+  const handleLoadSearch = (savedFilters: Record<string, any>) => {
+    setFilter({ ...filter, ...savedFilters, offset: 0 })
   }
 
   const showIncidentDetails = async (incident: Incident) => {
@@ -338,6 +343,12 @@ export default function Incidents() {
             </Space>
           </Col>
         </Row>
+
+        <SavedSearchManager
+          searchType="incidents"
+          currentFilters={filter}
+          onLoadSearch={handleLoadSearch}
+        />
       </Card>
 
       <Card>

@@ -32,6 +32,7 @@ import {
   getPriorityText,
 } from '@/utils/formatters'
 import type { Alert, AlertFilter } from '@/types'
+import SavedSearchManager from '@/components/SavedSearchManager'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -103,6 +104,10 @@ export default function Alerts() {
       severity: filters.Severity,
       status: filters.Status,
     })
+  }
+
+  const handleLoadSearch = (savedFilters: Record<string, any>) => {
+    setFilter({ ...filter, ...savedFilters, offset: 0 })
   }
 
   const columns: ColumnsType<Alert> = [
@@ -263,6 +268,12 @@ export default function Alerts() {
             </Space>
           </Col>
         </Row>
+
+        <SavedSearchManager
+          searchType="alerts"
+          currentFilters={filter}
+          onLoadSearch={handleLoadSearch}
+        />
       </Card>
 
       <Card>
