@@ -14,6 +14,7 @@ from app.models.agent import (
 )
 from app.models.event import Event
 from app.models.incident import DetectionRule, Alert, Incident
+from app.models.settings import SystemSettings
 
 __all__ = [
     # User models
@@ -32,4 +33,6 @@ __all__ = [
     "DetectionRule",
     "Alert",
     "Incident",
+    # Settings models
+    "SystemSettings",
 ]

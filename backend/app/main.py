@@ -243,7 +243,8 @@ async def get_info():
 # ============================================================================
 
 # Import API routers
-from app.api.v1 import auth, events, agents, alerts, incidents
+from app.api.v1 import auth, events, agents, alerts, incidents, settings, system
+from app.api.v1.integrations import freescout
 from app.websocket import websocket_router
 
 # Authentication router
@@ -260,6 +261,15 @@ app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
 
 # Incidents router
 app.include_router(incidents.router, prefix="/api/v1/incidents", tags=["Incidents"])
+
+# Settings router
+app.include_router(settings.router, prefix="/api/v1/settings", tags=["Settings"])
+
+# System router
+app.include_router(system.router, prefix="/api/v1/system", tags=["System"])
+
+# FreeScout integration router
+app.include_router(freescout.router, prefix="/api/v1/integrations/freescout", tags=["Integrations - FreeScout"])
 
 # WebSocket router
 app.include_router(websocket_router, prefix="/ws", tags=["WebSocket"])
