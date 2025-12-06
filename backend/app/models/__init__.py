@@ -15,6 +15,7 @@ from app.models.agent import (
 from app.models.event import Event
 from app.models.incident import DetectionRule, Alert, Incident
 from app.models.settings import SystemSettings
+from app.models.integrations import FreeScoutTicket, EmailNotification, ThreatIntelligence
 
 __all__ = [
     # User models
@@ -35,4 +36,8 @@ __all__ = [
     "Incident",
     # Settings models
     "SystemSettings",
+    # Integration models
+    "FreeScoutTicket",
+    "EmailNotification",
+    "ThreatIntelligence",
 ]

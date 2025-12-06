@@ -35,6 +35,7 @@ from app.models.event import Event
 from app.models.user import User
 from app.config import settings
 from app.services.incident_correlation import get_correlation_service
+from app.services.alert_handler import handle_new_alert
 
 logger = logging.getLogger(__name__)
 
@@ -346,6 +347,14 @@ async def create_alert(
         except Exception as e:
             logger.error(f"Error in alert correlation: {e}", exc_info=True)
             # Don't fail the alert creation if correlation fails
+
+        # Handle new alert: send email, create FreeScout ticket, etc.
+        try:
+            siem_url = settings.siem_url if hasattr(settings, 'siem_url') else "http://localhost:3000"
+            await handle_new_alert(new_alert, db, siem_url)
+        except Exception as e:
+            logger.error(f"Error handling new alert {new_alert.AlertId}: {e}", exc_info=True)
+            # Don't fail the alert creation if notification fails
 
         return AlertResponse.from_orm(new_alert)
 
