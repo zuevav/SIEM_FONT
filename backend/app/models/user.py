@@ -30,6 +30,7 @@ class User(Base):
     created_rules = relationship("DetectionRule", foreign_keys="DetectionRule.CreatedBy", back_populates="creator")
     assigned_alerts = relationship("Alert", back_populates="assigned_user")
     assigned_incidents = relationship("Incident", back_populates="assigned_user")
+    saved_searches = relationship("SavedSearch", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.UserId}, username='{self.Username}', role='{self.Role}')>"

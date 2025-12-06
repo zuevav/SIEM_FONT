@@ -16,6 +16,7 @@ from app.models.event import Event
 from app.models.incident import DetectionRule, Alert, Incident
 from app.models.settings import SystemSettings
 from app.models.integrations import FreeScoutTicket, EmailNotification, ThreatIntelligence
+from app.models.saved_search import SavedSearch
 
 __all__ = [
     # User models
@@ -40,4 +41,6 @@ __all__ = [
     "FreeScoutTicket",
     "EmailNotification",
     "ThreatIntelligence",
+    # Search models
+    "SavedSearch",
 ]

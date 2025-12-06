@@ -383,6 +383,96 @@ class APIService {
     const response = await this.client.post(`/integrations/freescout/create-ticket`, { alert_id: alertId })
     return response.data
   }
+
+  // ============================================================================
+  // Saved Searches API
+  // ============================================================================
+
+  async getSavedSearches(params?: {
+    search_type?: 'events' | 'alerts' | 'incidents'
+    include_shared?: boolean
+  }): Promise<{
+    total: number
+    items: Array<{
+      id: number
+      name: string
+      description?: string
+      search_type: string
+      filters: Record<string, any>
+      user_id: number
+      is_shared: boolean
+      created_at: string
+      updated_at: string
+    }>
+  }> {
+    const response = await this.client.get('/searches', { params })
+    return response.data
+  }
+
+  async getSavedSearch(searchId: number): Promise<{
+    id: number
+    name: string
+    description?: string
+    search_type: string
+    filters: Record<string, any>
+    user_id: number
+    is_shared: boolean
+    created_at: string
+    updated_at: string
+    username?: string
+  }> {
+    const response = await this.client.get(`/searches/${searchId}`)
+    return response.data
+  }
+
+  async createSavedSearch(data: {
+    name: string
+    description?: string
+    search_type: 'events' | 'alerts' | 'incidents'
+    filters: Record<string, any>
+    is_shared?: boolean
+  }): Promise<{
+    id: number
+    name: string
+    description?: string
+    search_type: string
+    filters: Record<string, any>
+    user_id: number
+    is_shared: boolean
+    created_at: string
+    updated_at: string
+  }> {
+    const response = await this.client.post('/searches', data)
+    return response.data
+  }
+
+  async updateSavedSearch(
+    searchId: number,
+    data: {
+      name?: string
+      description?: string
+      search_type?: 'events' | 'alerts' | 'incidents'
+      filters?: Record<string, any>
+      is_shared?: boolean
+    }
+  ): Promise<{
+    id: number
+    name: string
+    description?: string
+    search_type: string
+    filters: Record<string, any>
+    user_id: number
+    is_shared: boolean
+    created_at: string
+    updated_at: string
+  }> {
+    const response = await this.client.put(`/searches/${searchId}`, data)
+    return response.data
+  }
+
+  async deleteSavedSearch(searchId: number): Promise<void> {
+    await this.client.delete(`/searches/${searchId}`)
+  }
 }
 
 // Export singleton instance
