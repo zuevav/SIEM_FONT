@@ -248,31 +248,195 @@ Write-EventLog -LogName Application -Source "IPBan" -EventId 1 -EntryType Warnin
 
 IPBan создает логи в:
 ```
-C:\IPBan\logfile.txt              # Основной лог
-C:\IPBan\logfile.txt.1            # Ротированный лог
+C:\IPBan\logfile_*.txt            # Основные логи (цифры меняются при ротации)
+C:\IPBan\logfile_688.txt          # Пример текущего лог-файла
+C:\IPBan\logfile_689.txt          # Следующий файл после ротации
 C:\IPBan\nlog-internal.txt        # Внутренние логи NLog
 ```
 
-### Формат логов
+**Важно:** IPBan ротирует логи, создавая новые файлы с инкрементирующимся номером (logfile_688.txt, logfile_689.txt, и т.д.)
+
+### Формат логов (NLog)
+
+IPBan использует формат NLog:
+```
+timestamp|LEVEL|Source|Message
+```
+
+**Реальные примеры из C:\IPBan\logfile_688.txt:**
+
+#### 1. Успешный вход (Login succeeded)
+```
+2025-12-07 05:17:49.4382|WARN|IPBan|Login succeeded, address: 176.107.223.36, user name: alina.kanatly, source: RDP
+2025-12-07 11:05:44.9023|WARN|IPBan|Login succeeded, address: 37.110.33.31, user name: vadim.kokin, source: RDP
+2025-12-07 14:14:33.5428|WARN|IPBan|Login succeeded, address: 104.28.230.246, user name: gulnara.gumirova, source: RDP
+```
+
+#### 2. Неудачная попытка входа (Login failure)
+```
+2025-12-07 10:32:41.9070|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 1, , reason:
+2025-12-07 10:33:41.9923|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 2, , reason:
+2025-12-07 10:34:42.0541|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 3, , reason:
+2025-12-07 10:35:42.1359|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 4, , reason:
+2025-12-07 10:36:27.2008|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 5, , reason:
+```
+
+Формат: `Login failure: IP, USERNAME, SOURCE, COUNT, EVENT_ID, reason:`
+
+#### 3. Блокировка IP (Banning)
+```
+2025-12-07 10:36:27.2008|INFO|IPBan|IP blacklisted: False, user name blacklisted: False, user name edit distance blacklisted: False, user name whitelisted: False
+2025-12-07 10:36:27.2008|WARN|IPBan|Banning ip address: 178.22.24.243, user name: , config blacklisted: False, count: 5, extra info: , duration: 1.00:00:00
+2025-12-07 10:36:27.2233|WARN|IPBan|Updating firewall with 1 entries...
+2025-12-07 10:36:27.2233|INFO|IPBan|Firewall entries updated: 178.22.24.243:add
+```
+
+Формат: `Banning ip address: IP, user name: USERNAME, config blacklisted: BOOL, count: N, extra info: INFO, duration: HH:MM:SS`
+
+#### 4. Разблокировка IP (Un-banning)
+```
+2025-12-07 10:31:41.6809|WARN|IPBan|Un-banning ip address 178.22.24.243, ban expired
+2025-12-07 10:31:41.6809|WARN|IPBan|Updating firewall with 1 entries...
+2025-12-07 10:31:41.6809|INFO|IPBan|Firewall entries updated: 178.22.24.243:remove
+```
+
+#### 5. Пример реальной атаки
+
+**Сценарий: Brute-force атака на RDWeb от IP 178.22.24.243**
 
 ```
-2025-12-07 15:30:45.123|INFO|IPBan|IP address 192.168.1.100 banned, user: administrator, failed login attempts: 7, ban reason: Failed RDP login
-2025-12-07 15:31:10.456|INFO|IPBan|IP address 10.20.30.40 banned, user: root, failed login attempts: 12, ban reason: Failed SSH login
-2025-12-07 16:00:00.789|INFO|IPBan|IP address 192.168.1.100 unbanned
+# Разблокировка предыдущего бана
+10:31:41|WARN|IPBan|Un-banning ip address 178.22.24.243, ban expired
+10:31:41|INFO|IPBan|Firewall entries updated: 178.22.24.243:remove
+
+# Новая атака начинается через 1 минуту
+10:32:41|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 1, , reason:
+10:33:41|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 2, , reason:
+10:34:42|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 3, , reason:
+10:35:42|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 4, , reason:
+10:36:27|WARN|IPBan|Login failure: 178.22.24.243, , RDWeb, 5, , reason:
+
+# Автоматическая блокировка после 5 попыток
+10:36:27|WARN|IPBan|Banning ip address: 178.22.24.243, user name: , config blacklisted: False, count: 5, extra info: , duration: 1.00:00:00
+10:36:27|INFO|IPBan|Firewall entries updated: 178.22.24.243:add
+
+# Результат: IP 178.22.24.243 заблокирован на 1 день
 ```
 
-### Мониторинг логов (опционально)
+**Анализ:**
+- Интервал между попытками: ~60 секунд
+- Источник: RDWeb (Remote Desktop Web Access)
+- Username: пустой (brute-force без конкретного пользователя)
+- Время до блокировки: 4 минуты (5 попыток)
+- Длительность бана: 1 день (1.00:00:00)
 
-Если нужно собирать логи напрямую (а не через Event Log):
+#### 6. Легитимные входы пользователей
+
+```
+2025-12-07 16:16:14|WARN|IPBan|Login failure: 188.32.255.13, vladislav.maralev, RDP, 1, 4625, reason:
+2025-12-07 16:16:29|WARN|IPBan|Login succeeded, address: 188.32.255.13, user name: vladislav.maralev, source: RDP
+```
+
+**Интерпретация:** Пользователь ошибся с паролем 1 раз, затем вошел успешно - легитимная активность.
+
+### Мониторинг текстовых логов (дополнительно к Event Log)
+
+IPBan пишет события в **два места**:
+1. **Windows Event Log** (Application → Source: IPBan) - автоматически собирается SIEM Agent
+2. **Текстовые файлы** (C:\IPBan\logfile_*.txt) - для детального анализа
+
+#### Настройка сбора текстовых логов
+
+Если нужен дополнительный сбор из текстовых файлов (для резервирования или детального анализа), добавьте в `agent.yaml`:
 
 ```yaml
-# В agent.yaml добавьте file collector
+# В C:\ProgramData\SIEM\agent.yaml
+file_collector:
+  enabled: true
+
+  # Сбор IPBan логов
+  files:
+    - path: "C:\\IPBan\\logfile_*.txt"  # Wildcard для всех ротированных файлов
+      parser: "ipban_nlog"
+      encoding: "utf-8"
+      multiline: false
+
+      # Регулярное выражение для парсинга NLog формата
+      # Формат: timestamp|LEVEL|Source|Message
+      regex: "^(?P<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d+)\\|(?P<level>\\w+)\\|(?P<source>\\w+)\\|(?P<message>.+)$"
+
+      # Фильтр: только IPBan события
+      filter:
+        source: "IPBan"
+
+      # Интервал проверки файла (секунды)
+      poll_interval: 5
+```
+
+#### Парсинг сообщений IPBan
+
+SIEM Agent автоматически парсит различные типы сообщений:
+
+**1. Login failure:**
+```regex
+Login failure: (?P<ip>[\d\.]+), (?P<username>[^,]*), (?P<source>\w+), (?P<count>\d+), (?P<event_id>\d*), reason: (?P<reason>.*)
+```
+
+**2. Banning ip address:**
+```regex
+Banning ip address: (?P<ip>[\d\.]+), user name: (?P<username>[^,]*), config blacklisted: (?P<blacklisted>\w+), count: (?P<count>\d+), extra info: (?P<extra>.*), duration: (?P<duration>[\d\.\:]+)
+```
+
+**3. Login succeeded:**
+```regex
+Login succeeded, address: (?P<ip>[\d\.]+), user name: (?P<username>[^,]+), source: (?P<source>\w+)
+```
+
+**4. Un-banning:**
+```regex
+Un-banning ip address (?P<ip>[\d\.]+), ban expired
+```
+
+**5. Firewall entries updated:**
+```regex
+Firewall entries updated: (?P<ip>[\d\.]+):(?P<action>add|remove)
+```
+
+#### Преимущества сбора из текстовых файлов
+
+✅ **Больше деталей**: Текстовые логи содержат дополнительную информацию (blacklist status, duration, extra info)
+✅ **История**: Ротированные файлы хранят историю за длительный период
+✅ **Резервирование**: Дублирование событий на случай проблем с Event Log
+✅ **Анализ трендов**: Легче анализировать patterns в текстовых файлах
+
+#### Пример конфигурации с обоими методами
+
+```yaml
+# agent.yaml - рекомендуемая конфигурация
+
+# Основной сбор через Event Log (приоритет)
+eventlog:
+  enabled: true
+  channels:
+    - name: "Application"
+      enabled: true
+  providers:
+    - "IPBan"
+
+# Дополнительный сбор из текстовых файлов (детали)
 file_collector:
   enabled: true
   files:
-    - path: "C:\\IPBan\\logfile.txt"
-      parser: "ipban"
+    - path: "C:\\IPBan\\logfile_*.txt"
+      parser: "ipban_nlog"
       encoding: "utf-8"
+
+      # Отправлять только критичные события из текстовых логов
+      filter:
+        message_contains:
+          - "Banning ip address"
+          - "Un-banning ip address"
+          - "Firewall entries updated"
 ```
 
 ---
@@ -397,6 +561,37 @@ Get-Content "C:\IPBan\logfile.txt" -Tail 100 | Select-String "ERROR"
 - **Топ атакующих IP адресов**
 - **География атак** (через GeoIP)
 - **Топ пользователей по неудачным попыткам**
+- **Источники атак** (RDP, RDWeb, SSH, HTTP)
+- **Повторные атаки** (IP, которые атакуют снова после разблокировки)
+
+### Реальные метрики из ваших логов
+
+Из примера `logfile_688.txt` за 2025-12-07:
+
+**Успешные входы:** 24 события
+- Уникальных пользователей: 15
+- Уникальных IP адресов: 16
+- Основной источник: RDP (100%)
+
+**Атаки:**
+- Заблокировано IP: 1 (178.22.24.243)
+- Разблокировано IP: 2 (178.22.24.241, 178.22.24.243)
+- Источник атаки: RDWeb
+- Повторная атака после разблокировки: Да (178.22.24.243)
+
+**Топ активных пользователей:**
+1. azuev - 4 входа
+2. vadim.kokin - 3 входа
+3. alepova.a - 3 входа
+4. gulnara.gumirova - 3 входа
+
+**Распределение по времени:**
+- Ночные входы (21:00-23:00): 10 событий
+- Дневные входы (10:00-18:00): 14 событий
+
+**Проблемные IP (повторные атаки):**
+- 178.22.24.243 - заблокирован 2 раза за день (ротация атак)
+- Паттерн: разблокировка в 10:31, новая атака в 10:32 (через 1 минуту!)
 
 ### Запросы для аналитики
 
