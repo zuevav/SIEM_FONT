@@ -772,6 +772,132 @@ CREATE UNIQUE INDEX idx_audit_log_log_guid ON compliance.audit_log(log_guid);
 COMMENT ON TABLE compliance.audit_log IS 'Журнал аудита всех действий пользователей системы. Защищён контрольной суммой от изменений (ГОСТ Р 57580).';
 
 -- =====================================================================
+-- PHASE 1: PRODUCTION MVP FEATURES
+-- =====================================================================
+
+-- Создание схемы для enrichment
+CREATE SCHEMA IF NOT EXISTS enrichment;
+
+-- ---------------------------------------------------------------------
+-- SystemSettings - Хранение настроек системы
+-- ---------------------------------------------------------------------
+CREATE TABLE config.system_settings (
+    setting_id SERIAL PRIMARY KEY,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value TEXT,
+    setting_type VARCHAR(50) DEFAULT 'string', -- string, boolean, integer, json
+    category VARCHAR(50), -- freescout, email, ai, threat_intel, system
+    description TEXT,
+    is_encrypted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    updated_at TIMESTAMP
+);
+
+CREATE INDEX idx_system_settings_key ON config.system_settings(setting_key);
+CREATE INDEX idx_system_settings_category ON config.system_settings(category);
+
+COMMENT ON TABLE config.system_settings IS 'Настройки системы (FreeScout, Email, AI, Threat Intel)';
+
+-- ---------------------------------------------------------------------
+-- SavedSearches - Сохранённые поисковые запросы
+-- ---------------------------------------------------------------------
+CREATE TABLE config.saved_searches (
+    saved_search_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    search_type VARCHAR(20) NOT NULL, -- events, alerts, incidents
+    filters TEXT NOT NULL, -- JSON string with filter parameters
+    user_id INTEGER NOT NULL REFERENCES config.users(user_id) ON DELETE CASCADE,
+    is_shared BOOLEAN DEFAULT FALSE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
+    updated_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
+
+    CONSTRAINT ck_saved_searches_search_type
+        CHECK (search_type IN ('events', 'alerts', 'incidents'))
+);
+
+CREATE INDEX idx_saved_searches_name ON config.saved_searches(name);
+CREATE INDEX idx_saved_searches_search_type ON config.saved_searches(search_type);
+CREATE INDEX idx_saved_searches_user_id ON config.saved_searches(user_id);
+CREATE INDEX idx_saved_searches_is_shared ON config.saved_searches(is_shared);
+CREATE INDEX idx_saved_searches_created_at ON config.saved_searches(created_at DESC);
+
+COMMENT ON TABLE config.saved_searches IS 'Сохранённые поисковые запросы пользователей';
+
+-- ---------------------------------------------------------------------
+-- FreeScoutTickets - Связь с тикетами FreeScout
+-- ---------------------------------------------------------------------
+CREATE TABLE incidents.freescout_tickets (
+    ticket_id SERIAL PRIMARY KEY,
+    freescout_conversation_id INTEGER NOT NULL UNIQUE,
+    freescout_conversation_number INTEGER NOT NULL,
+    alert_id INTEGER REFERENCES incidents.alerts(alert_id) ON DELETE SET NULL,
+    incident_id INTEGER REFERENCES incidents.incidents(incident_id) ON DELETE SET NULL,
+    ticket_url VARCHAR(500),
+    ticket_status VARCHAR(20), -- active, closed, spam
+    ticket_subject VARCHAR(500),
+    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    updated_at TIMESTAMP,
+    last_synced_at TIMESTAMP
+);
+
+CREATE INDEX idx_freescout_tickets_conversation_id ON incidents.freescout_tickets(freescout_conversation_id);
+CREATE INDEX idx_freescout_tickets_alert_id ON incidents.freescout_tickets(alert_id);
+CREATE INDEX idx_freescout_tickets_incident_id ON incidents.freescout_tickets(incident_id);
+CREATE INDEX idx_freescout_tickets_status ON incidents.freescout_tickets(ticket_status);
+
+COMMENT ON TABLE incidents.freescout_tickets IS 'Связь алертов/инцидентов с тикетами в FreeScout';
+
+-- ---------------------------------------------------------------------
+-- EmailNotifications - Журнал отправленных email уведомлений
+-- ---------------------------------------------------------------------
+CREATE TABLE config.email_notifications (
+    notification_id SERIAL PRIMARY KEY,
+    recipient_email VARCHAR(255) NOT NULL,
+    subject VARCHAR(500) NOT NULL,
+    body TEXT,
+    alert_id INTEGER REFERENCES incidents.alerts(alert_id) ON DELETE SET NULL,
+    incident_id INTEGER REFERENCES incidents.incidents(incident_id) ON DELETE SET NULL,
+    sent_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    status VARCHAR(20) DEFAULT 'pending', -- pending, sent, failed
+    error_message TEXT,
+    smtp_message_id VARCHAR(255)
+);
+
+CREATE INDEX idx_email_notifications_recipient ON config.email_notifications(recipient_email, sent_at DESC);
+CREATE INDEX idx_email_notifications_alert_id ON config.email_notifications(alert_id);
+CREATE INDEX idx_email_notifications_incident_id ON config.email_notifications(incident_id);
+CREATE INDEX idx_email_notifications_sent_at ON config.email_notifications(sent_at DESC);
+CREATE INDEX idx_email_notifications_status ON config.email_notifications(status);
+
+COMMENT ON TABLE config.email_notifications IS 'Журнал отправленных email уведомлений';
+
+-- ---------------------------------------------------------------------
+-- ThreatIntelligence - Кэш результатов threat intelligence
+-- ---------------------------------------------------------------------
+CREATE TABLE enrichment.threat_intelligence (
+    intel_id SERIAL PRIMARY KEY,
+    lookup_type VARCHAR(20) NOT NULL, -- ip, file_hash, domain
+    lookup_value VARCHAR(255) NOT NULL,
+    source VARCHAR(50) NOT NULL, -- virustotal, abuseipdb, misp, etc.
+    result JSONB NOT NULL, -- результат запроса в JSON
+    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
+    expires_at TIMESTAMP NOT NULL, -- кэш истекает через 24 часа
+
+    CONSTRAINT ck_threat_intel_lookup_type
+        CHECK (lookup_type IN ('ip', 'file_hash', 'domain', 'url'))
+);
+
+-- Уникальный индекс для предотвращения дублей (один тип запроса + значение + источник)
+CREATE UNIQUE INDEX idx_threat_intel_unique ON enrichment.threat_intelligence(lookup_type, lookup_value, source);
+CREATE INDEX idx_threat_intel_lookup_value ON enrichment.threat_intelligence(lookup_value);
+CREATE INDEX idx_threat_intel_source ON enrichment.threat_intelligence(source);
+CREATE INDEX idx_threat_intel_created_at ON enrichment.threat_intelligence(created_at DESC);
+CREATE INDEX idx_threat_intel_expires_at ON enrichment.threat_intelligence(expires_at);
+
+COMMENT ON TABLE enrichment.threat_intelligence IS 'Кэш результатов threat intelligence (VirusTotal, AbuseIPDB) с TTL 24 часа';
+
+-- =====================================================================
 -- ЗАВЕРШЕНИЕ
 -- =====================================================================
 
@@ -782,20 +908,21 @@ DECLARE
     index_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO table_count FROM information_schema.tables
-    WHERE table_schema IN ('security_events', 'config', 'incidents', 'assets', 'compliance');
+    WHERE table_schema IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment');
 
     SELECT COUNT(*) INTO index_count FROM pg_indexes
-    WHERE schemaname IN ('security_events', 'config', 'incidents', 'assets', 'compliance');
+    WHERE schemaname IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment');
 
     RAISE NOTICE 'Схема базы данных SIEM_DB успешно создана!';
     RAISE NOTICE 'Создано:';
-    RAISE NOTICE '  - 5 схем (security_events, config, incidents, assets, compliance)';
+    RAISE NOTICE '  - 6 схем (security_events, config, incidents, assets, compliance, enrichment)';
     RAISE NOTICE '  - % таблиц с индексами и ограничениями', table_count;
     RAISE NOTICE '  - % индексов', index_count;
     RAISE NOTICE '  - TimescaleDB hypertable для событий с автоматическим партиционированием';
     RAISE NOTICE '  - BRIN индексы для time-range queries';
     RAISE NOTICE '  - Compression policy (сжатие через 7 дней)';
     RAISE NOTICE '  - Защита от изменений через контрольные суммы';
+    RAISE NOTICE '  - Phase 1 таблицы (SystemSettings, SavedSearches, FreeScout, Email, ThreatIntel)';
     RAISE NOTICE '';
     RAISE NOTICE 'Следующий шаг: Запустить database_postgresql/seed.sql для создания начальных данных';
 END $$;

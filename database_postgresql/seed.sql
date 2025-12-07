@@ -285,6 +285,52 @@ SELECT setval('assets.software_registry_software_id_seq', 204, true);
 \echo '  ✓ Справочник ПО наполнен примерами (17 записей)'
 
 -- =====================================================================
+-- PHASE 1: DEFAULT SETTINGS
+-- =====================================================================
+
+INSERT INTO config.system_settings (setting_key, setting_value, setting_type, category, description) VALUES
+-- FreeScout Integration
+('freescout_enabled', 'false', 'boolean', 'freescout', 'Enable FreeScout integration'),
+('freescout_url', '', 'string', 'freescout', 'FreeScout base URL'),
+('freescout_api_key', '', 'string', 'freescout', 'FreeScout API key'),
+('freescout_mailbox_id', '1', 'integer', 'freescout', 'FreeScout mailbox ID for ticket creation'),
+('freescout_auto_create_on_alert', 'false', 'boolean', 'freescout', 'Automatically create tickets for alerts'),
+('freescout_auto_create_severity_min', '3', 'integer', 'freescout', 'Minimum severity for auto-ticket creation (0-4)'),
+('freescout_sync_interval_seconds', '300', 'integer', 'freescout', 'Ticket sync interval in seconds'),
+
+-- Email Notifications
+('smtp_enabled', 'false', 'boolean', 'email', 'Enable email notifications'),
+('smtp_host', '', 'string', 'email', 'SMTP server host'),
+('smtp_port', '587', 'integer', 'email', 'SMTP server port'),
+('smtp_username', '', 'string', 'email', 'SMTP username'),
+('smtp_password', '', 'string', 'email', 'SMTP password'),
+('smtp_from_email', 'siem@company.local', 'string', 'email', 'From email address'),
+('smtp_from_name', 'SIEM System', 'string', 'email', 'From name'),
+('smtp_use_tls', 'true', 'boolean', 'email', 'Use TLS for SMTP connection'),
+('email_alert_recipients', '', 'string', 'email', 'Comma-separated list of alert recipients'),
+('email_alert_min_severity', '3', 'integer', 'email', 'Minimum severity for email alerts (0-4)'),
+
+-- AI Provider
+('ai_provider', 'deepseek', 'string', 'ai', 'AI provider (deepseek, yandex_gpt, none)'),
+('deepseek_api_key', '', 'string', 'ai', 'DeepSeek API key'),
+('yandex_gpt_api_key', '', 'string', 'ai', 'Yandex GPT API key'),
+('yandex_gpt_folder_id', '', 'string', 'ai', 'Yandex Cloud folder ID'),
+
+-- Threat Intelligence
+('threat_intel_enabled', 'false', 'boolean', 'threat_intel', 'Enable threat intelligence enrichment'),
+('virustotal_api_key', '', 'string', 'threat_intel', 'VirusTotal API key'),
+('abuseipdb_api_key', '', 'string', 'threat_intel', 'AbuseIPDB API key'),
+
+-- System Updates
+('auto_update_enabled', 'false', 'boolean', 'system', 'Enable automatic system updates'),
+('update_check_interval_hours', '24', 'integer', 'system', 'Update check interval in hours'),
+('last_update_check', '', 'string', 'system', 'Timestamp of last update check')
+
+ON CONFLICT (setting_key) DO NOTHING;
+
+\echo '  ✓ Phase 1 настройки добавлены (30 settings)'
+
+-- =====================================================================
 -- ФИНАЛИЗАЦИЯ
 -- =====================================================================
 

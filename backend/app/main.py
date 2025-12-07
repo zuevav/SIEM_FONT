@@ -13,8 +13,9 @@ import time
 import logging
 
 from app.config import settings
-from app.database import engine, check_db_connection, close_db_connection
+from app.database import engine, check_db_connection, close_db_connection, get_db
 from app.tasks import get_ai_analyzer_task, get_dashboard_updater_task
+from app.migrations_runner import run_migrations_on_startup
 
 # Setup logging
 logging.basicConfig(
@@ -45,6 +46,15 @@ async def lifespan(app: FastAPI):
     logger.info("Checking database connection...")
     if check_db_connection():
         logger.info("✓ Database connection successful")
+
+        # Run database migrations
+        try:
+            db = next(get_db())
+            run_migrations_on_startup(db)
+            db.close()
+        except Exception as e:
+            logger.warning(f"Migration runner skipped: {e}")
+
     else:
         logger.error("✗ Database connection failed!")
         logger.warning("API will start but database operations will fail")
