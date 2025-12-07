@@ -56,6 +56,7 @@
 - Sysmon события (процессы, сеть, файлы, реестр)
 - PowerShell логи
 - Windows Defender события
+- IPBan события (блокировки IP, brute-force атаки)
 - Сетевые подключения
 - Запущенные процессы
 
@@ -95,11 +96,65 @@
 - Рекомендации по реагированию
 
 ### 🚨 Детекция угроз
-- 10+ базовых правил детекции
+- **19 правил детекции** (базовые + IPBan + FIM)
+  - Brute-force атаки и Pass-the-Hash
+  - Подозрительные PowerShell команды
+  - Mimikatz и credential theft
+  - Ransomware поведение
+  - IPBan: массовые блокировки IP
+  - FIM: изменения файлов и реестра
 - Поддержка Sigma rules
 - Threshold rules (N событий за M минут)
 - Correlation rules (цепочки событий)
 - Whitelist/исключения
+
+### 🔒 File Integrity Monitoring (FIM)
+- **Мониторинг файловой системы** через Sysmon
+  - Создание/удаление файлов в системных папках
+  - Хеширование файлов (SHA256, MD5)
+  - Отслеживание исполняемых файлов в Temp
+  - Мониторинг hosts файла (DNS hijacking)
+- **Мониторинг реестра Windows**
+  - Изменения ключей автозапуска (Run, RunOnce)
+  - Модификация критичных ключей системы
+  - Отслеживание создания задач планировщика
+- **UI для просмотра FIM событий**
+  - Фильтрация по типу, пути, процессу
+  - Просмотр хешей и деталей изменений
+  - Статистика по файлам и процессам
+
+### 🛡️ IPBan Integration
+- **Мониторинг IPBan событий** (C:\IPBan\)
+  - Event ID 1: IP заблокирован
+  - Event ID 2: IP разблокирован
+  - Event ID 3: Неудачные попытки входа
+  - Event ID 4-5: Изменения конфигурации и статус сервиса
+- **Автоматическая детекция атак**
+  - Массовые блокировки IP (>10 за 5 минут)
+  - Повторные попытки входа с одного IP
+  - Корреляция с threat intelligence
+- **SOAR автоматизация**
+  - Проверка IP через threat intelligence feeds
+  - Автоматические уведомления и тикеты
+  - Email alerts на критичные события
+
+### 🤖 SOAR (Security Orchestration, Automation and Response)
+- **8 автоматических Playbooks**
+  - Auto-Block Malicious IP
+  - Isolate Infected Host
+  - Kill Suspicious Process
+  - Quarantine Malware
+  - Disable Compromised Account
+  - IPBan Mass Attack Response
+  - FIM Critical File Change Response
+- **9 типов Actions**
+  - Block IP, Isolate Host, Kill Process
+  - Send Email, Create Ticket, Slack Notification
+  - Quarantine File, Disable User Account
+  - Check Threat Intelligence
+- **Автозапуск на основе severity и MITRE ATT&CK**
+- **Approval workflow** для критичных действий
+- **UI для управления** playbooks и executions
 
 ### 📈 Дашборды и отчёты
 - Главный дашборд с KPI безопасности
@@ -107,6 +162,8 @@
 - Топ хостов и пользователей по алертам
 - Карта угроз (MITRE ATT&CK heatmap)
 - Drill-down в события и инциденты
+- **FreeScout интеграция** - автоматические тикеты на алерты
+- **In-system документация** - просмотр руководств из UI
 
 ### 📋 Соответствие ЦБ РФ
 - Хранение событий минимум 5 лет (683-П)
@@ -491,12 +548,26 @@ docker-compose logs -f backend
 
 ## 📚 Документация
 
-- [Архитектура системы](docs/architecture.md)
-- [API Reference](docs/api-reference.md) - OpenAPI/Swagger документация
-- [Руководство администратора](docs/admin-guide.md)
-- [Руководство пользователя](docs/user-guide.md)
-- [Соответствие ЦБ РФ](docs/cbr-compliance.md)
-- [База данных](database/README.md)
+### Руководства по установке и настройке
+- [📦 Быстрая установка (QUICK_INSTALL.md)](docs/QUICK_INSTALL.md) - Click-to-run установка за 5 минут
+- [⚙️ Настройка Phase 1 (PHASE1_SETUP.md)](docs/PHASE1_SETUP.md) - Детальная настройка всех компонентов
+- [🔧 Docker Guide (DOCKER_GUIDE.md)](DOCKER_GUIDE.md) - Развёртывание через Docker Compose
+- [💿 Installation Guide (INSTALLATION_GUIDE.md)](INSTALLATION_GUIDE.md) - Ручная установка компонентов
+
+### Интеграции и специализированная настройка
+- [📧 FreeScout Integration (FREESCOUT_INTEGRATION.md)](docs/FREESCOUT_INTEGRATION.md) - Интеграция с helpdesk системой
+- [🤖 AI Provider Setup (AI_PROVIDER_SETUP.md)](AI_PROVIDER_SETUP.md) - Настройка Yandex GPT / DeepSeek
+- [🔄 Database Migration (DATABASE_MIGRATION.md)](DATABASE_MIGRATION.md) - Миграция с MS SQL на PostgreSQL
+- [💾 База данных (database/README.md)](database/README.md) - Схема и структура БД
+- [🌐 Network Monitor (network_monitor/README.md)](network_monitor/README.md) - SNMP, Syslog, NetFlow
+
+### API и разработка
+- [🔌 WebSocket Guide (WEBSOCKET_GUIDE.md)](WEBSOCKET_GUIDE.md) - Real-time обновления
+- [📊 API Docs](http://localhost:8000/docs) - Swagger/OpenAPI документация (после запуска)
+
+### Статус проекта
+- [📈 Project Status (PROJECT_STATUS.md)](PROJECT_STATUS.md) - Детальный статус всех компонентов
+- [🎯 Market Analysis (MARKET_ANALYSIS.md)](docs/MARKET_ANALYSIS.md) - Анализ рынка и feature comparison
 
 ## 🧪 Тестирование
 
@@ -569,7 +640,17 @@ GOOS=windows GOARCH=amd64 go build -o siem-agent.exe cmd/agent/main.go
 
 ## 📦 Установка в production
 
-См. [deploy/README.md](deploy/README.md) для инструкций по развёртыванию через Ansible.
+Для production установки рекомендуется:
+1. Использовать [Docker Compose](DOCKER_GUIDE.md) для контейнеризации
+2. Настроить PostgreSQL + TimescaleDB (см. [DATABASE_MIGRATION.md](DATABASE_MIGRATION.md))
+3. Настроить HTTPS через nginx reverse proxy
+4. Использовать systemd для автозапуска сервисов
+5. Настроить регулярные бэкапы БД
+
+См. также:
+- [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) - детальное руководство
+- [QUICK_INSTALL.md](docs/QUICK_INSTALL.md) - автоматическая установка
+- [PHASE1_SETUP.md](docs/PHASE1_SETUP.md) - настройка всех компонентов
 
 ## 💾 Выбор базы данных
 
@@ -615,14 +696,32 @@ GOOS=windows GOARCH=amd64 go build -o siem-agent.exe cmd/agent/main.go
 
 ## 🔮 Roadmap
 
+### ✅ Реализовано (Phase 1 & 2)
+- [x] Windows Agent для сбора событий
+- [x] Network Monitor (SNMP, Syslog, NetFlow)
+- [x] SOAR Playbooks (8 playbooks, 9 actions)
+- [x] File Integrity Monitoring (Sysmon FIM)
+- [x] IPBan Integration
+- [x] FreeScout Helpdesk Integration
+- [x] AI Analysis (Yandex GPT / DeepSeek)
+- [x] Docker Compose для быстрого развёртывания
+- [x] PostgreSQL + TimescaleDB support
+- [x] In-system documentation viewer
+
+### 🚧 В разработке (Phase 3)
+- [ ] Threat Intelligence feeds integration (MISP, AlienVault OTX, AbuseIPDB)
+- [ ] Advanced Search & Saved Searches UI
+- [ ] Scheduled Reports (ежедневные/еженедельные)
+- [ ] User Behavior Analytics (UEBA)
+- [ ] Graph visualization для корреляции событий
+
+### 🔮 Планируется (Phase 4+)
 - [ ] Поддержка Linux-агентов для сбора событий
-- [ ] Интеграция с внешними SIEM (Splunk, ELK)
-- [ ] Threat Intelligence feeds (MISP, AlienVault OTX)
-- [ ] SOAR функциональность (автоматическое реагирование)
+- [ ] Интеграция с внешними SIEM (Splunk, ELK) через syslog/API
 - [ ] Мобильное приложение для мониторинга
-- [ ] Кластеризация backend для HA
-- [ ] Docker Compose для быстрого развёртывания
+- [ ] Кластеризация backend для High Availability
 - [ ] Kubernetes Helm charts
+- [ ] Compliance reporting automation (ЦБ РФ forms)
 
 ## 📄 Лицензия
 
@@ -637,12 +736,37 @@ GOOS=windows GOARCH=amd64 go build -o siem-agent.exe cmd/agent/main.go
 
 ---
 
-**Версия:** 0.91.0 (Beta)
-**Дата:** 2025-12-03
-**Статус:** ~91% готовности (Backend ✅, Windows Agent ✅, Network Monitor ✅, Frontend 30%)
+**Версия:** 1.0.0-beta (Phase 2.2 Complete)
+**Дата:** 2025-12-07
+**Статус:** ~95% готовности
+
 **Компоненты:**
-- ✅ Database schema (MS SQL + PostgreSQL)
-- ✅ Backend API (60+ endpoints, WebSocket, AI analysis)
-- ✅ Windows Agent (Go, event collection, inventory)
-- ✅ Network Monitor (SNMP, Syslog, NetFlow, Traps, Discovery)
-- ⏳ Frontend (React + TypeScript - в разработке)
+- ✅ **Database schema** - MS SQL + PostgreSQL 15 + TimescaleDB
+- ✅ **Backend API** - 70+ endpoints, WebSocket, AI analysis, SOAR, FIM
+- ✅ **Windows Agent** - Event collection, inventory, Sysmon, IPBan
+- ✅ **Network Monitor** - SNMP, Syslog, NetFlow, SNMP Traps, Device Discovery
+- ✅ **Frontend** - React 18 + TypeScript + Ant Design
+  - Dashboard, Events, Alerts, Incidents, Agents
+  - Settings, Documentation viewer
+  - **SOAR Playbooks UI** - управление playbooks и executions
+  - **FIM UI** - File Integrity Monitoring
+  - FreeScout integration UI
+
+**Phase 1 Complete:**
+- ✅ Event collection & storage
+- ✅ Detection rules (19 правил)
+- ✅ Incident management
+- ✅ AI analysis integration
+- ✅ Email notifications
+- ✅ FreeScout helpdesk integration
+- ✅ Threat Intelligence enrichment
+
+**Phase 2 Complete:**
+- ✅ SOAR Playbooks (8 playbooks, 9 actions)
+- ✅ Auto-trigger на основе severity/MITRE
+- ✅ Approval workflow
+- ✅ IPBan integration (3 detection rules)
+- ✅ File Integrity Monitoring via Sysmon (6 FIM rules)
+- ✅ FIM UI with statistics
+
+**Next:** Phase 3 - Advanced Search, Scheduled Reports, UEBA
