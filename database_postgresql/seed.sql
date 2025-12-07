@@ -270,13 +270,67 @@ INSERT INTO config.detection_rules (
  'threshold',
  '{"provider": "IPBan", "event_code": 3, "count": 5, "time_window": 60, "field": "source_ip"}'::jsonb,
  'Initial Access', 'T1110',
- 1, '["ipban", "failed_login", "brute_force", "medium"]'::jsonb)
+ 1, '["ipban", "failed_login", "brute_force", "medium"]'::jsonb),
+
+-- 14. FIM: Файл создан в системной директории
+(14, 'Sysmon FIM: Создание файла в системной папке',
+ 'Обнаружено создание файла в критической системной директории Windows',
+ TRUE, 3, 18,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 11, "file_path_contains": ["\\Windows\\System32\\", "\\Windows\\SysWOW64\\", "\\Windows\\", "\\Program Files\\"]}'::jsonb,
+ 'Persistence', 'T1543',
+ 1, '["fim", "file_creation", "persistence", "high"]'::jsonb),
+
+-- 15. FIM: Удаление файла в системной директории
+(15, 'Sysmon FIM: Удаление системного файла',
+ 'Обнаружено удаление файла в критической системной директории',
+ TRUE, 4, 8,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 23, "file_path_contains": ["\\Windows\\System32\\", "\\Windows\\SysWOW64\\"]}'::jsonb,
+ 'Defense Evasion', 'T1070.004',
+ 1, '["fim", "file_deletion", "defense_evasion", "critical"]'::jsonb),
+
+-- 16. FIM: Модификация критичных ключей реестра автозапуска
+(16, 'Sysmon FIM: Изменение автозапуска через реестр',
+ 'Обнаружена модификация ключей реестра автозапуска (Run, RunOnce, Explorer)',
+ TRUE, 3, 16,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 13, "registry_key_contains": ["\\CurrentVersion\\Run", "\\CurrentVersion\\RunOnce", "\\Winlogon\\", "\\Explorer\\"]}'::jsonb,
+ 'Persistence', 'T1547.001',
+ 1, '["fim", "registry", "persistence", "high"]'::jsonb),
+
+-- 17. FIM: Создание .exe файла в Temp директории
+(17, 'Sysmon FIM: Исполняемый файл в Temp',
+ 'Обнаружено создание исполняемого файла в временной директории',
+ TRUE, 2, 45,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 11, "file_path_contains": ["\\Temp\\", "\\AppData\\Local\\Temp\\"], "file_path_ends_with": [".exe", ".dll", ".scr", ".bat", ".ps1"]}'::jsonb,
+ 'Execution', 'T1204',
+ 1, '["fim", "file_creation", "temp", "medium"]'::jsonb),
+
+-- 18. FIM: Модификация hosts файла
+(18, 'Sysmon FIM: Изменение файла hosts',
+ 'Обнаружено изменение системного файла hosts (возможный DNS hijacking)',
+ TRUE, 3, 22,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 11, "file_path_contains": ["\\system32\\drivers\\etc\\hosts"]}'::jsonb,
+ 'Defense Evasion', 'T1565.001',
+ 1, '["fim", "hosts_file", "dns_hijacking", "high"]'::jsonb),
+
+-- 19. FIM: Создание планировщика задач
+(19, 'Sysmon FIM: Новая задача в планировщике',
+ 'Обнаружено создание новой задачи в Task Scheduler',
+ TRUE, 3, 24,
+ 'simple',
+ '{"provider": "Sysmon", "event_code": 11, "file_path_contains": ["\\Windows\\System32\\Tasks\\"]}'::jsonb,
+ 'Persistence', 'T1053.005',
+ 1, '["fim", "scheduled_task", "persistence", "high"]'::jsonb)
 ON CONFLICT (rule_name) DO NOTHING;
 
 -- Обновляем sequence
-SELECT setval('config.detection_rules_rule_id_seq', 13, true);
+SELECT setval('config.detection_rules_rule_id_seq', 19, true);
 
-\echo '  ✓ Базовые правила детекции созданы (13 правил, включая IPBan)'
+\echo '  ✓ Базовые правила детекции созданы (19 правил, включая IPBan и FIM)'
 
 -- =====================================================================
 -- ПРИМЕРЫ КЛАССИФИКАЦИИ ПО В СПРАВОЧНИКЕ
@@ -474,11 +528,22 @@ INSERT INTO automation.playbooks (name, description, trigger_on_severity, trigge
  false,
  true,
  0, 0, 0,
+ NOW()),
+
+-- Playbook 8: FIM Critical File Change Response
+('FIM Critical File Change Response',
+ 'Responds to unauthorized file or registry changes: notifications and ticket creation',
+ ARRAY[3, 4], -- High and Critical
+ ARRAY['Persistence', 'Defense Evasion'],
+ ARRAY[3, 4, 8], -- Email + ticket + Slack
+ false,
+ true,
+ 0, 0, 0,
  NOW())
 
 ON CONFLICT DO NOTHING;
 
-\echo '  ✓ Дефолтные playbooks добавлены (7 playbooks, включая IPBan)'
+\echo '  ✓ Дефолтные playbooks добавлены (8 playbooks, включая IPBan и FIM)'
 
 -- =====================================================================
 -- ФИНАЛИЗАЦИЯ

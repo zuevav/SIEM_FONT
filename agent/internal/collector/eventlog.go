@@ -421,6 +421,74 @@ func (c *EventLogCollector) extractEventData(event *Event, xmlEvent *XMLEvent) {
 		}
 	}
 
+	// Sysmon specific events (File Integrity Monitoring)
+	if event.Provider == "Microsoft-Windows-Sysmon" || strings.Contains(event.Provider, "Sysmon") {
+		switch event.EventCode {
+		case 1: // Process creation
+			event.ProcessName = eventData["Image"]
+			event.ProcessCommandLine = eventData["CommandLine"]
+			event.TargetUser = eventData["User"]
+			event.ParentProcessName = eventData["ParentImage"]
+			if pid, err := strconv.Atoi(eventData["ProcessId"]); err == nil {
+				event.ProcessID = pid
+			}
+			if ppid, err := strconv.Atoi(eventData["ParentProcessId"]); err == nil {
+				event.ParentProcessID = ppid
+			}
+			event.EventData["ProcessGuid"] = eventData["ProcessGuid"]
+			event.EventData["Hashes"] = eventData["Hashes"]
+
+		case 3: // Network connection
+			event.SourceIP = eventData["SourceIp"]
+			event.TargetIP = eventData["DestinationIp"]
+			event.SourcePort = eventData["SourcePort"]
+			event.TargetPort = eventData["DestinationPort"]
+			event.ProcessName = eventData["Image"]
+			event.TargetUser = eventData["User"]
+			event.EventData["Protocol"] = eventData["Protocol"]
+			event.EventData["Initiated"] = eventData["Initiated"]
+
+		case 11: // File created
+			event.FilePath = eventData["TargetFilename"]
+			event.ProcessName = eventData["Image"]
+			event.EventData["CreationUtcTime"] = eventData["CreationUtcTime"]
+			event.EventData["FileHash"] = eventData["Hashes"]
+
+		case 23: // File deleted
+			event.FilePath = eventData["TargetFilename"]
+			event.ProcessName = eventData["Image"]
+			event.TargetUser = eventData["User"]
+			event.EventData["Archived"] = eventData["Archived"]
+			event.EventData["FileHash"] = eventData["Hashes"]
+
+		case 26: // File delete detected
+			event.FilePath = eventData["TargetFilename"]
+			event.TargetUser = eventData["User"]
+			event.EventData["Hashes"] = eventData["Hashes"]
+
+		case 12: // Registry object added or deleted
+			event.EventData["EventType"] = eventData["EventType"] // CreateKey, DeleteKey
+			event.EventData["TargetObject"] = eventData["TargetObject"]
+			event.ProcessName = eventData["Image"]
+			event.EventData["RegistryKey"] = eventData["TargetObject"]
+
+		case 13: // Registry value set
+			event.EventData["EventType"] = eventData["EventType"] // SetValue
+			event.EventData["TargetObject"] = eventData["TargetObject"]
+			event.EventData["Details"] = eventData["Details"]
+			event.ProcessName = eventData["Image"]
+			event.EventData["RegistryKey"] = eventData["TargetObject"]
+			event.EventData["RegistryValue"] = eventData["Details"]
+
+		case 14: // Registry key and value renamed
+			event.EventData["EventType"] = eventData["EventType"] // RenameKey
+			event.EventData["TargetObject"] = eventData["TargetObject"]
+			event.EventData["NewName"] = eventData["NewName"]
+			event.ProcessName = eventData["Image"]
+			event.EventData["RegistryKey"] = eventData["TargetObject"]
+		}
+	}
+
 	// Store remaining data
 	event.EventData = eventData
 
@@ -454,6 +522,49 @@ func (c *EventLogCollector) generateMessage(event *Event, eventData map[string]s
 		case 5:
 			status := eventData["ServiceStatus"]
 			return fmt.Sprintf("IPBan: Service %s", status)
+		}
+	}
+
+	// Sysmon events (File Integrity Monitoring)
+	if event.Provider == "Microsoft-Windows-Sysmon" || strings.Contains(event.Provider, "Sysmon") {
+		switch event.EventCode {
+		case 1:
+			return fmt.Sprintf("Sysmon: Process created: %s (PID: %d, User: %s)",
+				event.ProcessName, event.ProcessID, event.TargetUser)
+		case 3:
+			protocol := eventData["Protocol"]
+			if protocol == "" {
+				protocol = "TCP"
+			}
+			return fmt.Sprintf("Sysmon: Network connection: %s -> %s:%s (%s, Process: %s)",
+				event.SourceIP, event.TargetIP, event.TargetPort, protocol, event.ProcessName)
+		case 11:
+			return fmt.Sprintf("Sysmon FIM: File created: %s (Process: %s)",
+				event.FilePath, event.ProcessName)
+		case 23:
+			return fmt.Sprintf("Sysmon FIM: File deleted: %s (User: %s, Process: %s)",
+				event.FilePath, event.TargetUser, event.ProcessName)
+		case 26:
+			return fmt.Sprintf("Sysmon FIM: File delete detected: %s (User: %s)",
+				event.FilePath, event.TargetUser)
+		case 12:
+			eventType := eventData["EventType"]
+			targetObj := eventData["TargetObject"]
+			return fmt.Sprintf("Sysmon FIM: Registry %s: %s (Process: %s)",
+				eventType, targetObj, event.ProcessName)
+		case 13:
+			targetObj := eventData["TargetObject"]
+			details := eventData["Details"]
+			if len(details) > 100 {
+				details = details[:100] + "..."
+			}
+			return fmt.Sprintf("Sysmon FIM: Registry value set: %s = %s (Process: %s)",
+				targetObj, details, event.ProcessName)
+		case 14:
+			targetObj := eventData["TargetObject"]
+			newName := eventData["NewName"]
+			return fmt.Sprintf("Sysmon FIM: Registry key renamed: %s -> %s (Process: %s)",
+				targetObj, newName, event.ProcessName)
 		}
 	}
 
