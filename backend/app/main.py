@@ -253,7 +253,7 @@ async def get_info():
 # ============================================================================
 
 # Import API routers
-from app.api.v1 import auth, events, agents, alerts, incidents, settings, system, saved_searches, docs, playbooks
+from app.api.v1 import auth, events, agents, alerts, incidents, settings, system, saved_searches, docs, playbooks, fim
 from app.api.v1.integrations import freescout
 from app.api.v1.enrichment import threat_intel
 from app.websocket import websocket_router
@@ -293,6 +293,9 @@ app.include_router(docs.router, prefix="/api/v1/docs", tags=["Documentation"])
 
 # SOAR Playbooks router
 app.include_router(playbooks.router, prefix="/api/v1/soar", tags=["SOAR - Playbooks"])
+
+# File Integrity Monitoring router
+app.include_router(fim.router, prefix="/api/v1/fim", tags=["FIM - File Integrity Monitoring"])
 
 # WebSocket router
 app.include_router(websocket_router, prefix="/ws", tags=["WebSocket"])

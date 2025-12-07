@@ -15,6 +15,7 @@ import Settings from './pages/Settings'
 import Documentation from './pages/Documentation'
 import Playbooks from './pages/Playbooks'
 import PlaybookExecutions from './pages/PlaybookExecutions'
+import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -73,6 +74,7 @@ function App() {
             <Route path="documentation" element={<Documentation />} />
             <Route path="playbooks" element={<Playbooks />} />
             <Route path="playbook-executions" element={<PlaybookExecutions />} />
+            <Route path="fim" element={<FileIntegrityMonitoring />} />
             <Route
               path="profile"
               element={<ComingSoon title="Профиль" description="Настройки профиля пользователя" />}

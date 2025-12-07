@@ -636,6 +636,97 @@ class APIService {
     const response = await this.client.get('/soar/stats')
     return response.data
   }
+
+  // ============================================================================
+  // FIM (File Integrity Monitoring) API
+  // ============================================================================
+
+  async listFIMEvents(params?: {
+    start_time?: string
+    end_time?: string
+    last_hours?: number
+    event_type?: string
+    file_path?: string
+    registry_key?: string
+    process_name?: string
+    agent_id?: string
+    hostname?: string
+    limit?: number
+    offset?: number
+  }): Promise<{
+    events: Array<{
+      event_id: number
+      event_time: string
+      event_code: number
+      event_type: string
+      hostname: string
+      agent_id: string
+      file_path?: string
+      process_name?: string
+      target_user?: string
+      message: string
+      severity: number
+      category?: string
+      file_hash?: string
+      registry_key?: string
+      registry_value?: string
+      event_type_detail?: string
+      details?: string
+      new_name?: string
+    }>
+    total: number
+    limit: number
+    offset: number
+    has_more: boolean
+  }> {
+    const response = await this.client.get('/fim/events', { params })
+    return response.data
+  }
+
+  async getFIMEvent(eventId: number): Promise<{
+    event_id: number
+    event_time: string
+    event_code: number
+    event_type: string
+    hostname: string
+    agent_id: string
+    source_type: string
+    provider: string
+    severity: number
+    category?: string
+    message: string
+    file_path?: string
+    file_hash?: string
+    registry_key?: string
+    registry_value?: string
+    registry_details?: string
+    event_type_detail?: string
+    target_object?: string
+    new_name?: string
+    process_name?: string
+    process_id?: number
+    process_command_line?: string
+    target_user?: string
+    subject_user?: string
+    event_data: any
+    raw_xml?: string
+  }> {
+    const response = await this.client.get(`/fim/events/${eventId}`)
+    return response.data
+  }
+
+  async getFIMStatistics(hours: number = 24): Promise<{
+    time_window_hours: number
+    total_fim_events: number
+    critical_changes: number
+    events_by_type: Record<string, number>
+    events_by_severity: Record<string, number>
+    top_file_paths: Array<{ path: string; count: number }>
+    top_processes: Array<{ name: string; count: number }>
+  }> {
+    const response = await this.client.get('/fim/statistics', { params: { hours } })
+    return response.data
+  }
 }
 
 // Export singleton instance

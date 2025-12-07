@@ -14,6 +14,7 @@ import {
   BookOutlined,
   RobotOutlined,
   PlayCircleOutlined,
+  FolderOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -55,6 +56,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
     getItem('SOAR', 'soar', <RobotOutlined />, [
       getItem('Playbooks', '/playbooks', <RobotOutlined />),
       getItem('Выполнения', '/playbook-executions', <PlayCircleOutlined />),
+      getItem('FIM', '/fim', <FolderOutlined />),
     ]),
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),
