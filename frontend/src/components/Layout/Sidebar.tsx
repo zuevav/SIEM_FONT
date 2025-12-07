@@ -12,6 +12,8 @@ import {
   FileSearchOutlined,
   SafetyOutlined,
   BookOutlined,
+  RobotOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -50,6 +52,10 @@ export default function Sidebar({ collapsed }: SidebarProps) {
     getItem('Сеть', '/network', <GlobalOutlined />),
     getItem('Правила', '/rules', <SafetyOutlined />),
     getItem('Отчёты', '/reports', <FileSearchOutlined />),
+    getItem('SOAR', 'soar', <RobotOutlined />, [
+      getItem('Playbooks', '/playbooks', <RobotOutlined />),
+      getItem('Выполнения', '/playbook-executions', <PlayCircleOutlined />),
+    ]),
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),
       getItem('Настройки', '/settings', <SettingOutlined />),

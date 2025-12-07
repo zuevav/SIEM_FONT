@@ -16,6 +16,7 @@ from app.services.email_service import get_email_service
 from app.api.v1.integrations.freescout import FreeScoutClient
 from app.services.threat_intelligence import get_threat_intel_service
 from app.services.geoip_service import get_geoip_service
+from app.services.playbook_executor import PlaybookExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,16 @@ async def handle_new_alert(alert: Alert, db: Session, siem_url: str = "http://lo
 
         if freescout_enabled and freescout_auto_create:
             await create_freescout_ticket_for_alert(alert, db)
+
+        # Trigger SOAR playbooks
+        try:
+            playbook_executor = PlaybookExecutor(db)
+            execution_ids = await playbook_executor.trigger_playbooks_for_alert(alert.AlertId)
+            if execution_ids:
+                logger.info(f"Triggered {len(execution_ids)} playbook(s) for alert {alert.AlertId}")
+        except Exception as e:
+            logger.error(f"Error triggering playbooks for alert {alert.AlertId}: {e}", exc_info=True)
+            # Don't fail alert creation if playbook triggering fails
 
     except Exception as e:
         logger.error(f"Error handling new alert {alert.AlertId}: {e}", exc_info=True)

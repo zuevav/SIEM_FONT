@@ -331,6 +331,115 @@ ON CONFLICT (setting_key) DO NOTHING;
 \echo '  ✓ Phase 1 настройки добавлены (30 settings)'
 
 -- =====================================================================
+-- PHASE 2: SOAR PLAYBOOKS & ACTIONS
+-- =====================================================================
+
+\echo ''
+\echo 'Добавляем дефолтные SOAR actions и playbooks...'
+
+-- Default Actions
+INSERT INTO automation.playbook_actions (name, action_type, config, timeout_seconds, retry_count, created_at) VALUES
+-- Action 1: Block IP on firewall
+('Block IP on Firewall', 'block_ip', '{"ip_address": "{{source_ip}}", "duration_hours": 24}', 300, 2, NOW()),
+
+-- Action 2: Isolate infected host
+('Isolate Host from Network', 'isolate_host', '{"hostname": "{{hostname}}", "isolation_type": "network"}', 300, 1, NOW()),
+
+-- Action 3: Send critical alert email
+('Send Critical Alert Email', 'send_email', '{"to_addresses": ["soc@company.com"], "subject": "CRITICAL: {{alert_title}}", "body": "Alert details: {{alert_description}}"}', 60, 1, NOW()),
+
+-- Action 4: Create FreeScout ticket
+('Create Helpdesk Ticket', 'create_ticket', '{"title": "Security Alert: {{alert_title}}", "description": "{{alert_description}}", "priority": "high"}', 120, 2, NOW()),
+
+-- Action 5: Kill suspicious process
+('Kill Malicious Process', 'kill_process', '{"hostname": "{{hostname}}", "process_name": "{{process_name}}"}', 180, 1, NOW()),
+
+-- Action 6: Quarantine file
+('Quarantine Suspicious File', 'quarantine_file', '{"hostname": "{{hostname}}", "file_path": "{{file_path}}", "quarantine_location": "/var/quarantine/"}', 180, 1, NOW()),
+
+-- Action 7: Disable user account
+('Disable Compromised User Account', 'disable_user_account', '{"username": "{{username}}", "disable_method": "AD"}', 120, 2, NOW()),
+
+-- Action 8: Send Slack notification
+('Send Slack Notification', 'notify_slack', '{"channel": "#security-alerts", "message": "🚨 {{alert_title}}", "severity": "{{severity}}"}', 60, 1, NOW())
+
+ON CONFLICT DO NOTHING;
+
+\echo '  ✓ Дефолтные actions добавлены (8 actions)'
+
+-- Default Playbooks
+INSERT INTO automation.playbooks (name, description, trigger_on_severity, trigger_on_mitre_tactic, action_ids, requires_approval, is_enabled, execution_count, success_count, failure_count, created_at) VALUES
+-- Playbook 1: Block Malicious IP (auto for critical)
+('Auto-Block Malicious IP',
+ 'Automatically blocks source IP on firewall when malicious IP detected in critical alert',
+ ARRAY[4, 5], -- Critical and Emergency
+ ARRAY['Initial Access', 'Command and Control'],
+ ARRAY[1], -- Block IP action
+ false, -- No approval needed for auto-block
+ true,
+ 0, 0, 0,
+ NOW()),
+
+-- Playbook 2: Isolate Infected Host (requires approval)
+('Isolate Infected Host',
+ 'Isolates host from network when malware or ransomware detected (requires approval)',
+ ARRAY[3, 4, 5], -- High, Critical, Emergency
+ ARRAY['Execution', 'Persistence', 'Impact'],
+ ARRAY[2, 3], -- Isolate host + send email
+ true, -- Requires approval
+ true,
+ 0, 0, 0,
+ NOW()),
+
+-- Playbook 3: Critical Alert Response
+('Critical Alert Response',
+ 'Full response for critical alerts: email, ticket, and notifications',
+ ARRAY[4, 5], -- Critical and Emergency
+ NULL, -- All tactics
+ ARRAY[3, 4, 8], -- Send email + create ticket + slack
+ false,
+ true,
+ 0, 0, 0,
+ NOW()),
+
+-- Playbook 4: Kill Malicious Process (auto)
+('Kill Suspicious Process',
+ 'Automatically terminates malicious process on host',
+ ARRAY[3, 4], -- High and Critical
+ ARRAY['Execution', 'Defense Evasion'],
+ ARRAY[5, 3], -- Kill process + send email
+ false,
+ true,
+ 0, 0, 0,
+ NOW()),
+
+-- Playbook 5: Disable Compromised Account
+('Disable Compromised User Account',
+ 'Disables user account when credential compromise detected (requires approval)',
+ ARRAY[3, 4, 5],
+ ARRAY['Credential Access', 'Lateral Movement'],
+ ARRAY[7, 3, 4], -- Disable account + email + ticket
+ true, -- Requires approval
+ false, -- Disabled by default (critical action)
+ 0, 0, 0,
+ NOW()),
+
+-- Playbook 6: Quarantine Malware
+('Quarantine Detected Malware',
+ 'Quarantines malicious file and notifies team',
+ ARRAY[3, 4, 5],
+ ARRAY['Execution', 'Persistence'],
+ ARRAY[6, 3], -- Quarantine file + email
+ false,
+ true,
+ 0, 0, 0,
+ NOW())
+
+ON CONFLICT DO NOTHING;
+
+\echo '  ✓ Дефолтные playbooks добавлены (6 playbooks)'
+
+-- =====================================================================
 -- ФИНАЛИЗАЦИЯ
 -- =====================================================================
 

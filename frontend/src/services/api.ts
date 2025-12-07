@@ -498,6 +498,144 @@ class APIService {
     const response = await this.client.get(`/docs/${filename}`)
     return response.data
   }
+
+  // ============================================================================
+  // SOAR Playbooks API
+  // ============================================================================
+
+  async listPlaybooks(params?: {
+    page?: number
+    page_size?: number
+    enabled_only?: boolean
+  }): Promise<{
+    items: Array<any>
+    total: number
+    page: number
+    page_size: number
+  }> {
+    const response = await this.client.get('/soar/playbooks', { params })
+    return response.data
+  }
+
+  async getPlaybook(playbookId: number): Promise<any> {
+    const response = await this.client.get(`/soar/playbooks/${playbookId}`)
+    return response.data
+  }
+
+  async createPlaybook(data: {
+    name: string
+    description?: string
+    trigger_on_severity?: number[]
+    trigger_on_mitre_tactic?: string[]
+    action_ids?: number[]
+    requires_approval?: boolean
+    is_enabled?: boolean
+  }): Promise<any> {
+    const response = await this.client.post('/soar/playbooks', data)
+    return response.data
+  }
+
+  async updatePlaybook(playbookId: number, data: any): Promise<any> {
+    const response = await this.client.put(`/soar/playbooks/${playbookId}`, data)
+    return response.data
+  }
+
+  async deletePlaybook(playbookId: number): Promise<void> {
+    await this.client.delete(`/soar/playbooks/${playbookId}`)
+  }
+
+  async listActions(params?: {
+    page?: number
+    page_size?: number
+  }): Promise<{
+    items: Array<any>
+    total: number
+    page: number
+    page_size: number
+  }> {
+    const response = await this.client.get('/soar/actions', { params })
+    return response.data
+  }
+
+  async getAction(actionId: number): Promise<any> {
+    const response = await this.client.get(`/soar/actions/${actionId}`)
+    return response.data
+  }
+
+  async createAction(data: {
+    name: string
+    action_type: string
+    config: Record<string, any>
+    timeout_seconds?: number
+    retry_count?: number
+  }): Promise<any> {
+    const response = await this.client.post('/soar/actions', data)
+    return response.data
+  }
+
+  async updateAction(actionId: number, data: any): Promise<any> {
+    const response = await this.client.put(`/soar/actions/${actionId}`, data)
+    return response.data
+  }
+
+  async deleteAction(actionId: number): Promise<void> {
+    await this.client.delete(`/soar/actions/${actionId}`)
+  }
+
+  async listExecutions(params?: {
+    page?: number
+    page_size?: number
+    playbook_id?: number
+    status?: string
+  }): Promise<{
+    items: Array<any>
+    total: number
+    page: number
+    page_size: number
+  }> {
+    const response = await this.client.get('/soar/executions', { params })
+    return response.data
+  }
+
+  async getExecution(executionId: number): Promise<any> {
+    const response = await this.client.get(`/soar/executions/${executionId}`)
+    return response.data
+  }
+
+  async executePlaybook(data: {
+    playbook_id: number
+    alert_id?: number
+    incident_id?: number
+  }): Promise<any> {
+    const response = await this.client.post('/soar/executions', data)
+    return response.data
+  }
+
+  async approveExecution(executionId: number, approved: boolean, comment?: string): Promise<any> {
+    const response = await this.client.post(`/soar/executions/${executionId}/approve`, {
+      approved,
+      comment
+    })
+    return response.data
+  }
+
+  async cancelExecution(executionId: number): Promise<any> {
+    const response = await this.client.delete(`/soar/executions/${executionId}/cancel`)
+    return response.data
+  }
+
+  async getPlaybookStats(): Promise<{
+    total_playbooks: number
+    enabled_playbooks: number
+    total_executions: number
+    successful_executions: number
+    failed_executions: number
+    pending_approvals: number
+    avg_execution_time_seconds?: number
+  }> {
+    const response = await this.client.get('/soar/stats')
+    return response.data
+  }
 }
 
 // Export singleton instance
