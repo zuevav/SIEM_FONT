@@ -243,13 +243,40 @@ INSERT INTO config.detection_rules (
  'threshold',
  '{"event_code": 11, "count": 100, "field": "process_id", "file_extension_in": [".doc", ".docx", ".xls", ".xlsx", ".pdf"]}'::jsonb,
  'Impact', 'T1486',
- 1, '["ransomware", "data_destruction", "critical"]'::jsonb)
+ 1, '["ransomware", "data_destruction", "critical"]'::jsonb),
+
+-- 11. IPBan: Массовая блокировка IP адресов
+(11, 'IPBan: Массовая блокировка IP адресов',
+ 'IPBan заблокировал более 10 IP адресов за 5 минут (возможная массовая атака)',
+ TRUE, 3, 12,
+ 'threshold',
+ '{"provider": "IPBan", "event_code": 1, "count": 10, "time_window": 300}'::jsonb,
+ 'Initial Access', 'T1110',
+ 1, '["ipban", "brute_force", "mass_attack", "high"]'::jsonb),
+
+-- 12. IPBan: IP адрес заблокирован
+(12, 'IPBan: IP адрес заблокирован',
+ 'IPBan заблокировал IP адрес после неудачных попыток входа',
+ TRUE, 2, 40,
+ 'simple',
+ '{"provider": "IPBan", "event_code": 1}'::jsonb,
+ 'Initial Access', 'T1110',
+ 1, '["ipban", "blocked_ip", "medium"]'::jsonb),
+
+-- 13. IPBan: Повторные попытки входа с одного IP
+(13, 'IPBan: Повторные неудачные попытки входа',
+ 'Обнаружены множественные неудачные попытки входа с одного IP за короткое время',
+ TRUE, 2, 35,
+ 'threshold',
+ '{"provider": "IPBan", "event_code": 3, "count": 5, "time_window": 60, "field": "source_ip"}'::jsonb,
+ 'Initial Access', 'T1110',
+ 1, '["ipban", "failed_login", "brute_force", "medium"]'::jsonb)
 ON CONFLICT (rule_name) DO NOTHING;
 
 -- Обновляем sequence
-SELECT setval('config.detection_rules_rule_id_seq', 10, true);
+SELECT setval('config.detection_rules_rule_id_seq', 13, true);
 
-\echo '  ✓ Базовые правила детекции созданы (10 правил)'
+\echo '  ✓ Базовые правила детекции созданы (13 правил, включая IPBan)'
 
 -- =====================================================================
 -- ПРИМЕРЫ КЛАССИФИКАЦИИ ПО В СПРАВОЧНИКЕ
@@ -361,11 +388,14 @@ INSERT INTO automation.playbook_actions (name, action_type, config, timeout_seco
 ('Disable Compromised User Account', 'disable_user_account', '{"username": "{{username}}", "disable_method": "AD"}', 120, 2, NOW()),
 
 -- Action 8: Send Slack notification
-('Send Slack Notification', 'notify_slack', '{"channel": "#security-alerts", "message": "🚨 {{alert_title}}", "severity": "{{severity}}"}', 60, 1, NOW())
+('Send Slack Notification', 'notify_slack', '{"channel": "#security-alerts", "message": "🚨 {{alert_title}}", "severity": "{{severity}}"}', 60, 1, NOW()),
+
+-- Action 9: Check IP threat intelligence
+('Check IP Threat Intelligence', 'check_threat_intel', '{"ip_address": "{{source_ip}}", "services": ["abuseipdb", "virustotal"]}', 120, 2, NOW())
 
 ON CONFLICT DO NOTHING;
 
-\echo '  ✓ Дефолтные actions добавлены (8 actions)'
+\echo '  ✓ Дефолтные actions добавлены (9 actions)'
 
 -- Default Playbooks
 INSERT INTO automation.playbooks (name, description, trigger_on_severity, trigger_on_mitre_tactic, action_ids, requires_approval, is_enabled, execution_count, success_count, failure_count, created_at) VALUES
@@ -433,11 +463,22 @@ INSERT INTO automation.playbooks (name, description, trigger_on_severity, trigge
  false,
  true,
  0, 0, 0,
+ NOW()),
+
+-- Playbook 7: IPBan Mass Attack Response
+('IPBan Mass Attack Response',
+ 'Responds to mass IP blocking events: threat intel check, notifications, and ticket creation',
+ ARRAY[2, 3], -- Medium and High
+ ARRAY['Initial Access'],
+ ARRAY[9, 3, 4], -- Check threat intel + email + create ticket
+ false,
+ true,
+ 0, 0, 0,
  NOW())
 
 ON CONFLICT DO NOTHING;
 
-\echo '  ✓ Дефолтные playbooks добавлены (6 playbooks)'
+\echo '  ✓ Дефолтные playbooks добавлены (7 playbooks, включая IPBan)'
 
 -- =====================================================================
 -- ФИНАЛИЗАЦИЯ

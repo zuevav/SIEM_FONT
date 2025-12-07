@@ -288,6 +288,9 @@ func (c *EventLogCollector) getSourceType(channel, provider string) string {
 	if strings.Contains(channel, "PowerShell") {
 		return "PowerShell"
 	}
+	if strings.Contains(provider, "IPBan") || strings.Contains(channel, "IPBan") {
+		return "IPBan"
+	}
 	if strings.Contains(channel, "System") {
 		return "Windows System"
 	}
@@ -377,6 +380,47 @@ func (c *EventLogCollector) extractEventData(event *Event, xmlEvent *XMLEvent) {
 		event.SubjectDomain = eventData["SubjectDomainName"]
 	}
 
+	// IPBan specific events
+	if event.Provider == "IPBan" {
+		switch event.EventCode {
+		case 1: // IP address banned
+			event.SourceIP = eventData["IPAddress"]
+			event.TargetUser = eventData["UserName"]
+			event.Message = eventData["Message"]
+			if count, ok := eventData["FailedAttempts"]; ok {
+				event.EventData["FailedAttempts"] = count
+			}
+			if reason, ok := eventData["BanReason"]; ok {
+				event.EventData["BanReason"] = reason
+			}
+
+		case 2: // IP address unbanned
+			event.SourceIP = eventData["IPAddress"]
+			event.Message = eventData["Message"]
+
+		case 3: // Failed login attempt detected
+			event.SourceIP = eventData["IPAddress"]
+			event.TargetUser = eventData["UserName"]
+			event.Message = eventData["Message"]
+			if source, ok := eventData["Source"]; ok {
+				event.EventData["Source"] = source // e.g. "RDP", "SSH", "HTTP"
+			}
+
+		case 4: // Configuration change
+			event.SubjectUser = eventData["UserName"]
+			event.Message = eventData["Message"]
+			if configChange, ok := eventData["ConfigurationChange"]; ok {
+				event.EventData["ConfigurationChange"] = configChange
+			}
+
+		case 5: // Service started/stopped
+			event.Message = eventData["Message"]
+			if status, ok := eventData["ServiceStatus"]; ok {
+				event.EventData["ServiceStatus"] = status
+			}
+		}
+	}
+
 	// Store remaining data
 	event.EventData = eventData
 
@@ -386,6 +430,34 @@ func (c *EventLogCollector) extractEventData(event *Event, xmlEvent *XMLEvent) {
 
 // generateMessage generates a human-readable message from event data
 func (c *EventLogCollector) generateMessage(event *Event, eventData map[string]string) string {
+	// IPBan events
+	if event.Provider == "IPBan" {
+		switch event.EventCode {
+		case 1:
+			attempts := eventData["FailedAttempts"]
+			if attempts == "" {
+				attempts = "multiple"
+			}
+			return fmt.Sprintf("IPBan: IP address %s banned after %s failed login attempts (User: %s)",
+				event.SourceIP, attempts, event.TargetUser)
+		case 2:
+			return fmt.Sprintf("IPBan: IP address %s unbanned", event.SourceIP)
+		case 3:
+			source := eventData["Source"]
+			if source == "" {
+				source = "unknown"
+			}
+			return fmt.Sprintf("IPBan: Failed login attempt detected from %s for user %s (Source: %s)",
+				event.SourceIP, event.TargetUser, source)
+		case 4:
+			return fmt.Sprintf("IPBan: Configuration changed by %s", event.SubjectUser)
+		case 5:
+			status := eventData["ServiceStatus"]
+			return fmt.Sprintf("IPBan: Service %s", status)
+		}
+	}
+
+	// Windows events
 	switch event.EventCode {
 	case 4624:
 		return fmt.Sprintf("Successful logon: %s\\%s from %s (Type: %d)",
