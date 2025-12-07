@@ -473,6 +473,31 @@ class APIService {
   async deleteSavedSearch(searchId: number): Promise<void> {
     await this.client.delete(`/searches/${searchId}`)
   }
+
+  // ============================================================================
+  // Documentation API
+  // ============================================================================
+
+  async listDocumentation(): Promise<{
+    docs: Array<{
+      filename: string
+      title: string
+      path: string
+    }>
+    total: number
+  }> {
+    const response = await this.client.get('/docs/list')
+    return response.data
+  }
+
+  async getDocumentation(filename: string): Promise<{
+    filename: string
+    content: string
+    size: number
+  }> {
+    const response = await this.client.get(`/docs/${filename}`)
+    return response.data
+  }
 }
 
 // Export singleton instance

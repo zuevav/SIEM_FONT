@@ -490,10 +490,9 @@ For environments without internet:
 
 ### Documentation
 
-- [Full Installation Guide](INSTALLATION_GUIDE.md)
-- [Docker Deployment](DOCKER_GUIDE.md)
-- [Database Migration](DATABASE_MIGRATION.md)
-- [AI Provider Setup](AI_PROVIDER_SETUP.md)
+- [Phase 1 Setup Guide](PHASE1_SETUP.md) - Email, FreeScout, Threat Intelligence configuration
+- [FreeScout Integration](FREESCOUT_INTEGRATION.md) - Detailed helpdesk integration guide
+- [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison with commercial SIEM solutions
 
 ### Support Channels
 
@@ -519,11 +518,12 @@ After successful installation:
 
 1. ✅ **Login to Web Interface** - http://localhost:3000
 2. ✅ **Change Default Password** - Settings → Security
-3. ✅ **Install Windows Agent** - See `agent/README.md`
-4. ✅ **Review Detection Rules** - 10 pre-installed rules
-5. ✅ **Configure AI Provider** - Settings → AI Configuration
-6. ✅ **Monitor Dashboard** - Real-time event visualization
-7. ✅ **Set Up Alerts** - Email notifications (coming soon)
+3. ✅ **Configure Phase 1 Features** - See [Phase 1 Setup Guide](PHASE1_SETUP.md)
+4. ✅ **Install Windows Agent** - See `agent/README.md`
+5. ✅ **Review Detection Rules** - 10 pre-installed rules
+6. ✅ **Configure AI Provider** - Settings → AI Configuration
+7. ✅ **Monitor Dashboard** - Real-time event visualization
+8. ✅ **Set Up Integrations** - Email, FreeScout, Threat Intelligence (see [Phase 1 Setup](PHASE1_SETUP.md))
 
 ---
 

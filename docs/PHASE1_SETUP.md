@@ -2,6 +2,13 @@
 
 Complete setup guide for Phase 1 features: Settings, Email Notifications, FreeScout Integration, and Threat Intelligence.
 
+> **Prerequisites:** Complete the [Quick Installation](QUICK_INSTALL.md) before proceeding with Phase 1 configuration.
+
+> **Related Documentation:**
+> - [Quick Installation Guide](QUICK_INSTALL.md) - Installation instructions
+> - [FreeScout Integration Specification](FREESCOUT_INTEGRATION.md) - Detailed FreeScout integration guide
+> - [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison
+
 ## Table of Contents
 
 1. [Database Migration](#1-database-migration)
@@ -121,6 +128,8 @@ Emails are sent automatically when:
 ---
 
 ## 3. FreeScout Integration
+
+> **Detailed Guide:** For complete FreeScout integration documentation, see [FreeScout Integration Specification](FREESCOUT_INTEGRATION.md)
 
 ### 3.1 Prerequisites
 

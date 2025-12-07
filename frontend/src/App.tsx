@@ -12,6 +12,7 @@ import Alerts from './pages/Alerts'
 import Incidents from './pages/Incidents'
 import Agents from './pages/Agents'
 import Settings from './pages/Settings'
+import Documentation from './pages/Documentation'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -67,6 +68,7 @@ function App() {
               element={<ComingSoon title="Пользователи" description="Управление пользователями системы" />}
             />
             <Route path="settings" element={<Settings />} />
+            <Route path="documentation" element={<Documentation />} />
             <Route
               path="profile"
               element={<ComingSoon title="Профиль" description="Настройки профиля пользователя" />}

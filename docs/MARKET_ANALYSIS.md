@@ -4,6 +4,11 @@
 
 This document analyzes the current state of our SIEM system compared to commercial solutions (Splunk, IBM QRadar, ArcSight, Elastic Security, Wazuh) and identifies gaps for future development.
 
+> **Related Documentation:**
+> - [Quick Installation Guide](QUICK_INSTALL.md) - How to install the SIEM system
+> - [Phase 1 Setup Guide](PHASE1_SETUP.md) - Current feature configuration
+> - [FreeScout Integration](FREESCOUT_INTEGRATION.md) - Helpdesk integration details
+
 ---
 
 ## ✅ What We Have (Current Implementation)

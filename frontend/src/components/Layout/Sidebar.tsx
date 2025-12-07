@@ -11,6 +11,7 @@ import {
   UserOutlined,
   FileSearchOutlined,
   SafetyOutlined,
+  BookOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -52,6 +53,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),
       getItem('Настройки', '/settings', <SettingOutlined />),
+      getItem('Документация', '/documentation', <BookOutlined />),
     ]),
   ]
 

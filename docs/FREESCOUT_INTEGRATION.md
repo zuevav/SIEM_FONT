@@ -8,6 +8,11 @@ Integration between SIEM System and FreeScout helpdesk for automated ticket mana
 **Available Module**: API & Webhooks Module
 **Documentation**: https://freescout.net/module/api-webhooks/
 
+> **Related Documentation:**
+> - [Quick Installation Guide](QUICK_INSTALL.md) - Install SIEM system first
+> - [Phase 1 Setup Guide](PHASE1_SETUP.md) - Quick configuration guide for FreeScout
+> - [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison
+
 ---
 
 ## 🎯 Goals
