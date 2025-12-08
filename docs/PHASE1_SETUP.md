@@ -1,238 +1,238 @@
-# Phase 1 Setup Guide
+# Руководство по настройке Phase 1
 
-Complete setup guide for Phase 1 features: Settings, Email Notifications, FreeScout Integration, and Threat Intelligence.
+Полное руководство по настройке функций Phase 1: Настройки, Email уведомления, интеграция с FreeScout и Threat Intelligence.
 
-> **Prerequisites:** Complete the [Quick Installation](QUICK_INSTALL.md) before proceeding with Phase 1 configuration.
+> **Предварительные требования:** Завершите [Быструю установку](QUICK_INSTALL.md) перед настройкой Phase 1.
 
-> **Related Documentation:**
-> - [Quick Installation Guide](QUICK_INSTALL.md) - Installation instructions
-> - [FreeScout Integration Specification](FREESCOUT_INTEGRATION.md) - Detailed FreeScout integration guide
-> - [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison
+> **Связанная документация:**
+> - [Руководство по быстрой установке](QUICK_INSTALL.md) - Инструкции по установке
+> - [Спецификация интеграции с FreeScout](FREESCOUT_INTEGRATION.md) - Подробное руководство по интеграции с FreeScout
+> - [Анализ рынка](MARKET_ANALYSIS.md) - Сравнение функций
 
-## Table of Contents
+## Содержание
 
-1. [Database Migration](#1-database-migration)
-2. [Email Notifications](#2-email-notifications)
-3. [FreeScout Integration](#3-freescout-integration)
+1. [Миграция базы данных](#1-миграция-базы-данных)
+2. [Email уведомления](#2-email-уведомления)
+3. [Интеграция с FreeScout](#3-интеграция-с-freescout)
 4. [Threat Intelligence](#4-threat-intelligence)
-5. [GeoIP Enrichment](#5-geoip-enrichment)
-6. [System Updates](#6-system-updates)
-7. [Testing](#7-testing)
+5. [GeoIP обогащение](#5-geoip-обогащение)
+6. [Обновления системы](#6-обновления-системы)
+7. [Тестирование](#7-тестирование)
 
 ---
 
-## 1. Database Migration
+## 1. Миграция базы данных
 
-Run the SQL migration to create required tables:
+Выполните SQL-миграцию для создания необходимых таблиц:
 
 ```bash
-# Using sqlcmd (Linux/macOS)
+# Используя sqlcmd (Linux/macOS)
 sqlcmd -S localhost -U sa -P YourPassword -d SIEMDatabase \
   -i backend/migrations/001_create_system_settings.sql
 
-# Using SQL Server Management Studio (Windows)
-# Open backend/migrations/001_create_system_settings.sql and execute
+# Используя SQL Server Management Studio (Windows)
+# Откройте backend/migrations/001_create_system_settings.sql и выполните
 ```
 
-**Tables created:**
-- `config.SystemSettings` - All system settings with encryption
-- `incidents.FreeScoutTickets` - FreeScout ticket tracking
-- `config.EmailNotifications` - Email audit log
-- `enrichment.ThreatIntelligence` - Threat intel cache
+**Созданные таблицы:**
+- `config.SystemSettings` - Все системные настройки с шифрованием
+- `incidents.FreeScoutTickets` - Отслеживание тикетов FreeScout
+- `config.EmailNotifications` - Журнал аудита email
+- `enrichment.ThreatIntelligence` - Кэш threat intelligence
 
-**Verify migration:**
+**Проверка миграции:**
 ```sql
 SELECT COUNT(*) FROM config.SystemSettings;
--- Should return ~15 rows with default settings
+-- Должно вернуть ~15 строк с настройками по умолчанию
 ```
 
 ---
 
-## 2. Email Notifications
+## 2. Email уведомления
 
-### 2.1 SMTP Configuration
+### 2.1 Настройка SMTP
 
-Navigate to **Settings → Email Notifications** tab:
+Перейдите в **Настройки → Email уведомления**:
 
-**Gmail Example:**
+**Пример Gmail:**
 ```
 SMTP Host: smtp.gmail.com
 SMTP Port: 587
-Username: your-email@gmail.com
-Password: your-app-password  # NOT your Gmail password!
-From Email: siem@yourcompany.com
-Use TLS: ✓ Enabled
+Имя пользователя: your-email@gmail.com
+Пароль: your-app-password  # НЕ ваш пароль Gmail!
+Email отправителя: siem@yourcompany.com
+Использовать TLS: ✓ Включено
 ```
 
-> **Gmail App Password:** Google requires App Passwords for SMTP. Generate one at https://myaccount.google.com/apppasswords
+> **Пароль приложения Gmail:** Google требует пароли приложений для SMTP. Сгенерируйте на https://myaccount.google.com/apppasswords
 
-**Yandex Mail Example:**
+**Пример Яндекс Почта:**
 ```
 SMTP Host: smtp.yandex.ru
 SMTP Port: 587
-Username: your-email@yandex.ru
-Password: your-password
-From Email: siem@yourcompany.com
-Use TLS: ✓ Enabled
+Имя пользователя: your-email@yandex.ru
+Пароль: your-password
+Email отправителя: siem@yourcompany.com
+Использовать TLS: ✓ Включено
 ```
 
-**Mail.ru Example:**
+**Пример Mail.ru:**
 ```
 SMTP Host: smtp.mail.ru
-SMTP Port: 465 or 587
-Username: your-email@mail.ru
-Password: your-password
-From Email: siem@yourcompany.com
-Use TLS: ✓ Enabled
+SMTP Port: 465 или 587
+Имя пользователя: your-email@mail.ru
+Пароль: your-password
+Email отправителя: siem@yourcompany.com
+Использовать TLS: ✓ Включено
 ```
 
-### 2.2 Recipients Configuration
+### 2.2 Настройка получателей
 
-**Add recipients (comma-separated):**
+**Добавьте получателей (через запятую):**
 ```
 admin@company.com, security@company.com, soc@company.com
 ```
 
-**Min Severity:** `3` (High and Critical only)
+**Мин. критичность:** `3` (только High и Critical)
 
-### 2.3 Test Email
+### 2.3 Тестовое письмо
 
-1. Click **"Send Test Email"** button
-2. Enter recipient email
-3. Check inbox for test email
-4. If failed, check error message
+1. Нажмите кнопку **"Отправить тестовое письмо"**
+2. Введите email получателя
+3. Проверьте почтовый ящик на наличие тестового письма
+4. При ошибке проверьте сообщение об ошибке
 
-**Common issues:**
-- ❌ "Authentication failed" → Wrong username/password
-- ❌ "Connection refused" → Wrong host/port
-- ❌ "TLS error" → Disable TLS or use port 465
+**Типичные проблемы:**
+- ❌ "Ошибка аутентификации" → Неверное имя пользователя/пароль
+- ❌ "Соединение отклонено" → Неверный хост/порт
+- ❌ "Ошибка TLS" → Отключите TLS или используйте порт 465
 
-### 2.4 Email Templates
+### 2.4 Шаблоны писем
 
-Emails include:
-- ✅ Severity badge (color-coded)
-- ✅ Alert title and description
-- ✅ Context (hostname, username, IP, process)
-- ✅ MITRE ATT&CK tactics/techniques
-- ✅ AI recommendations
-- ✅ Threat intelligence results (if available)
-- ✅ GeoIP location (if available)
-- ✅ Direct link to alert in SIEM UI
+Письма включают:
+- ✅ Значок критичности (цветовая кодировка)
+- ✅ Название и описание алерта
+- ✅ Контекст (hostname, пользователь, IP, процесс)
+- ✅ Тактики/техники MITRE ATT&CK
+- ✅ Рекомендации AI
+- ✅ Результаты threat intelligence (если доступны)
+- ✅ GeoIP локация (если доступна)
+- ✅ Прямая ссылка на алерт в UI SIEM
 
-**Automatic sending:**
-Emails are sent automatically when:
-- Alert severity ≥ configured threshold (default: 3 = High)
-- SMTP is enabled
-- Recipients are configured
+**Автоматическая отправка:**
+Письма отправляются автоматически когда:
+- Критичность алерта ≥ настроенного порога (по умолчанию: 3 = High)
+- SMTP включен
+- Настроены получатели
 
 ---
 
-## 3. FreeScout Integration
+## 3. Интеграция с FreeScout
 
-> **Detailed Guide:** For complete FreeScout integration documentation, see [FreeScout Integration Specification](FREESCOUT_INTEGRATION.md)
+> **Подробное руководство:** Для полной документации по интеграции с FreeScout см. [Спецификацию интеграции с FreeScout](FREESCOUT_INTEGRATION.md)
 
-### 3.1 Prerequisites
+### 3.1 Предварительные требования
 
-1. **FreeScout instance** running (https://freescout.net)
-2. **API & Webhooks Module** installed
-3. **API Key** generated
+1. Работающий экземпляр **FreeScout** (https://freescout.net)
+2. Установлен модуль **API & Webhooks**
+3. Сгенерирован **API ключ**
 
-### 3.2 Generate API Key
+### 3.2 Генерация API ключа
 
-1. Login to FreeScout as admin
-2. Go to **Manage → Settings → API**
-3. Click **"Generate New API Key"**
-4. Copy the key (starts with `fs_`)
+1. Войдите в FreeScout как администратор
+2. Перейдите в **Управление → Настройки → API**
+3. Нажмите **"Сгенерировать новый API ключ"**
+4. Скопируйте ключ (начинается с `fs_`)
 
-### 3.3 Configuration
+### 3.3 Конфигурация
 
-Navigate to **Settings → FreeScout Integration** tab:
+Перейдите в **Настройки → Интеграция с FreeScout**:
 
 ```
-FreeScout URL: https://helpdesk.yourcompany.com
-API Key: fs_xxxxxxxxxxxxxxxxxxxxxxxx
-Mailbox ID: 1
-Auto-create tickets: ✓ Enabled
-Min Severity: 3 (High and Critical only)
+URL FreeScout: https://helpdesk.yourcompany.com
+API ключ: fs_xxxxxxxxxxxxxxxxxxxxxxxx
+ID почтового ящика: 1
+Авто-создание тикетов: ✓ Включено
+Мин. критичность: 3 (только High и Critical)
 ```
 
-**Find Mailbox ID:**
+**Найти ID почтового ящика:**
 ```bash
 curl -X GET "https://helpdesk.yourcompany.com/api/mailboxes" \
   -H "X-FreeScout-API-Key: fs_xxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
-### 3.4 Test Connection
+### 3.4 Проверка подключения
 
-1. Click **"Test Connection"** button
-2. Should show: `✓ Connected successfully. Found X mailbox(es)`
-3. Displays mailbox name and ID
+1. Нажмите кнопку **"Проверить подключение"**
+2. Должно показать: `✓ Подключение успешно. Найдено X почтовых ящиков`
+3. Отображается название и ID почтового ящика
 
-### 3.5 Webhook Configuration (Optional)
+### 3.5 Настройка Webhook (Опционально)
 
-For bidirectional sync (FreeScout → SIEM):
+Для двусторонней синхронизации (FreeScout → SIEM):
 
-1. Go to FreeScout **Manage → Settings → Webhooks**
-2. Add new webhook:
+1. Перейдите в FreeScout **Управление → Настройки → Webhooks**
+2. Добавьте новый webhook:
    ```
    URL: https://your-siem.com/api/v1/integrations/freescout/webhook
-   Events: conversation.status_changed, conversation.note_added
-   Secret: (generate random string)
+   События: conversation.status_changed, conversation.note_added
+   Секрет: (сгенерируйте случайную строку)
    ```
-3. Update SIEM settings with webhook secret
+3. Обновите настройки SIEM с секретом webhook
 
-### 3.6 Ticket Creation
+### 3.6 Создание тикетов
 
-**Automatic:**
-When alert severity ≥ threshold, ticket is created automatically with:
-- Subject: `[SIEM Alert #123] Alert Title`
-- Alert details, context, MITRE ATT&CK, AI recommendations
-- Tags: `siem`, `severity-high`, `category-name`
-- Custom fields: `alert_id`, `severity`
+**Автоматически:**
+Когда критичность алерта ≥ порога, тикет создаётся автоматически с:
+- Темой: `[SIEM Алерт #123] Название алерта`
+- Детали алерта, контекст, MITRE ATT&CK, рекомендации AI
+- Теги: `siem`, `severity-high`, `category-name`
+- Пользовательские поля: `alert_id`, `severity`
 
-**Manual:**
-In alert details page, click **"Create FreeScout Ticket"** button
+**Вручную:**
+На странице деталей алерта нажмите кнопку **"Создать тикет FreeScout"**
 
 ---
 
 ## 4. Threat Intelligence
 
-### 4.1 Get API Keys
+### 4.1 Получение API ключей
 
-#### VirusTotal (Recommended)
-1. Register at https://www.virustotal.com/gui/join-us
-2. Free tier: 4 requests/minute (500/day)
-3. Go to **Profile → API Key**
-4. Copy API key
+#### VirusTotal (Рекомендуется)
+1. Зарегистрируйтесь на https://www.virustotal.com/gui/join-us
+2. Бесплатный тариф: 4 запроса/минуту (500/день)
+3. Перейдите в **Профиль → API ключ**
+4. Скопируйте API ключ
 
-#### AbuseIPDB (Recommended)
-1. Register at https://www.abuseipdb.com/register
-2. Free tier: 1,000 requests/day
-3. Go to **Account → API**
-4. Copy API key
+#### AbuseIPDB (Рекомендуется)
+1. Зарегистрируйтесь на https://www.abuseipdb.com/register
+2. Бесплатный тариф: 1,000 запросов/день
+3. Перейдите в **Аккаунт → API**
+4. Скопируйте API ключ
 
-### 4.2 Configuration
+### 4.2 Конфигурация
 
-Navigate to **Settings → Threat Intelligence** tab:
+Перейдите в **Настройки → Threat Intelligence**:
 
 ```
-Enable Threat Intelligence: ✓
-VirusTotal API Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-AbuseIPDB API Key: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Включить Threat Intelligence: ✓
+API ключ VirusTotal: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+API ключ AbuseIPDB: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-### 4.3 Automatic Enrichment
+### 4.3 Автоматическое обогащение
 
-When enabled, every new alert is automatically enriched:
+Когда включено, каждый новый алерт автоматически обогащается:
 
-**For SourceIP and TargetIP:**
-1. ✅ VirusTotal IP reputation check
-2. ✅ AbuseIPDB abuse confidence score
-3. ✅ GeoIP location lookup
-4. ✅ Results stored in `alert.AIAnalysis` JSON field
-5. ✅ Cached for 24 hours
+**Для SourceIP и TargetIP:**
+1. ✅ Проверка репутации IP в VirusTotal
+2. ✅ Оценка злоупотреблений в AbuseIPDB
+3. ✅ Поиск GeoIP локации
+4. ✅ Результаты сохраняются в JSON поле `alert.AIAnalysis`
+5. ✅ Кэшируются на 24 часа
 
-**Example enrichment data:**
+**Пример данных обогащения:**
 ```json
 {
   "threat_intel": {
@@ -261,32 +261,32 @@ When enabled, every new alert is automatically enriched:
 }
 ```
 
-### 4.4 Manual Lookup
+### 4.4 Ручной поиск
 
 **API Endpoints:**
 ```bash
-# Lookup IP
+# Поиск IP
 curl -X POST "http://localhost:8000/api/v1/enrichment/lookup/ip" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"ip_address": "1.2.3.4"}'
 
-# Lookup file hash
+# Поиск хеша файла
 curl -X POST "http://localhost:8000/api/v1/enrichment/lookup/hash" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"file_hash": "44d88612fea8a8f36de82e1278abb02f"}'
 
-# GeoIP only
+# Только GeoIP
 curl "http://localhost:8000/api/v1/enrichment/geoip/8.8.8.8" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### 4.5 Cache Management
+### 4.5 Управление кэшем
 
-**Cache table:** `enrichment.ThreatIntelligence`
+**Таблица кэша:** `enrichment.ThreatIntelligence`
 
-**View cache:**
+**Просмотр кэша:**
 ```sql
 SELECT
     Indicator,
@@ -301,7 +301,7 @@ ORDER BY LastChecked DESC
 LIMIT 20;
 ```
 
-**Clear expired cache:**
+**Очистка истёкшего кэша:**
 ```sql
 DELETE FROM enrichment.ThreatIntelligence
 WHERE CacheExpiresAt < GETUTCDATE();
@@ -309,57 +309,57 @@ WHERE CacheExpiresAt < GETUTCDATE();
 
 ---
 
-## 5. GeoIP Enrichment
+## 5. GeoIP обогащение
 
-### 5.1 Download GeoLite2 Database
+### 5.1 Загрузка базы данных GeoLite2
 
-**Option 1: MaxMind Account (Recommended)**
-1. Register at https://www.maxmind.com/en/geolite2/signup
-2. Login → **Download Databases**
-3. Download **GeoLite2 City** (MMDB format)
-4. Extract `GeoLite2-City.mmdb`
+**Вариант 1: Аккаунт MaxMind (Рекомендуется)**
+1. Зарегистрируйтесь на https://www.maxmind.com/en/geolite2/signup
+2. Войдите → **Загрузить базы данных**
+3. Скачайте **GeoLite2 City** (формат MMDB)
+4. Распакуйте `GeoLite2-City.mmdb`
 
-**Option 2: Direct Download (may require account)**
+**Вариант 2: Прямая загрузка (может требовать аккаунт)**
 ```bash
-# Download latest GeoLite2-City
+# Загрузка последней GeoLite2-City
 wget https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb
 
-# Or use curl
+# Или используя curl
 curl -L -o GeoLite2-City.mmdb \
   https://github.com/P3TERX/GeoLite.mmdb/raw/download/GeoLite2-City.mmdb
 ```
 
-### 5.2 Install Database
+### 5.2 Установка базы данных
 
-**Docker (recommended):**
+**Docker (рекомендуется):**
 ```bash
-# Copy to docker volume
+# Копировать в docker volume
 docker cp GeoLite2-City.mmdb siem-backend:/app/data/GeoLite2-City.mmdb
 
-# Or mount volume in docker-compose.yml
+# Или примонтировать volume в docker-compose.yml
 volumes:
   - ./data/GeoLite2-City.mmdb:/app/data/GeoLite2-City.mmdb
 ```
 
-**Linux system paths:**
+**Пути в системе Linux:**
 ```bash
-# Option 1: /usr/share/GeoIP/
+# Вариант 1: /usr/share/GeoIP/
 sudo mkdir -p /usr/share/GeoIP
 sudo cp GeoLite2-City.mmdb /usr/share/GeoIP/
 
-# Option 2: /var/lib/GeoIP/
+# Вариант 2: /var/lib/GeoIP/
 sudo mkdir -p /var/lib/GeoIP
 sudo cp GeoLite2-City.mmdb /var/lib/GeoIP/
 ```
 
-### 5.3 Verify Installation
+### 5.3 Проверка установки
 
 ```bash
-# Check service status
+# Проверка статуса сервиса
 curl "http://localhost:8000/api/v1/enrichment/status" \
   -H "Authorization: Bearer YOUR_TOKEN"
 
-# Expected response:
+# Ожидаемый ответ:
 {
   "threat_intelligence": {...},
   "geoip": {
@@ -369,9 +369,9 @@ curl "http://localhost:8000/api/v1/enrichment/status" \
 }
 ```
 
-### 5.4 Update Database (Recommended Monthly)
+### 5.4 Обновление базы данных (Рекомендуется ежемесячно)
 
-MaxMind updates GeoLite2 monthly. Set up cron job:
+MaxMind обновляет GeoLite2 ежемесячно. Настройте cron задачу:
 
 ```bash
 # /etc/cron.monthly/update-geoip.sh
@@ -381,35 +381,35 @@ curl -L -o /tmp/GeoLite2-City.mmdb \
 
 mv /tmp/GeoLite2-City.mmdb /usr/share/GeoIP/GeoLite2-City.mmdb
 
-# Restart backend to reload database
+# Перезапустить backend для перезагрузки базы
 docker restart siem-backend
 ```
 
 ---
 
-## 6. System Updates
+## 6. Обновления системы
 
-### 6.1 Check for Updates
+### 6.1 Проверка обновлений
 
-Navigate to **Settings → System Updates** tab:
+Перейдите в **Настройки → Обновления системы**:
 
-1. Click **"Check for Updates"**
-2. Shows current version, git branch, commits behind
-3. Displays changelog if updates available
+1. Нажмите **"Проверить обновления"**
+2. Показывает текущую версию, git ветку, количество коммитов отставания
+3. Отображает changelog если доступны обновления
 
-### 6.2 Automatic Update
+### 6.2 Автоматическое обновление
 
-**⚠️ WARNING:** This will restart the backend service!
+**⚠️ ВНИМАНИЕ:** Это перезапустит сервис backend!
 
-1. Click **"Update Now"** button
-2. Confirms action
-3. Progress modal shows:
+1. Нажмите кнопку **"Обновить сейчас"**
+2. Подтвердите действие
+3. Модальное окно прогресса показывает:
    - Git pull
-   - Docker image rebuild
-   - Container restart
-4. Page reloads after completion
+   - Пересборка Docker образа
+   - Перезапуск контейнера
+4. Страница перезагрузится после завершения
 
-**Manual update (if automatic fails):**
+**Ручное обновление (если автоматическое не работает):**
 ```bash
 cd /path/to/SIEM_FONT
 git pull origin main
@@ -418,11 +418,11 @@ docker-compose up -d --build
 
 ---
 
-## 7. Testing
+## 7. Тестирование
 
-### 7.1 Test Email Notifications
+### 7.1 Тест Email уведомлений
 
-Create test alert with high severity:
+Создайте тестовый алерт с высокой критичностью:
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/alerts" \
@@ -430,30 +430,30 @@ curl -X POST "http://localhost:8000/api/v1/alerts" \
   -H "Content-Type: application/json" \
   -d '{
     "severity": 4,
-    "title": "Test High Severity Alert",
-    "description": "Testing email notification",
+    "title": "Тестовый алерт высокой критичности",
+    "description": "Тестирование email уведомлений",
     "category": "Test",
     "source_ip": "1.2.3.4"
   }'
 ```
 
-**Expected:**
-- ✅ Email sent to configured recipients
-- ✅ Email contains alert details
-- ✅ Entry in `config.EmailNotifications` table
+**Ожидается:**
+- ✅ Email отправлен настроенным получателям
+- ✅ Email содержит детали алерта
+- ✅ Запись в таблице `config.EmailNotifications`
 
-### 7.2 Test FreeScout Integration
+### 7.2 Тест интеграции с FreeScout
 
-Create test alert with high severity (same as above).
+Создайте тестовый алерт с высокой критичностью (аналогично выше).
 
-**Expected:**
-- ✅ Ticket created in FreeScout
-- ✅ Entry in `incidents.FreeScoutTickets` table
-- ✅ Ticket contains alert details
+**Ожидается:**
+- ✅ Тикет создан в FreeScout
+- ✅ Запись в таблице `incidents.FreeScoutTickets`
+- ✅ Тикет содержит детали алерта
 
-### 7.3 Test Threat Intelligence
+### 7.3 Тест Threat Intelligence
 
-Create alert with known malicious IP:
+Создайте алерт с известным вредоносным IP:
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/alerts" \
@@ -461,29 +461,29 @@ curl -X POST "http://localhost:8000/api/v1/alerts" \
   -H "Content-Type: application/json" \
   -d '{
     "severity": 3,
-    "title": "Test Threat Intel",
-    "description": "Testing threat intelligence enrichment",
+    "title": "Тест Threat Intel",
+    "description": "Тестирование обогащения threat intelligence",
     "category": "Test",
     "source_ip": "185.220.101.1"
   }'
 ```
 
-**Expected:**
-- ✅ Alert enriched with threat intel
-- ✅ `alert.AIAnalysis` contains threat intel data
-- ✅ Entry in `enrichment.ThreatIntelligence` cache
-- ✅ Email/ticket includes threat intel results
+**Ожидается:**
+- ✅ Алерт обогащён данными threat intel
+- ✅ `alert.AIAnalysis` содержит данные threat intel
+- ✅ Запись в кэше `enrichment.ThreatIntelligence`
+- ✅ Email/тикет включает результаты threat intel
 
-### 7.4 Test GeoIP
+### 7.4 Тест GeoIP
 
-Manual lookup:
+Ручной поиск:
 
 ```bash
 curl "http://localhost:8000/api/v1/enrichment/geoip/8.8.8.8" \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
-**Expected response:**
+**Ожидаемый ответ:**
 ```json
 {
   "ip": "8.8.8.8",
@@ -498,49 +498,49 @@ curl "http://localhost:8000/api/v1/enrichment/geoip/8.8.8.8" \
 
 ---
 
-## Troubleshooting
+## Устранение неполадок
 
-### Email not sending
+### Email не отправляется
 
-1. Check SMTP settings in Settings UI
-2. Click "Test Email" button
-3. Check logs: `docker logs siem-backend | grep -i smtp`
-4. Verify firewall allows outbound SMTP (port 587/465)
+1. Проверьте настройки SMTP в интерфейсе настроек
+2. Нажмите кнопку "Тестовое письмо"
+3. Проверьте логи: `docker logs siem-backend | grep -i smtp`
+4. Убедитесь что firewall разрешает исходящий SMTP (порт 587/465)
 
-### FreeScout tickets not creating
+### Тикеты FreeScout не создаются
 
-1. Verify API key is correct
-2. Check FreeScout URL (no trailing slash)
-3. Test connection in Settings UI
-4. Check logs: `docker logs siem-backend | grep -i freescout`
+1. Проверьте правильность API ключа
+2. Проверьте URL FreeScout (без завершающего слеша)
+3. Протестируйте подключение в интерфейсе настроек
+4. Проверьте логи: `docker logs siem-backend | grep -i freescout`
 
-### Threat intel not working
+### Threat intel не работает
 
-1. Verify API keys are valid
-2. Check rate limits (VT: 4/min, AbuseIPDB: 1000/day)
-3. Enable threat intel in Settings
-4. Check logs: `docker logs siem-backend | grep -i "threat intel"`
+1. Проверьте валидность API ключей
+2. Проверьте лимиты (VT: 4/мин, AbuseIPDB: 1000/день)
+3. Включите threat intel в настройках
+4. Проверьте логи: `docker logs siem-backend | grep -i "threat intel"`
 
-### GeoIP not available
+### GeoIP недоступен
 
-1. Download GeoLite2-City.mmdb
-2. Copy to `/usr/share/GeoIP/` or `/app/data/`
-3. Restart backend: `docker restart siem-backend`
-4. Check status: `/api/v1/enrichment/status`
+1. Скачайте GeoLite2-City.mmdb
+2. Скопируйте в `/usr/share/GeoIP/` или `/app/data/`
+3. Перезапустите backend: `docker restart siem-backend`
+4. Проверьте статус: `/api/v1/enrichment/status`
 
 ---
 
-## Next Steps
+## Следующие шаги
 
-✅ Phase 1 Complete! You now have:
-- Email notifications for critical alerts
-- FreeScout ticket auto-creation
-- Threat intelligence enrichment
-- GeoIP location tracking
-- System update mechanism
+✅ Phase 1 завершён! Теперь у вас есть:
+- Email уведомления для критических алертов
+- Автоматическое создание тикетов FreeScout
+- Обогащение threat intelligence
+- Отслеживание GeoIP локации
+- Механизм обновления системы
 
-**Phase 2 (Optional):**
-- Advanced threat hunting
-- Custom detection rules
+**Phase 2 (Опционально):**
+- Продвинутый threat hunting
+- Пользовательские правила детекции
 - SOAR playbooks
-- Advanced reporting
+- Продвинутая отчётность
