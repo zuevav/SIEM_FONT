@@ -19,6 +19,7 @@ import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
 import DetectionRules from './pages/DetectionRules'
 import NetworkMonitoring from './pages/NetworkMonitoring'
 import UserManagement from './pages/UserManagement'
+import Profile from './pages/Profile'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -69,10 +70,7 @@ function App() {
             <Route path="playbooks" element={<Playbooks />} />
             <Route path="playbook-executions" element={<PlaybookExecutions />} />
             <Route path="fim" element={<FileIntegrityMonitoring />} />
-            <Route
-              path="profile"
-              element={<ComingSoon title="Профиль" description="Настройки профиля пользователя" />}
-            />
+            <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
