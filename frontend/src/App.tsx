@@ -20,7 +20,7 @@ import DetectionRules from './pages/DetectionRules'
 import NetworkMonitoring from './pages/NetworkMonitoring'
 import UserManagement from './pages/UserManagement'
 import Profile from './pages/Profile'
-import ComingSoon from './pages/ComingSoon'
+import Reports from './pages/Reports'
 import './App.css'
 
 function App() {
@@ -60,10 +60,7 @@ function App() {
             <Route path="agents" element={<Agents />} />
             <Route path="network" element={<NetworkMonitoring />} />
             <Route path="rules" element={<DetectionRules />} />
-            <Route
-              path="reports"
-              element={<ComingSoon title="Отчёты" description="Отчёты для регуляторов и аудита" />}
-            />
+            <Route path="reports" element={<Reports />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="settings" element={<Settings />} />
             <Route path="documentation" element={<Documentation />} />
