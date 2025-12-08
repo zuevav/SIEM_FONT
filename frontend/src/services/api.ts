@@ -11,6 +11,10 @@ import type {
   Event,
   EventFilter,
   EventStatistics,
+  DetectionRule,
+  DetectionRuleFilter,
+  DetectionRuleCreate,
+  DetectionRuleUpdate,
   Alert,
   AlertFilter,
   Incident,
@@ -135,6 +139,43 @@ class APIService {
   async exportEvents(filter: EventFilter = {}): Promise<Blob> {
     const response = await this.client.post('/events/export', filter, {
       responseType: 'blob',
+    })
+    return response.data
+  }
+
+  // ============================================================================
+  // Detection Rules API
+  // ============================================================================
+
+  async getDetectionRules(filter: DetectionRuleFilter = {}): Promise<{ rules: DetectionRule[]; total: number; limit: number; offset: number }> {
+    const response = await this.client.get<{ rules: DetectionRule[]; total: number; limit: number; offset: number }>('/alerts/rules', {
+      params: filter,
+    })
+    return response.data
+  }
+
+  async getDetectionRule(ruleId: number): Promise<DetectionRule> {
+    const response = await this.client.get<DetectionRule>(`/alerts/rules/${ruleId}`)
+    return response.data
+  }
+
+  async createDetectionRule(data: DetectionRuleCreate): Promise<DetectionRule> {
+    const response = await this.client.post<DetectionRule>('/alerts/rules', data)
+    return response.data
+  }
+
+  async updateDetectionRule(ruleId: number, data: DetectionRuleUpdate): Promise<DetectionRule> {
+    const response = await this.client.patch<DetectionRule>(`/alerts/rules/${ruleId}`, data)
+    return response.data
+  }
+
+  async deleteDetectionRule(ruleId: number): Promise<void> {
+    await this.client.delete(`/alerts/rules/${ruleId}`)
+  }
+
+  async toggleDetectionRule(ruleId: number, enabled: boolean): Promise<DetectionRule> {
+    const response = await this.client.patch<DetectionRule>(`/alerts/rules/${ruleId}`, {
+      is_enabled: enabled,
     })
     return response.data
   }

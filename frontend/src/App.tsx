@@ -16,7 +16,11 @@ import Documentation from './pages/Documentation'
 import Playbooks from './pages/Playbooks'
 import PlaybookExecutions from './pages/PlaybookExecutions'
 import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
-import ComingSoon from './pages/ComingSoon'
+import DetectionRules from './pages/DetectionRules'
+import NetworkMonitoring from './pages/NetworkMonitoring'
+import UserManagement from './pages/UserManagement'
+import Profile from './pages/Profile'
+import Reports from './pages/Reports'
 import './App.css'
 
 function App() {
@@ -54,31 +58,16 @@ function App() {
             <Route path="alerts" element={<Alerts />} />
             <Route path="incidents" element={<Incidents />} />
             <Route path="agents" element={<Agents />} />
-            <Route
-              path="network"
-              element={<ComingSoon title="Мониторинг сети" description="Мониторинг сетевых устройств (SNMP, Syslog, NetFlow)" />}
-            />
-            <Route
-              path="rules"
-              element={<ComingSoon title="Правила детекции" description="Управление правилами обнаружения угроз" />}
-            />
-            <Route
-              path="reports"
-              element={<ComingSoon title="Отчёты" description="Отчёты для регуляторов и аудита" />}
-            />
-            <Route
-              path="users"
-              element={<ComingSoon title="Пользователи" description="Управление пользователями системы" />}
-            />
+            <Route path="network" element={<NetworkMonitoring />} />
+            <Route path="rules" element={<DetectionRules />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="users" element={<UserManagement />} />
             <Route path="settings" element={<Settings />} />
             <Route path="documentation" element={<Documentation />} />
             <Route path="playbooks" element={<Playbooks />} />
             <Route path="playbook-executions" element={<PlaybookExecutions />} />
             <Route path="fim" element={<FileIntegrityMonitoring />} />
-            <Route
-              path="profile"
-              element={<ComingSoon title="Профиль" description="Настройки профиля пользователя" />}
-            />
+            <Route path="profile" element={<Profile />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
