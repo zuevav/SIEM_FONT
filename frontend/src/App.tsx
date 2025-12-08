@@ -17,6 +17,7 @@ import Playbooks from './pages/Playbooks'
 import PlaybookExecutions from './pages/PlaybookExecutions'
 import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
 import DetectionRules from './pages/DetectionRules'
+import NetworkMonitoring from './pages/NetworkMonitoring'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -55,10 +56,7 @@ function App() {
             <Route path="alerts" element={<Alerts />} />
             <Route path="incidents" element={<Incidents />} />
             <Route path="agents" element={<Agents />} />
-            <Route
-              path="network"
-              element={<ComingSoon title="Мониторинг сети" description="Мониторинг сетевых устройств (SNMP, Syslog, NetFlow)" />}
-            />
+            <Route path="network" element={<NetworkMonitoring />} />
             <Route path="rules" element={<DetectionRules />} />
             <Route
               path="reports"
