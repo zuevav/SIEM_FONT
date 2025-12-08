@@ -18,6 +18,7 @@ import PlaybookExecutions from './pages/PlaybookExecutions'
 import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
 import DetectionRules from './pages/DetectionRules'
 import NetworkMonitoring from './pages/NetworkMonitoring'
+import UserManagement from './pages/UserManagement'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -62,10 +63,7 @@ function App() {
               path="reports"
               element={<ComingSoon title="Отчёты" description="Отчёты для регуляторов и аудита" />}
             />
-            <Route
-              path="users"
-              element={<ComingSoon title="Пользователи" description="Управление пользователями системы" />}
-            />
+            <Route path="users" element={<UserManagement />} />
             <Route path="settings" element={<Settings />} />
             <Route path="documentation" element={<Documentation />} />
             <Route path="playbooks" element={<Playbooks />} />
