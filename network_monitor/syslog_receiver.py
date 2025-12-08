@@ -240,8 +240,10 @@ class SyslogReceiver:
             # Simple IP check (no CIDR for now)
             return source_ip in allowed_ips
 
-        # Default: allow all
-        return True
+        # SECURITY: Default deny policy - block unknown sources
+        # To allow all sources, explicitly set allowed_ips to ["*"] in config
+        logger.warning(f"Syslog from unknown source {source_ip} blocked (default deny policy)")
+        return False
 
     def _map_syslog_severity(self, syslog_severity: int) -> int:
         """Map syslog severity (0-7) to SIEM severity (1-5)"""

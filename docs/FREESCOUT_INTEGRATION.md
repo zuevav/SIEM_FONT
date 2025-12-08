@@ -1,31 +1,31 @@
-# FreeScout Integration Specification
+# Спецификация интеграции с FreeScout
 
-## 📋 Overview
+## Обзор
 
-Integration between SIEM System and FreeScout helpdesk for automated ticket management, bidirectional synchronization, and communication tracking.
+Интеграция между SIEM системой и helpdesk FreeScout для автоматического управления тикетами, двусторонней синхронизации и отслеживания коммуникаций.
 
-**FreeScout**: Open-source helpdesk and shared inbox (alternative to Help Scout, Zendesk)
-**Available Module**: API & Webhooks Module
-**Documentation**: https://freescout.net/module/api-webhooks/
+**FreeScout**: Open-source helpdesk и общий почтовый ящик (альтернатива Help Scout, Zendesk)
+**Используемый модуль**: API & Webhooks Module
+**Документация**: https://freescout.net/module/api-webhooks/
 
-> **Related Documentation:**
-> - [Quick Installation Guide](QUICK_INSTALL.md) - Install SIEM system first
-> - [Phase 1 Setup Guide](PHASE1_SETUP.md) - Quick configuration guide for FreeScout
-> - [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison
-
----
-
-## 🎯 Goals
-
-1. **Automated Ticket Creation** - Alerts/incidents automatically create FreeScout tickets
-2. **Bidirectional Sync** - Status changes in FreeScout update SIEM, and vice versa
-3. **Communication Tracking** - All analyst communications stored in both systems
-4. **Context Preservation** - Full incident context available in ticket
-5. **Reduced Manual Work** - No double data entry, automated workflows
+> **Связанная документация:**
+> - [Руководство по быстрой установке](QUICK_INSTALL.md) - Сначала установите SIEM систему
+> - [Руководство по настройке Phase 1](PHASE1_SETUP.md) - Быстрая настройка FreeScout
+> - [Анализ рынка](MARKET_ANALYSIS.md) - Сравнение функций
 
 ---
 
-## 🏗️ Architecture
+## Цели
+
+1. **Автоматическое создание тикетов** - Алерты/инциденты автоматически создают тикеты в FreeScout
+2. **Двусторонняя синхронизация** - Изменения статуса в FreeScout обновляют SIEM и наоборот
+3. **Отслеживание коммуникаций** - Все коммуникации аналитиков хранятся в обеих системах
+4. **Сохранение контекста** - Полный контекст инцидента доступен в тикете
+5. **Снижение ручной работы** - Нет двойного ввода данных, автоматизированные рабочие процессы
+
+---
+
+## Архитектура
 
 ```
 ┌─────────────────────┐          API/Webhooks          ┌──────────────────┐
@@ -33,10 +33,10 @@ Integration between SIEM System and FreeScout helpdesk for automated ticket mana
 │   (FastAPI)         │         HTTP/HTTPS             │   (Laravel)      │
 └─────────────────────┘                                └──────────────────┘
          │                                                       │
-         ├─ POST /tickets - Create ticket                       │
-         ├─ GET /tickets/{id} - Get ticket status               │
-         ├─ PATCH /tickets/{id} - Update ticket                 │
-         ├─ POST /tickets/{id}/notes - Add note                 │
+         ├─ POST /tickets - Создать тикет                       │
+         ├─ GET /tickets/{id} - Получить статус тикета          │
+         ├─ PATCH /tickets/{id} - Обновить тикет                │
+         ├─ POST /tickets/{id}/notes - Добавить заметку         │
          │                                                       │
          ◄─ Webhook: ticket.created                             │
          ◄─ Webhook: ticket.updated                             │
@@ -46,36 +46,36 @@ Integration between SIEM System and FreeScout helpdesk for automated ticket mana
 
 ---
 
-## 📡 FreeScout API Integration
+## Интеграция с API FreeScout
 
-### Configuration (`.env`)
+### Конфигурация (`.env`)
 
 ```bash
-# FreeScout Configuration
+# Настройки FreeScout
 FREESCOUT_ENABLED=true
 FREESCOUT_URL=https://helpdesk.example.com
 FREESCOUT_API_KEY=your_api_key_here
 FREESCOUT_MAILBOX_ID=1
 
-# Ticket Creation Rules
+# Правила создания тикетов
 FREESCOUT_AUTO_CREATE_ON_ALERT=true
-FREESCOUT_AUTO_CREATE_SEVERITY_MIN=3  # High and Critical only
+FREESCOUT_AUTO_CREATE_SEVERITY_MIN=3  # Только High и Critical
 FREESCOUT_AUTO_CREATE_ON_INCIDENT=true
 
-# Sync Settings
+# Настройки синхронизации
 FREESCOUT_SYNC_INTERVAL_SECONDS=60
 FREESCOUT_WEBHOOK_SECRET=webhook_secret_key
 ```
 
-### API Endpoints Used
+### Используемые API endpoints
 
-#### 1. Create Ticket (POST /api/conversations)
+#### 1. Создание тикета (POST /api/conversations)
 
 ```python
 {
     "type": "email",
     "mailboxId": 1,
-    "subject": "SIEM Alert: Brute Force Attack Detected",
+    "subject": "SIEM Alert: Обнаружена Brute Force атака",
     "customer": {
         "email": "siem@example.com",
         "firstName": "SIEM",
@@ -84,7 +84,7 @@ FREESCOUT_WEBHOOK_SECRET=webhook_secret_key
     "threads": [
         {
             "type": "customer",
-            "text": "Alert details...",
+            "text": "Детали алерта...",
             "customer": {
                 "email": "siem@example.com"
             }
@@ -99,7 +99,7 @@ FREESCOUT_WEBHOOK_SECRET=webhook_secret_key
 }
 ```
 
-**Response**:
+**Ответ**:
 ```json
 {
     "id": 789,
@@ -112,7 +112,7 @@ FREESCOUT_WEBHOOK_SECRET=webhook_secret_key
 }
 ```
 
-#### 2. Get Ticket (GET /api/conversations/{id})
+#### 2. Получение тикета (GET /api/conversations/{id})
 
 ```python
 response = requests.get(
@@ -121,7 +121,7 @@ response = requests.get(
 )
 ```
 
-**Response**:
+**Ответ**:
 ```json
 {
     "id": 789,
@@ -129,49 +129,49 @@ response = requests.get(
     "state": 2,   # 1=draft, 2=published, 3=deleted
     "assignee": {
         "id": 1,
-        "firstName": "John",
-        "lastName": "Doe"
+        "firstName": "Иван",
+        "lastName": "Петров"
     },
     "threads": [...]
 }
 ```
 
-#### 3. Update Ticket (PATCH /api/conversations/{id})
+#### 3. Обновление тикета (PATCH /api/conversations/{id})
 
 ```python
 {
-    "status": 3,  # Close ticket
+    "status": 3,  # Закрыть тикет
     "assignee": 2,
     "tags": ["resolved", "false-positive"]
 }
 ```
 
-#### 4. Add Note (POST /api/conversations/{id}/threads)
+#### 4. Добавление заметки (POST /api/conversations/{id}/threads)
 
 ```python
 {
     "type": "note",
-    "text": "SIEM: Incident contained. Malicious process terminated.",
+    "text": "SIEM: Инцидент локализован. Вредоносный процесс завершён.",
     "user": 1
 }
 ```
 
 ---
 
-## 🪝 Webhook Integration
+## Интеграция Webhook
 
-### Webhook Receiver Endpoint
+### Endpoint получения Webhook
 
 **SIEM Backend**: `POST /api/v1/integrations/freescout/webhook`
 
-### FreeScout Webhook Configuration
+### Настройка Webhook в FreeScout
 
-In FreeScout Admin Panel → API & Webhooks:
+В панели администратора FreeScout → API & Webhooks:
 
 ```
 Webhook URL: https://siem.example.com/api/v1/integrations/freescout/webhook
-Secret Key: [same as FREESCOUT_WEBHOOK_SECRET]
-Events:
+Secret Key: [такой же как FREESCOUT_WEBHOOK_SECRET]
+События:
   ✅ conversation.created
   ✅ conversation.updated
   ✅ conversation.status_changed
@@ -180,7 +180,7 @@ Events:
   ✅ conversation.note_added
 ```
 
-### Webhook Events
+### События Webhook
 
 #### 1. conversation.created
 ```json
@@ -201,7 +201,7 @@ Events:
 }
 ```
 
-**SIEM Action**: Store FreeScout ticket ID in Alert/Incident
+**Действие SIEM**: Сохранить ID тикета FreeScout в Алерте/Инциденте
 
 #### 2. conversation.status_changed
 ```json
@@ -217,9 +217,9 @@ Events:
 }
 ```
 
-**SIEM Action**:
-- If FreeScout ticket closed → Mark SIEM alert as "resolved"
-- If FreeScout ticket reopened → Mark SIEM alert as "acknowledged"
+**Действие SIEM**:
+- Если тикет FreeScout закрыт → Пометить алерт SIEM как "resolved"
+- Если тикет FreeScout переоткрыт → Пометить алерт SIEM как "acknowledged"
 
 #### 3. conversation.note_added
 ```json
@@ -229,7 +229,7 @@ Events:
         "conversation_id": 789,
         "thread": {
             "type": "note",
-            "text": "Analyst notes...",
+            "text": "Заметки аналитика...",
             "created_by": 1,
             "created_at": "2025-12-05T10:15:00Z"
         }
@@ -237,20 +237,20 @@ Events:
 }
 ```
 
-**SIEM Action**: Add to Alert/Incident work log
+**Действие SIEM**: Добавить в журнал работы Алерта/Инцидента
 
 ---
 
-## 🗄️ Database Schema Changes
+## Изменения схемы базы данных
 
-### New Tables
+### Новые таблицы
 
 #### `freescout_tickets`
 ```sql
 CREATE TABLE freescout_tickets (
     ticket_id SERIAL PRIMARY KEY,
-    freescout_id INTEGER NOT NULL,  -- FreeScout conversation ID
-    freescout_number INTEGER,        -- FreeScout ticket number
+    freescout_id INTEGER NOT NULL,  -- ID тикета FreeScout
+    freescout_number INTEGER,        -- Номер тикета FreeScout
     alert_id INTEGER REFERENCES alerts(alert_id),
     incident_id INTEGER REFERENCES incidents(incident_id),
     ticket_url TEXT,
@@ -285,15 +285,15 @@ CREATE TABLE freescout_sync_log (
 );
 ```
 
-### Existing Table Updates
+### Обновления существующих таблиц
 
-#### `alerts` table - Add column
+#### Таблица `alerts` - Добавить колонку
 ```sql
 ALTER TABLE alerts ADD COLUMN freescout_ticket_id INTEGER REFERENCES freescout_tickets(ticket_id);
 CREATE INDEX idx_alerts_freescout_ticket ON alerts(freescout_ticket_id);
 ```
 
-#### `incidents` table - Add column
+#### Таблица `incidents` - Добавить колонку
 ```sql
 ALTER TABLE incidents ADD COLUMN freescout_ticket_id INTEGER REFERENCES freescout_tickets(ticket_id);
 CREATE INDEX idx_incidents_freescout_ticket ON incidents(freescout_ticket_id);
@@ -301,9 +301,9 @@ CREATE INDEX idx_incidents_freescout_ticket ON incidents(freescout_ticket_id);
 
 ---
 
-## 💻 Backend Implementation
+## Реализация Backend
 
-### 1. FreeScout Client (`backend/app/services/freescout_client.py`)
+### 1. Клиент FreeScout (`backend/app/services/freescout_client.py`)
 
 ```python
 import requests
@@ -325,11 +325,11 @@ class FreeScoutClient:
         }
 
     def create_ticket_from_alert(self, alert: Alert) -> Optional[Dict]:
-        """Create FreeScout ticket from SIEM alert"""
+        """Создать тикет FreeScout из алерта SIEM"""
         payload = {
             "type": "email",
             "mailboxId": self.mailbox_id,
-            "subject": f"SIEM Alert #{alert.AlertId}: {alert.Title}",
+            "subject": f"SIEM Алерт #{alert.AlertId}: {alert.Title}",
             "customer": {
                 "email": "siem@example.com",
                 "firstName": "SIEM",
@@ -358,38 +358,38 @@ class FreeScoutClient:
         if response.status_code == 201:
             return response.json()
         else:
-            logger.error(f"Failed to create FreeScout ticket: {response.text}")
+            logger.error(f"Не удалось создать тикет FreeScout: {response.text}")
             return None
 
     def _format_alert_body(self, alert: Alert) -> str:
-        """Format alert details as HTML for ticket"""
+        """Форматировать детали алерта в HTML для тикета"""
         return f"""
-<h2>Alert Details</h2>
+<h2>Детали алерта</h2>
 <ul>
-  <li><strong>Alert ID:</strong> {alert.AlertId}</li>
-  <li><strong>Title:</strong> {alert.Title}</li>
-  <li><strong>Severity:</strong> {self._severity_name(alert.Severity)}</li>
-  <li><strong>Computer:</strong> {alert.Computer}</li>
-  <li><strong>Username:</strong> {alert.Username}</li>
-  <li><strong>Source IP:</strong> {alert.SourceIP}</li>
-  <li><strong>First Seen:</strong> {alert.FirstSeenAt}</li>
-  <li><strong>Event Count:</strong> {alert.EventCount}</li>
+  <li><strong>ID алерта:</strong> {alert.AlertId}</li>
+  <li><strong>Название:</strong> {alert.Title}</li>
+  <li><strong>Критичность:</strong> {self._severity_name(alert.Severity)}</li>
+  <li><strong>Компьютер:</strong> {alert.Computer}</li>
+  <li><strong>Пользователь:</strong> {alert.Username}</li>
+  <li><strong>IP источника:</strong> {alert.SourceIP}</li>
+  <li><strong>Первое обнаружение:</strong> {alert.FirstSeenAt}</li>
+  <li><strong>Кол-во событий:</strong> {alert.EventCount}</li>
 </ul>
 
-<h3>Description</h3>
+<h3>Описание</h3>
 <p>{alert.Description}</p>
 
 <h3>MITRE ATT&CK</h3>
 <ul>
-  <li><strong>Tactic:</strong> {alert.MitreAttackTactic}</li>
-  <li><strong>Technique:</strong> {alert.MitreAttackTechnique}</li>
+  <li><strong>Тактика:</strong> {alert.MitreAttackTactic}</li>
+  <li><strong>Техника:</strong> {alert.MitreAttackTechnique}</li>
 </ul>
 
-<p><a href="https://siem.example.com/alerts/{alert.AlertId}">View in SIEM</a></p>
+<p><a href="https://siem.example.com/alerts/{alert.AlertId}">Просмотреть в SIEM</a></p>
 """
 
     def update_ticket_status(self, ticket_id: int, status: str) -> bool:
-        """Update FreeScout ticket status"""
+        """Обновить статус тикета FreeScout"""
         status_map = {
             'open': 1,
             'pending': 2,
@@ -407,7 +407,7 @@ class FreeScoutClient:
         return response.status_code == 200
 
     def add_note(self, ticket_id: int, note: str, user_id: int = 1) -> bool:
-        """Add note to FreeScout ticket"""
+        """Добавить заметку к тикету FreeScout"""
         payload = {
             "type": "note",
             "text": note,
@@ -424,7 +424,7 @@ class FreeScoutClient:
 
     @staticmethod
     def verify_webhook_signature(payload: bytes, signature: str) -> bool:
-        """Verify webhook signature"""
+        """Проверить подпись webhook"""
         expected = hmac.new(
             settings.freescout_webhook_secret.encode(),
             payload,
@@ -434,7 +434,7 @@ class FreeScoutClient:
         return hmac.compare_digest(expected, signature)
 ```
 
-### 2. Webhook Handler (`backend/app/api/v1/integrations/freescout.py`)
+### 2. Обработчик Webhook (`backend/app/api/v1/integrations/freescout.py`)
 
 ```python
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -451,24 +451,24 @@ async def freescout_webhook(
     db: Session = Depends(get_db)
 ):
     """
-    Receive webhooks from FreeScout
+    Получение webhooks от FreeScout
     """
-    # Verify signature
+    # Проверка подписи
     body = await request.body()
     signature = request.headers.get("X-FreeScout-Signature", "")
 
     if not FreeScoutClient.verify_webhook_signature(body, signature):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid webhook signature"
+            detail="Неверная подпись webhook"
         )
 
-    # Parse webhook
+    # Парсинг webhook
     data = await request.json()
     event_type = data.get("event")
     conversation = data.get("data", {}).get("conversation", {})
 
-    # Handle different events
+    # Обработка различных событий
     if event_type == "conversation.status_changed":
         handle_status_change(db, conversation)
     elif event_type == "conversation.note_added":
@@ -479,11 +479,11 @@ async def freescout_webhook(
     return {"success": True}
 
 def handle_status_change(db: Session, conversation: Dict):
-    """Sync FreeScout ticket status to SIEM alert"""
+    """Синхронизировать статус тикета FreeScout с алертом SIEM"""
     freescout_id = conversation.get("id")
     new_status = conversation.get("status")
 
-    # Find linked ticket
+    # Найти связанный тикет
     ticket = db.query(FreeScoutTicket).filter(
         FreeScoutTicket.freescout_id == freescout_id
     ).first()
@@ -491,7 +491,7 @@ def handle_status_change(db: Session, conversation: Dict):
     if not ticket:
         return
 
-    # Update SIEM alert status
+    # Обновить статус алерта SIEM
     if ticket.alert_id:
         alert = db.query(Alert).filter(Alert.AlertId == ticket.alert_id).first()
         if alert and new_status == 3:  # closed
@@ -502,34 +502,34 @@ def handle_status_change(db: Session, conversation: Dict):
 
 ---
 
-## 🎨 Frontend Integration
+## Интеграция Frontend
 
-### Alerts Page Updates
+### Обновления страницы алертов
 
-Add "Create Ticket" button:
+Добавить кнопку "Создать тикет":
 
 ```typescript
 const handleCreateTicket = async (alertId: number) => {
   try {
     const result = await apiService.createFreeScoutTicket(alertId)
-    message.success(`Ticket #${result.ticket_number} created`)
-    // Refresh alert to show ticket link
+    message.success(`Тикет #${result.ticket_number} создан`)
+    // Обновить алерт для отображения ссылки на тикет
     loadAlert(alertId)
   } catch (error) {
-    message.error('Failed to create ticket')
+    message.error('Не удалось создать тикет')
   }
 }
 ```
 
-### Display Ticket Link
+### Отображение ссылки на тикет
 
 ```typescript
 {alert.freescout_ticket_url && (
   <Alert
-    message="FreeScout Ticket"
+    message="Тикет FreeScout"
     description={
       <a href={alert.freescout_ticket_url} target="_blank">
-        View Ticket #{alert.freescout_ticket_number}
+        Просмотреть тикет #{alert.freescout_ticket_number}
       </a>
     }
     type="info"
@@ -540,57 +540,57 @@ const handleCreateTicket = async (alertId: number) => {
 
 ---
 
-## 🧪 Testing Plan
+## План тестирования
 
-### 1. Unit Tests
-- FreeScout client API calls
-- Webhook signature verification
-- Ticket creation from alert
-- Status sync logic
+### 1. Unit-тесты
+- Вызовы API клиента FreeScout
+- Проверка подписи webhook
+- Создание тикета из алерта
+- Логика синхронизации статусов
 
-### 2. Integration Tests
-- SIEM Alert → FreeScout Ticket creation
-- FreeScout status change → SIEM alert update
-- Bidirectional sync
-- Webhook handling
+### 2. Интеграционные тесты
+- Создание тикета FreeScout из алерта SIEM
+- Обновление алерта SIEM при изменении статуса в FreeScout
+- Двусторонняя синхронизация
+- Обработка webhooks
 
-### 3. E2E Test Scenarios
+### 3. E2E тестовые сценарии
 
-**Scenario 1: Alert to Resolution**
-1. SIEM detects brute force attack → Creates alert
-2. Alert triggers FreeScout ticket creation
-3. Analyst assigns ticket to himself in FreeScout
-4. Analyst adds investigation notes in FreeScout
-5. SIEM receives note webhook → Adds to work log
-6. Analyst closes ticket in FreeScout
-7. SIEM receives closed webhook → Marks alert as resolved
+**Сценарий 1: От алерта до решения**
+1. SIEM обнаруживает brute force атаку → Создаёт алерт
+2. Алерт вызывает создание тикета FreeScout
+3. Аналитик назначает тикет себе в FreeScout
+4. Аналитик добавляет заметки расследования в FreeScout
+5. SIEM получает webhook с заметкой → Добавляет в журнал работы
+6. Аналитик закрывает тикет в FreeScout
+7. SIEM получает webhook о закрытии → Помечает алерт как resolved
 
-**Scenario 2: Manual Ticket Creation**
-1. Analyst views alert in SIEM
-2. Clicks "Create Ticket" button
-3. Ticket created in FreeScout with alert context
-4. Ticket URL displayed in SIEM alert
+**Сценарий 2: Ручное создание тикета**
+1. Аналитик просматривает алерт в SIEM
+2. Нажимает кнопку "Создать тикет"
+3. Тикет создаётся в FreeScout с контекстом алерта
+4. URL тикета отображается в алерте SIEM
 
-**Scenario 3: Incident Workflow**
-1. Multiple alerts correlated into incident
-2. Incident auto-creates FreeScout ticket
-3. All related alerts linked to same ticket
-4. Incident status updates sync to FreeScout
+**Сценарий 3: Рабочий процесс инцидента**
+1. Несколько алертов коррелируются в инцидент
+2. Инцидент автоматически создаёт тикет FreeScout
+3. Все связанные алерты привязаны к одному тикету
+4. Обновления статуса инцидента синхронизируются с FreeScout
 
 ---
 
-## 📊 Metrics & Monitoring
+## Метрики и мониторинг
 
-### Success Metrics
-- **Ticket Creation Rate**: 95%+ of high/critical alerts create tickets
-- **Sync Latency**: < 5 seconds from FreeScout event to SIEM update
-- **Sync Success Rate**: 99%+ successful syncs
-- **Manual Ticket Creation**: < 5% (most should be automatic)
+### Метрики успеха
+- **Процент создания тикетов**: 95%+ high/critical алертов создают тикеты
+- **Задержка синхронизации**: < 5 секунд от события FreeScout до обновления SIEM
+- **Успешность синхронизации**: 99%+ успешных синхронизаций
+- **Ручное создание тикетов**: < 5% (большинство должны создаваться автоматически)
 
-### Monitoring
+### Мониторинг
 
 ```python
-# Prometheus metrics
+# Метрики Prometheus
 freescout_tickets_created_total = Counter('freescout_tickets_created_total')
 freescout_sync_errors_total = Counter('freescout_sync_errors_total')
 freescout_webhook_latency_seconds = Histogram('freescout_webhook_latency_seconds')
@@ -598,54 +598,54 @@ freescout_webhook_latency_seconds = Histogram('freescout_webhook_latency_seconds
 
 ---
 
-## 🔐 Security Considerations
+## Соображения безопасности
 
-1. **API Key Storage**: Store FreeScout API key in `.env`, never in code
-2. **Webhook Signature**: Always verify HMAC signature
-3. **HTTPS Only**: FreeScout webhook URL must use HTTPS
-4. **Rate Limiting**: Limit API calls to prevent abuse
-5. **Data Sanitization**: Sanitize HTML in ticket bodies
-
----
-
-## 📚 Documentation
-
-### Admin Guide
-- How to configure FreeScout integration
-- How to obtain API key
-- How to set up webhooks
-- How to test connection
-
-### User Guide
-- How to create tickets from alerts
-- How to view ticket status in SIEM
-- How status sync works
-- Best practices
+1. **Хранение API ключа**: Храните API ключ FreeScout в `.env`, никогда в коде
+2. **Подпись Webhook**: Всегда проверяйте HMAC подпись
+3. **Только HTTPS**: URL webhook FreeScout должен использовать HTTPS
+4. **Rate Limiting**: Ограничьте вызовы API для предотвращения злоупотреблений
+5. **Санитизация данных**: Санитизируйте HTML в теле тикетов
 
 ---
 
-## 🚀 Deployment Checklist
+## Документация
 
-- [ ] FreeScout API & Webhooks Module installed
-- [ ] FreeScout API key generated
-- [ ] SIEM `.env` configured with FreeScout settings
-- [ ] Database migrations run
-- [ ] FreeScout webhook configured with SIEM URL
-- [ ] Webhook secret key set in both systems
-- [ ] HTTPS certificate valid for webhook URL
-- [ ] Test ticket creation works
-- [ ] Test webhook delivery works
-- [ ] Test status sync both directions
-- [ ] Monitor logs for errors
+### Руководство администратора
+- Как настроить интеграцию FreeScout
+- Как получить API ключ
+- Как настроить webhooks
+- Как протестировать подключение
+
+### Руководство пользователя
+- Как создавать тикеты из алертов
+- Как просматривать статус тикета в SIEM
+- Как работает синхронизация статусов
+- Лучшие практики
 
 ---
 
-**Implementation Priority**: Phase 1 - Week 1 (3 days)
+## Чеклист развёртывания
 
-**Dependencies**:
-- FreeScout instance running
-- API & Webhooks Module purchased/installed
-- HTTPS endpoint for webhooks
+- [ ] Модуль API & Webhooks FreeScout установлен
+- [ ] API ключ FreeScout сгенерирован
+- [ ] `.env` SIEM настроен с параметрами FreeScout
+- [ ] Миграции базы данных выполнены
+- [ ] Webhook FreeScout настроен с URL SIEM
+- [ ] Секретный ключ webhook установлен в обеих системах
+- [ ] HTTPS сертификат действителен для URL webhook
+- [ ] Тестовое создание тикета работает
+- [ ] Тестовая доставка webhook работает
+- [ ] Тестовая синхронизация статусов в обе стороны
+- [ ] Мониторинг логов на ошибки
 
-**Author**: SIEM Development Team
-**Last Updated**: 2025-12-05
+---
+
+**Приоритет реализации**: Фаза 1 - Неделя 1 (3 дня)
+
+**Зависимости**:
+- Работающий экземпляр FreeScout
+- Модуль API & Webhooks приобретён/установлен
+- HTTPS endpoint для webhooks
+
+**Автор**: Команда разработки SIEM
+**Последнее обновление**: 2025-12-08

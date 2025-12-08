@@ -1,442 +1,442 @@
-# SIEM Market Analysis & Feature Gap Report
+# Анализ рынка SIEM и отчёт о функциональных пробелах
 
-## 📊 Executive Summary
+## Краткое резюме
 
-This document analyzes the current state of our SIEM system compared to commercial solutions (Splunk, IBM QRadar, ArcSight, Elastic Security, Wazuh) and identifies gaps for future development.
+Этот документ анализирует текущее состояние нашей SIEM системы в сравнении с коммерческими решениями (Splunk, IBM QRadar, ArcSight, Elastic Security, Wazuh) и определяет пробелы для дальнейшего развития.
 
-> **Related Documentation:**
-> - [Quick Installation Guide](QUICK_INSTALL.md) - How to install the SIEM system
-> - [Phase 1 Setup Guide](PHASE1_SETUP.md) - Current feature configuration
-> - [FreeScout Integration](FREESCOUT_INTEGRATION.md) - Helpdesk integration details
-
----
-
-## ✅ What We Have (Current Implementation)
-
-### Data Collection
-- ✅ **Windows Agent** - Collects Windows Event Logs (Security, System, Application, PowerShell, Sysmon)
-- ✅ **Network Monitor** - SNMP, Syslog, NetFlow support
-- ✅ **Real-time streaming** - WebSocket-based event streaming
-
-### Backend Infrastructure
-- ✅ **FastAPI Backend** - High-performance Python API
-- ✅ **PostgreSQL + TimescaleDB** - Time-series optimized storage
-- ✅ **Docker Compose** - Containerized deployment
-
-### Detection & Analytics
-- ✅ **Detection Rules** - 5 types: simple, threshold, correlation, sigma, ml
-- ✅ **10 Baseline Rules** - Brute force, PowerShell attacks, Mimikatz, ransomware, etc.
-- ✅ **MITRE ATT&CK Mapping** - All rules mapped to tactics/techniques
-- ✅ **AI Analysis** - DeepSeek/YandexGPT integration for incident analysis
-- ✅ **Automatic Alert Correlation** - Time-window, host, user, IP, MITRE kill chain
-- ✅ **Auto-escalation** - Critical alerts automatically create incidents
-
-### Incident Management
-- ✅ **Complete Lifecycle** - open → investigating → contained → remediated → closed
-- ✅ **Work Log** - Full audit trail
-- ✅ **Containment/Remediation Actions** - Structured response workflow
-- ✅ **Timeline Visualization** - Event timeline for incidents
-- ✅ **CBR Reporting** - Russian Central Bank compliance
-
-### User Interface
-- ✅ **React + TypeScript Frontend** - Modern SPA
-- ✅ **Real-time Dashboard** - Live statistics and charts
-- ✅ **Dark/Light Theme** - User preference
-- ✅ **Events, Alerts, Incidents, Agents Pages** - Core functionality
-- ✅ **Advanced Filtering** - Multi-parameter filtering
-
-### Security & Compliance
-- ✅ **JWT Authentication** - Secure API access
-- ✅ **RBAC** - viewer, analyst, admin roles
-- ✅ **CBR Compliance** - Russian regulations
+> **Связанная документация:**
+> - [Руководство по быстрой установке](QUICK_INSTALL.md) - Как установить SIEM систему
+> - [Руководство по настройке Phase 1](PHASE1_SETUP.md) - Конфигурация текущих функций
+> - [Интеграция с FreeScout](FREESCOUT_INTEGRATION.md) - Детали интеграции с helpdesk
 
 ---
 
-## ❌ What We're Missing (Feature Gaps)
+## Что у нас есть (Текущая реализация)
 
-### 🔴 Critical Gaps (Must-Have for Production)
+### Сбор данных
+- **Windows Агент** - Сбор журналов событий Windows (Security, System, Application, PowerShell, Sysmon)
+- **Сетевой монитор** - Поддержка SNMP, Syslog, NetFlow
+- **Потоковая передача в реальном времени** - Стриминг событий через WebSocket
 
-> **Note**: Focus is on Windows infrastructure. Linux/macOS agents are not required.
+### Серверная инфраструктура
+- **FastAPI Backend** - Высокопроизводительный Python API
+- **PostgreSQL + TimescaleDB** - Хранилище, оптимизированное для временных рядов
+- **Docker Compose** - Контейнеризованное развёртывание
 
-#### 1. **Threat Intelligence Integration**
-- ❌ **VirusTotal** - No file hash checking
-- ❌ **AbuseIPDB** - No IP reputation lookup
-- ❌ **AlienVault OTX** - No threat feed integration
-- ❌ **MISP** - No threat intelligence platform
-- **Impact**: Cannot enrich events with threat context
-- **Commercial comparison**: Standard feature in all SIEM
+### Детектирование и аналитика
+- **Правила детекции** - 5 типов: simple, threshold, correlation, sigma, ml
+- **10 базовых правил** - Brute force, PowerShell атаки, Mimikatz, ransomware и др.
+- **Маппинг MITRE ATT&CK** - Все правила привязаны к тактикам/техникам
+- **AI Анализ** - Интеграция DeepSeek/YandexGPT для анализа инцидентов
+- **Автоматическая корреляция алертов** - По временному окну, хосту, пользователю, IP, цепочке MITRE kill chain
+- **Авто-эскалация** - Критические алерты автоматически создают инциденты
 
-#### 2. **Automated Response (SOAR)**
-- ❌ **Playbooks** - No automated response workflows
-- ❌ **Block IP/Domain** - Cannot automatically block threats
-- ❌ **Host Isolation** - Cannot quarantine infected machines
-- ❌ **Script Execution** - No remote command execution
-- **Impact**: Manual response only, slow incident containment
-- **Commercial comparison**: QRadar, Splunk SOAR, Elastic have full automation
+### Управление инцидентами
+- **Полный жизненный цикл** - open → investigating → contained → remediated → closed
+- **Журнал работ** - Полный аудит действий
+- **Действия по сдерживанию/устранению** - Структурированный рабочий процесс реагирования
+- **Визуализация таймлайна** - Хронология событий для инцидентов
+- **Отчётность ЦБ РФ** - Соответствие требованиям Центрального банка России
 
-#### 3. **Email Notifications**
-- ❌ **Alert Emails** - No email on critical alerts
-- ❌ **Incident Reports** - No scheduled email reports
-- ❌ **Escalation Emails** - No notification chains
-- **Impact**: Analysts miss critical alerts
-- **Commercial comparison**: Basic feature in all SIEM
+### Пользовательский интерфейс
+- **React + TypeScript Frontend** - Современное SPA
+- **Дашборд реального времени** - Живая статистика и графики
+- **Тёмная/Светлая тема** - Настройка пользователя
+- **Страницы событий, алертов, инцидентов, агентов** - Основной функционал
+- **Расширенная фильтрация** - Многопараметрический поиск
 
-#### 4. **FreeScout Ticketing Integration**
-- ❌ **Automatic Ticket Creation** - No auto-creation of tickets from alerts/incidents
-- ❌ **Ticket Status Sync** - No bidirectional sync between SIEM and FreeScout
-- ❌ **Webhook Handlers** - No FreeScout webhook processing
-- ❌ **Conversation Tracking** - Cannot track analyst communications
-- **Impact**: Manual ticket creation, lost context, double data entry
-- **Available**: FreeScout has API & Webhooks Module
-- **Commercial comparison**: ServiceNow, Jira integrations standard in enterprise SIEM
-
-#### 5. **Easy Installation**
-- ✅ **Click-to-run Installer** - **IMPLEMENTED** (install.sh, install.ps1)
-- ✅ **Auto-download from GitHub** - **IMPLEMENTED**
-- ✅ **Configuration Wizard** - **IMPLEMENTED**
-- ~~**Impact**: High barrier to entry, slow deployment~~
-- **Status**: ✅ COMPLETED
+### Безопасность и комплаенс
+- **JWT Аутентификация** - Безопасный доступ к API
+- **RBAC** - Роли viewer, analyst, admin
+- **Соответствие ЦБ РФ** - Российские нормативы
 
 ---
 
-### 🟠 High Priority (Production Ready)
+## Чего нам не хватает (Функциональные пробелы)
 
-#### 6. **Data Enrichment**
-- ❌ **GeoIP** - No IP → Country/City mapping
-- ❌ **DNS Reverse Lookup** - No IP → hostname resolution
-- ❌ **WHOIS** - No domain ownership info
-- ❌ **Asset Enrichment** - No CMDB integration
-- **Impact**: Limited context for investigations
+### Критические пробелы (Обязательно для продакшена)
 
-#### 7. **File Integrity Monitoring (FIM)**
-- ❌ **Critical File Monitoring** - No tracking of /etc/passwd, registry keys
-- ❌ **Baseline Comparison** - No before/after comparison
-- ❌ **Change Alerts** - No alerts on unauthorized changes
-- **Impact**: Cannot detect configuration tampering
-- **Commercial comparison**: Wazuh, OSSEC have built-in FIM
+> **Примечание**: Фокус на Windows инфраструктуре. Агенты для Linux/macOS не требуются.
 
-#### 8. **Advanced Search**
-- ❌ **Saved Searches** - Cannot save frequent queries
-- ❌ **Query Language** - Basic filtering only
-- ❌ **Bookmarks** - No saved events/alerts
-- **Impact**: Inefficient investigations
+#### 1. **Интеграция с Threat Intelligence**
+- **VirusTotal** - Нет проверки хэшей файлов
+- **AbuseIPDB** - Нет проверки репутации IP
+- **AlienVault OTX** - Нет интеграции с фидами угроз
+- **MISP** - Нет платформы разведки угроз
+- **Влияние**: Невозможно обогащать события контекстом угроз
+- **Сравнение с коммерческими решениями**: Стандартная функция во всех SIEM
 
-#### 9. **Scheduled Reports**
-- ❌ **Daily/Weekly Reports** - No automated reporting
-- ❌ **Compliance Reports** - No PCI-DSS, ISO 27001 templates
-- ❌ **PDF Export** - No formatted reports
-- **Impact**: Manual report generation
+#### 2. **Автоматическое реагирование (SOAR)**
+- **Playbooks** - Нет автоматизированных рабочих процессов реагирования
+- **Блокировка IP/Домена** - Нет автоматической блокировки угроз
+- **Изоляция хоста** - Нет карантина заражённых машин
+- **Выполнение скриптов** - Нет удалённого выполнения команд
+- **Влияние**: Только ручное реагирование, медленное сдерживание инцидентов
+- **Сравнение с коммерческими решениями**: QRadar, Splunk SOAR, Elastic имеют полную автоматизацию
 
-#### 10. **Vulnerability Integration**
-- ❌ **Nessus/OpenVAS** - No vulnerability scanner integration
-- ❌ **CVE Correlation** - Cannot link exploits to vulnerabilities
-- ❌ **Patch Status** - No patch management visibility
-- **Impact**: Blind to vulnerability exploitation
+#### 3. **Email уведомления**
+- **Email алертов** - Нет email при критических алертах
+- **Отчёты по инцидентам** - Нет запланированных email отчётов
+- **Email эскалации** - Нет цепочек уведомлений
+- **Влияние**: Аналитики пропускают критические алерты
+- **Сравнение с коммерческими решениями**: Базовая функция во всех SIEM
 
----
+#### 4. **Интеграция с тикетами FreeScout**
+- **Автоматическое создание тикетов** - Нет автосоздания тикетов из алертов/инцидентов
+- **Синхронизация статуса тикетов** - Нет двусторонней синхронизации между SIEM и FreeScout
+- **Обработчики Webhook** - Нет обработки webhook от FreeScout
+- **Отслеживание переписки** - Невозможно отслеживать коммуникации аналитиков
+- **Влияние**: Ручное создание тикетов, потерянный контекст, двойной ввод данных
+- **Доступно**: FreeScout имеет API и модуль Webhooks
+- **Сравнение с коммерческими решениями**: Интеграции с ServiceNow, Jira стандартны в корпоративных SIEM
 
-### 🟡 Medium Priority (Enterprise Features)
-
-#### 11. **UEBA (User & Entity Behavior Analytics)**
-- ❌ **Behavioral Baselines** - No normal behavior modeling
-- ❌ **Anomaly Detection** - No ML-based anomalies
-- ❌ **Risk Scoring** - No user risk scores
-- **Impact**: Cannot detect insider threats, compromised accounts
-
-#### 12. **Network Traffic Analysis (NTA)**
-- ❌ **PCAP Analysis** - No packet inspection
-- ❌ **Protocol Anomalies** - No deep packet inspection
-- ❌ **Bandwidth Analysis** - No traffic volume monitoring
-
-#### 13. **Graph Visualization**
-- ❌ **Attack Paths** - No visual attack chains
-- ❌ **Entity Relationships** - No host/user/IP graphs
-- ❌ **Lateral Movement Maps** - No network graphs
+#### 5. **Простая установка**
+- **Установщик в один клик** - **РЕАЛИЗОВАНО** (install.sh, install.ps1)
+- **Автозагрузка с GitHub** - **РЕАЛИЗОВАНО**
+- **Мастер настройки** - **РЕАЛИЗОВАНО**
+- ~~**Влияние**: Высокий барьер входа, медленное развёртывание~~
+- **Статус**: ВЫПОЛНЕНО
 
 ---
 
-### 🟢 Low Priority (Nice-to-Have)
+### Высокий приоритет (Готовность к продакшену)
 
-#### 16. **Multi-Tenancy**
-- ❌ **MSSP Support** - Cannot serve multiple customers
-- ❌ **Data Isolation** - No tenant separation
+#### 6. **Обогащение данных**
+- **GeoIP** - Нет маппинга IP → Страна/Город
+- **Обратный DNS Lookup** - Нет разрешения IP → hostname
+- **WHOIS** - Нет информации о владельце домена
+- **Обогащение по активам** - Нет интеграции с CMDB
+- **Влияние**: Ограниченный контекст для расследований
 
-#### 17. **Deception Technology**
-- ❌ **Honeypots** - No decoy systems
-- ❌ **Honeytokens** - No fake credentials
+#### 7. **Мониторинг целостности файлов (FIM)**
+- **Мониторинг критических файлов** - Нет отслеживания /etc/passwd, ключей реестра
+- **Сравнение с базовым состоянием** - Нет сравнения до/после
+- **Алерты на изменения** - Нет алертов на несанкционированные изменения
+- **Влияние**: Невозможно обнаружить подмену конфигурации
+- **Сравнение с коммерческими решениями**: Wazuh, OSSEC имеют встроенный FIM
 
-#### 18. **Mobile App**
-- ❌ **iOS/Android** - No mobile monitoring
+#### 8. **Расширенный поиск**
+- **Сохранённые поисковые запросы** - Невозможно сохранить частые запросы
+- **Язык запросов** - Только базовая фильтрация
+- **Закладки** - Нет сохранённых событий/алертов
+- **Влияние**: Неэффективные расследования
 
-#### 19. **Dark Web Monitoring**
-- ❌ **Credential Leaks** - No breach detection
-- ❌ **Brand Protection** - No domain squatting detection
+#### 9. **Запланированные отчёты**
+- **Ежедневные/Еженедельные отчёты** - Нет автоматической отчётности
+- **Отчёты комплаенса** - Нет шаблонов PCI-DSS, ISO 27001
+- **Экспорт в PDF** - Нет форматированных отчётов
+- **Влияние**: Ручная генерация отчётов
 
-#### 20. **Advanced Forensics**
-- ❌ **Memory Analysis** - No Volatility integration
-- ❌ **Disk Forensics** - No Autopsy/Sleuthkit integration
-
----
-
-## 🎯 Recommended Implementation Priority
-
-> **Updated Roadmap**: Focus on Windows infrastructure. No Linux/macOS agents or cloud integration needed.
-
-### Phase 1: Production MVP (2-3 weeks) ⭐ **HIGH PRIORITY**
-1. ✅ **Click-to-run Installer** - **COMPLETED**
-2. 📧 **Email Notifications** - SMTP, critical alert emails, incident reports
-3. 🌍 **GeoIP Enrichment** - MaxMind GeoLite2, IP → Country/City/ASN
-4. 🔍 **Threat Intelligence** - VirusTotal, AbuseIPDB, AlienVault OTX
-5. 🎫 **FreeScout Integration** - Auto-create tickets, status sync, webhooks
-6. 💾 **Saved Searches** - Save/share filter configurations
-
-**Goal**: Production-ready SIEM for Windows infrastructure with full incident workflow
-
-**Estimated Time**: 2-3 weeks
-**Team Size**: 1-2 developers
+#### 10. **Интеграция с уязвимостями**
+- **Nessus/OpenVAS** - Нет интеграции со сканерами уязвимостей
+- **Корреляция CVE** - Невозможно связать эксплойты с уязвимостями
+- **Статус патчей** - Нет видимости управления патчами
+- **Влияние**: Слепота к эксплуатации уязвимостей
 
 ---
 
-### Phase 2: Automation & Response (2-3 weeks)
-7. 🤖 **SOAR Playbooks** - YAML-based response automation
-8. 🚫 **Response Actions** - Block IP/Domain on firewall, isolate host, disable user
-9. 📊 **Scheduled Reports** - Daily/weekly automated reporting
-10. 📁 **File Integrity Monitoring** - Windows Registry, critical files monitoring
-11. 🔐 **Advanced Search** - Query builder, filters, SPL-like syntax
+### Средний приоритет (Корпоративные функции)
 
-**Goal**: Automated response and compliance reporting
+#### 11. **UEBA (Поведенческая аналитика пользователей и сущностей)**
+- **Поведенческие базовые линии** - Нет моделирования нормального поведения
+- **Обнаружение аномалий** - Нет ML-аномалий
+- **Оценка риска** - Нет оценки риска пользователей
+- **Влияние**: Невозможно обнаружить внутренние угрозы, скомпрометированные аккаунты
 
-**Estimated Time**: 2-3 weeks
-**Team Size**: 1-2 developers
+#### 12. **Анализ сетевого трафика (NTA)**
+- **Анализ PCAP** - Нет инспекции пакетов
+- **Аномалии протоколов** - Нет глубокой инспекции пакетов
+- **Анализ пропускной способности** - Нет мониторинга объёма трафика
 
----
-
-### Phase 3: Advanced Analytics (3-4 weeks)
-12. 👤 **UEBA** - User behavior baselines, anomaly detection, risk scoring
-13. 🛡️ **Vulnerability Integration** - Nessus/OpenVAS, CVE correlation
-14. 🕸️ **Graph Visualization** - Attack paths, lateral movement maps
-15. 📈 **Advanced Dashboards** - Custom widgets, drill-down analytics
-16. 🔎 **Forensics Tools** - Event search with context, timeline reconstruction
-
-**Goal**: Proactive threat hunting and forensic analysis
-
-**Estimated Time**: 3-4 weeks
-**Team Size**: 2 developers
+#### 13. **Графовая визуализация**
+- **Пути атак** - Нет визуальных цепочек атак
+- **Связи сущностей** - Нет графов хост/пользователь/IP
+- **Карты латерального перемещения** - Нет сетевых графов
 
 ---
 
-### Phase 4: Enterprise Features (3-4 weeks)
-17. 🏢 **Multi-Tenancy** - MSSP support, data isolation
-18. 📜 **Compliance Templates** - PCI-DSS, ISO 27001, GDPR, CBR reporting templates
-19. 📱 **Mobile App** - iOS/Android for alert monitoring
-20. 🔔 **Advanced Alerting** - Slack, Telegram, MS Teams integrations
+### Низкий приоритет (Желательно иметь)
 
-**Goal**: Enterprise-ready SIEM for service providers
+#### 16. **Мультиарендность**
+- **Поддержка MSSP** - Невозможно обслуживать нескольких клиентов
+- **Изоляция данных** - Нет разделения арендаторов
 
-**Estimated Time**: 3-4 weeks
-**Team Size**: 2-3 developers
+#### 17. **Технологии обмана**
+- **Honeypots** - Нет систем-ловушек
+- **Honeytokens** - Нет поддельных учётных данных
 
----
+#### 18. **Мобильное приложение**
+- **iOS/Android** - Нет мобильного мониторинга
 
-### Phase 5: Future Enhancements (Backlog)
-21. 🍯 **Deception Technology** - Honeypots, honeytokens
-22. 🌐 **Dark Web Monitoring** - Credential leak detection
-23. 💾 **Advanced Forensics** - Memory analysis (Volatility), disk forensics
-24. ☁️ **Cloud Integration** - AWS CloudTrail, Azure Sentinel (if needed)
+#### 19. **Мониторинг Даркнета**
+- **Утечки учётных данных** - Нет обнаружения утечек
+- **Защита бренда** - Нет обнаружения киберсквоттинга
 
----
-
-## 💰 Commercial SIEM Comparison
-
-| Feature | Our SIEM | Splunk | QRadar | Elastic | Wazuh | Priority |
-|---------|----------|--------|--------|---------|-------|----------|
-| **Windows Agent** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Core |
-| **Detection Rules** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ Core |
-| **AI Analysis** | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ Core |
-| **Auto Correlation** | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ Core |
-| **Incident Mgmt** | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ Core |
-| **Easy Install** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ **DONE** |
-| **Threat Intel** | ❌ | ✅ | ✅ | ✅ | ✅ | 🔴 Critical |
-| **Email Alerts** | ❌ | ✅ | ✅ | ✅ | ✅ | 🔴 Critical |
-| **FreeScout Tickets** | ❌ | ⚠️ | ⚠️ | ⚠️ | ❌ | 🔴 Critical |
-| **SOAR/Playbooks** | ❌ | ✅ | ✅ | ✅ | ⚠️ | 🔴 Critical |
-| **GeoIP** | ❌ | ✅ | ✅ | ✅ | ✅ | 🟠 High |
-| **FIM** | ❌ | ✅ | ✅ | ✅ | ✅ | 🟠 High |
-| **Saved Searches** | ❌ | ✅ | ✅ | ✅ | ✅ | 🟠 High |
-| **UEBA** | ❌ | ✅ | ✅ | ✅ | ❌ | 🟡 Medium |
-| **Graph Visualization** | ❌ | ✅ | ✅ | ✅ | ❌ | 🟡 Medium |
-| **Vulnerability Scan** | ❌ | ✅ | ✅ | ✅ | ✅ | 🟡 Medium |
-
-**Legend**: ✅ Full Support | ⚠️ Partial Support | ❌ Not Supported
-
-**Note**: Linux/macOS agents and cloud integration excluded (not in scope for Windows-focused deployment)
+#### 20. **Расширенная форензика**
+- **Анализ памяти** - Нет интеграции с Volatility
+- **Форензика дисков** - Нет интеграции с Autopsy/Sleuthkit
 
 ---
 
-## 📈 Market Positioning
+## Рекомендуемый приоритет реализации
 
-### Current State ✅
-- **Strength**: Windows-focused SIEM with AI analysis, auto-correlation, and CBR compliance
-- **Target**: Russian organizations with Windows infrastructure
-- **Differentiators**:
-  - ✅ AI-powered incident analysis (DeepSeek/YandexGPT)
-  - ✅ Automatic alert correlation
-  - ✅ Modern React UI with real-time WebSocket
-  - ✅ 5-minute installation (click-to-run)
-  - ✅ CBR compliance (683-П, 716-П, 747-П)
-- **Gaps**: No threat intelligence, email alerts, or ticketing integration
+> **Обновлённая дорожная карта**: Фокус на Windows инфраструктуре. Агенты для Linux/macOS и облачная интеграция не нужны.
 
-### After Phase 1 (Production MVP) 🎯
-- **Positioning**: "Production-ready SIEM for Windows infrastructure"
-- **Target Market**: Russian enterprises, banks, financial institutions
-- **Key Features**:
-  - Full incident workflow with FreeScout ticketing
-  - Threat intelligence enrichment
-  - Email alerting for critical incidents
-  - GeoIP-enhanced event analysis
-- **Competitors**: Wazuh (free), AlienVault OSSIM (free)
-- **Advantages**: AI analysis, FreeScout integration, CBR compliance, faster setup
+### Phase 1: Продакшен MVP (2-3 недели) **ВЫСОКИЙ ПРИОРИТЕТ**
+1. **Установщик в один клик** - **ВЫПОЛНЕНО**
+2. **Email уведомления** - SMTP, email критических алертов, отчёты по инцидентам
+3. **GeoIP обогащение** - MaxMind GeoLite2, IP → Страна/Город/ASN
+4. **Threat Intelligence** - VirusTotal, AbuseIPDB, AlienVault OTX
+5. **Интеграция с FreeScout** - Автосоздание тикетов, синхронизация статуса, webhooks
+6. **Сохранённые поисковые запросы** - Сохранение/шаринг конфигураций фильтров
 
-### After Phase 2 (Automation) 🚀
-- **Positioning**: "Automated SIEM with built-in SOAR for Windows"
-- **Target Market**: SOC teams, MSSPs
-- **Key Features**:
-  - SOAR playbooks for automated response
-  - File Integrity Monitoring (FIM)
-  - Scheduled compliance reports
-  - Advanced search and saved queries
-- **Competitors**: Wazuh, Security Onion (free), Splunk (paid)
-- **Advantages**: Cost-effective SOAR, Windows-optimized, Russian market focus
+**Цель**: Готовая к продакшену SIEM для Windows инфраструктуры с полным рабочим процессом инцидентов
 
-### After Phase 3-4 (Enterprise) 🏢
-- **Positioning**: "Enterprise SIEM with AI, UEBA, and SOAR"
-- **Target Market**: Large enterprises, MSSP providers
-- **Key Features**:
-  - User behavior analytics (UEBA)
-  - Vulnerability correlation
-  - Graph visualization for threat hunting
-  - Multi-tenancy for service providers
-- **Competitors**: Splunk Enterprise, IBM QRadar, Elastic Security
-- **Advantages**: 1/10 cost, AI-powered, CBR compliance, Windows expertise
+**Расчётное время**: 2-3 недели
+**Размер команды**: 1-2 разработчика
 
 ---
 
-## 🚀 Quick Wins (Implement First - Phase 1)
+### Phase 2: Автоматизация и реагирование (2-3 недели)
+7. **SOAR Playbooks** - YAML-автоматизация реагирования
+8. **Действия реагирования** - Блокировка IP/Домена на файрволе, изоляция хоста, отключение пользователя
+9. **Запланированные отчёты** - Ежедневная/еженедельная автоматическая отчётность
+10. **Мониторинг целостности файлов** - Реестр Windows, мониторинг критических файлов
+11. **Расширенный поиск** - Конструктор запросов, фильтры, SPL-подобный синтаксис
 
-### Week 1: Critical Infrastructure
+**Цель**: Автоматизированное реагирование и отчётность комплаенса
 
-1. ✅ **Click-to-run Installer** - **COMPLETED** ✅
-   - ✅ Bash script (install.sh)
-   - ✅ PowerShell script (install.ps1)
-   - ✅ Auto-installs Docker, Git
-   - ✅ Interactive wizard
-   - ✅ Systemd/scheduled task setup
-
-2. **Email Notifications** (2 days) 📧
-   - SMTP configuration in backend/config
-   - Email templates (Jinja2)
-   - Critical alert emails (severity >= 3)
-   - Incident creation/update emails
-   - Daily digest emails
-   - Test: Send email on new critical alert
-
-3. **FreeScout Integration** (3 days) 🎫
-   - FreeScout API client (Python)
-   - Auto-create ticket from alert/incident
-   - Webhook receiver for FreeScout updates
-   - Bidirectional status sync
-   - Conversation tracking in SIEM
-   - Test: Alert → Ticket → Resolved → SIEM update
-
-### Week 2: Enrichment & Intelligence
-
-4. **GeoIP Enrichment** (1 day) 🌍
-   - MaxMind GeoLite2 database download
-   - IP → Country/City/ASN enrichment
-   - Dashboard world map widget
-   - Event table country flags
-   - Test: Russian IP shows Moscow location
-
-5. **VirusTotal Integration** (2 days) 🔍
-   - API key configuration
-   - File hash lookup for suspicious processes
-   - IP/Domain reputation checks
-   - Rate limiting (4 requests/minute for free tier)
-   - Cache results for 24 hours
-   - Test: Mimikatz hash → malicious detection
-
-6. **AbuseIPDB Integration** (1 day) 🚫
-   - API key configuration
-   - IP reputation lookup
-   - Abuse score enrichment
-   - Automatic blacklist sync
-   - Test: Known malicious IP → high abuse score
-
-### Week 3: UX Improvements
-
-7. **Saved Searches** (1 day) 💾
-   - Save filter configurations (Events, Alerts, Incidents)
-   - Share searches between users
-   - Quick access sidebar
-   - Export/import searches
-   - Test: Save "Critical Windows Events" search
-
-**Total Implementation**: 10 working days (2-3 weeks for 1-2 developers)
-
-**Priority Order**: Email → FreeScout → Threat Intel → GeoIP → Saved Searches
+**Расчётное время**: 2-3 недели
+**Размер команды**: 1-2 разработчика
 
 ---
 
-## 📊 Metrics & Success Criteria
+### Phase 3: Расширенная аналитика (3-4 недели)
+12. **UEBA** - Базовые линии поведения пользователей, обнаружение аномалий, оценка риска
+13. **Интеграция с уязвимостями** - Nessus/OpenVAS, корреляция CVE
+14. **Графовая визуализация** - Пути атак, карты латерального перемещения
+15. **Расширенные дашборды** - Кастомные виджеты, drill-down аналитика
+16. **Инструменты форензики** - Поиск событий с контекстом, реконструкция таймлайна
 
-### Current Metrics (Estimated)
-- Setup Time: **4-6 hours** (manual)
-- Platform Coverage: **33%** (Windows only)
-- False Positive Rate: **Unknown** (no enrichment)
-- MTTR: **Manual** (no automation)
-- Alert Fatigue: **High** (no noise reduction)
+**Цель**: Проактивный поиск угроз и форензик-анализ
 
-### Target Metrics (After Phase 1-2)
-- Setup Time: **< 30 minutes** (automated)
-- Platform Coverage: **90%** (Windows, Linux, macOS)
-- False Positive Rate: **< 5%** (with enrichment)
-- MTTR: **< 15 minutes** (with playbooks)
-- Alert Fatigue: **Low** (with correlation)
+**Расчётное время**: 3-4 недели
+**Размер команды**: 2 разработчика
 
 ---
 
-## 💡 Innovation Opportunities
+### Phase 4: Корпоративные функции (3-4 недели)
+17. **Мультиарендность** - Поддержка MSSP, изоляция данных
+18. **Шаблоны комплаенса** - Шаблоны отчётов PCI-DSS, ISO 27001, GDPR, ЦБ РФ
+19. **Мобильное приложение** - iOS/Android для мониторинга алертов
+20. **Расширенные оповещения** - Интеграции со Slack, Telegram, MS Teams
 
-### Unique Differentiators (Not in Other SIEM)
-1. **DeepSeek AI Integration** - Free, powerful AI analysis
-2. **CBR Compliance** - Russian regulations out-of-the-box
-3. **Zero License Cost** - Fully open-source
-4. **Modern Tech Stack** - React + FastAPI + TimescaleDB
-5. **5-Minute Setup** - Fastest deployment in market
+**Цель**: Корпоративная SIEM для сервис-провайдеров
 
-### Future Innovations
-- **AI-Generated Playbooks** - Auto-create response workflows
-- **Natural Language Queries** - "Show me all brute force attacks today"
-- **Predictive Analytics** - "You will likely be attacked in 2 hours"
-- **Autonomous Response** - AI decides best response action
-- **Blockchain Evidence** - Immutable audit trail
+**Расчётное время**: 3-4 недели
+**Размер команды**: 2-3 разработчика
 
 ---
 
-## 📝 Conclusion
-
-Our SIEM system has a solid foundation with strong incident management and AI capabilities. To compete with commercial solutions, we must prioritize:
-
-1. **Easy Installation** - Remove deployment barriers
-2. **Multi-Platform Support** - Expand beyond Windows
-3. **Threat Intelligence** - Add context to events
-4. **Automation** - Reduce manual work
-5. **Email Notifications** - Don't miss critical alerts
-
-**Next Steps**: Implement Phase 1 (Production MVP) in the next sprint.
+### Phase 5: Будущие улучшения (Бэклог)
+21. **Технологии обмана** - Honeypots, honeytokens
+22. **Мониторинг Даркнета** - Обнаружение утечек учётных данных
+23. **Расширенная форензика** - Анализ памяти (Volatility), форензика дисков
+24. **Облачная интеграция** - AWS CloudTrail, Azure Sentinel (при необходимости)
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-12-05
-**Author**: SIEM Development Team
+## Сравнение с коммерческими SIEM
+
+| Функция | Наша SIEM | Splunk | QRadar | Elastic | Wazuh | Приоритет |
+|---------|-----------|--------|--------|---------|-------|-----------|
+| **Windows Агент** | Есть | Есть | Есть | Есть | Есть | Базовый |
+| **Правила детекции** | Есть | Есть | Есть | Есть | Есть | Базовый |
+| **AI Анализ** | Есть | Есть | Есть | Есть | Нет | Базовый |
+| **Авто-корреляция** | Есть | Есть | Есть | Есть | Частично | Базовый |
+| **Управление инцидентами** | Есть | Есть | Есть | Есть | Частично | Базовый |
+| **Простая установка** | Есть | Есть | Есть | Есть | Есть | **ГОТОВО** |
+| **Threat Intel** | Нет | Есть | Есть | Есть | Есть | Критический |
+| **Email алерты** | Нет | Есть | Есть | Есть | Есть | Критический |
+| **Тикеты FreeScout** | Нет | Частично | Частично | Частично | Нет | Критический |
+| **SOAR/Playbooks** | Нет | Есть | Есть | Есть | Частично | Критический |
+| **GeoIP** | Нет | Есть | Есть | Есть | Есть | Высокий |
+| **FIM** | Нет | Есть | Есть | Есть | Есть | Высокий |
+| **Сохранённые поиски** | Нет | Есть | Есть | Есть | Есть | Высокий |
+| **UEBA** | Нет | Есть | Есть | Есть | Нет | Средний |
+| **Графовая визуализация** | Нет | Есть | Есть | Есть | Нет | Средний |
+| **Сканирование уязвимостей** | Нет | Есть | Есть | Есть | Есть | Средний |
+
+**Легенда**: Есть = Полная поддержка | Частично = Частичная поддержка | Нет = Не поддерживается
+
+**Примечание**: Агенты для Linux/macOS и облачная интеграция исключены (не входят в scope для Windows-ориентированного развёртывания)
+
+---
+
+## Позиционирование на рынке
+
+### Текущее состояние
+- **Сильная сторона**: SIEM с фокусом на Windows с AI анализом, авто-корреляцией и соответствием ЦБ РФ
+- **Целевая аудитория**: Российские организации с Windows инфраструктурой
+- **Отличительные особенности**:
+  - AI-анализ инцидентов (DeepSeek/YandexGPT)
+  - Автоматическая корреляция алертов
+  - Современный React UI с WebSocket реального времени
+  - 5-минутная установка (один клик)
+  - Соответствие ЦБ РФ (683-П, 716-П, 747-П)
+- **Пробелы**: Нет threat intelligence, email алертов или интеграции с тикетной системой
+
+### После Phase 1 (Продакшен MVP)
+- **Позиционирование**: "Готовая к продакшену SIEM для Windows инфраструктуры"
+- **Целевой рынок**: Российские предприятия, банки, финансовые институты
+- **Ключевые функции**:
+  - Полный рабочий процесс инцидентов с тикетами FreeScout
+  - Обогащение threat intelligence
+  - Email оповещения для критических инцидентов
+  - GeoIP-обогащённый анализ событий
+- **Конкуренты**: Wazuh (бесплатный), AlienVault OSSIM (бесплатный)
+- **Преимущества**: AI анализ, интеграция с FreeScout, соответствие ЦБ РФ, быстрая установка
+
+### После Phase 2 (Автоматизация)
+- **Позиционирование**: "Автоматизированная SIEM со встроенным SOAR для Windows"
+- **Целевой рынок**: SOC команды, MSSP
+- **Ключевые функции**:
+  - SOAR playbooks для автоматизированного реагирования
+  - Мониторинг целостности файлов (FIM)
+  - Запланированные отчёты комплаенса
+  - Расширенный поиск и сохранённые запросы
+- **Конкуренты**: Wazuh, Security Onion (бесплатные), Splunk (платный)
+- **Преимущества**: Экономичный SOAR, оптимизация под Windows, фокус на российский рынок
+
+### После Phase 3-4 (Корпоративный уровень)
+- **Позиционирование**: "Корпоративная SIEM с AI, UEBA и SOAR"
+- **Целевой рынок**: Крупные предприятия, MSSP провайдеры
+- **Ключевые функции**:
+  - Поведенческая аналитика пользователей (UEBA)
+  - Корреляция с уязвимостями
+  - Графовая визуализация для поиска угроз
+  - Мультиарендность для сервис-провайдеров
+- **Конкуренты**: Splunk Enterprise, IBM QRadar, Elastic Security
+- **Преимущества**: 1/10 стоимости, AI-powered, соответствие ЦБ РФ, экспертиза Windows
+
+---
+
+## Быстрые победы (Реализовать первыми - Phase 1)
+
+### Неделя 1: Критическая инфраструктура
+
+1. **Установщик в один клик** - **ВЫПОЛНЕНО**
+   - Bash скрипт (install.sh)
+   - PowerShell скрипт (install.ps1)
+   - Автоустановка Docker, Git
+   - Интерактивный мастер
+   - Настройка systemd/scheduled task
+
+2. **Email уведомления** (2 дня)
+   - Конфигурация SMTP в backend/config
+   - Email шаблоны (Jinja2)
+   - Email критических алертов (severity >= 3)
+   - Email создания/обновления инцидентов
+   - Ежедневные дайджесты
+   - Тест: Отправка email при новом критическом алерте
+
+3. **Интеграция с FreeScout** (3 дня)
+   - FreeScout API клиент (Python)
+   - Автосоздание тикета из алерта/инцидента
+   - Webhook получатель для обновлений FreeScout
+   - Двусторонняя синхронизация статуса
+   - Отслеживание переписки в SIEM
+   - Тест: Алерт → Тикет → Решён → Обновление SIEM
+
+### Неделя 2: Обогащение и разведка
+
+4. **GeoIP обогащение** (1 день)
+   - Загрузка базы MaxMind GeoLite2
+   - Обогащение IP → Страна/Город/ASN
+   - Виджет карты мира на дашборде
+   - Флаги стран в таблице событий
+   - Тест: Российский IP показывает местоположение Москва
+
+5. **Интеграция с VirusTotal** (2 дня)
+   - Конфигурация API ключа
+   - Поиск хэшей файлов для подозрительных процессов
+   - Проверка репутации IP/Домена
+   - Rate limiting (4 запроса/минуту для бесплатного тарифа)
+   - Кэширование результатов на 24 часа
+   - Тест: Хэш Mimikatz → обнаружение вредоносного ПО
+
+6. **Интеграция с AbuseIPDB** (1 день)
+   - Конфигурация API ключа
+   - Поиск репутации IP
+   - Обогащение abuse score
+   - Автоматическая синхронизация blacklist
+   - Тест: Известный вредоносный IP → высокий abuse score
+
+### Неделя 3: Улучшения UX
+
+7. **Сохранённые поисковые запросы** (1 день)
+   - Сохранение конфигураций фильтров (События, Алерты, Инциденты)
+   - Шаринг поисков между пользователями
+   - Быстрый доступ в сайдбаре
+   - Экспорт/импорт поисков
+   - Тест: Сохранить поиск "Критические события Windows"
+
+**Общее время реализации**: 10 рабочих дней (2-3 недели для 1-2 разработчиков)
+
+**Порядок приоритета**: Email → FreeScout → Threat Intel → GeoIP → Сохранённые поиски
+
+---
+
+## Метрики и критерии успеха
+
+### Текущие метрики (оценочно)
+- Время установки: **4-6 часов** (вручную)
+- Покрытие платформ: **33%** (только Windows)
+- Уровень ложных срабатываний: **Неизвестно** (нет обогащения)
+- MTTR: **Вручную** (нет автоматизации)
+- Усталость от алертов: **Высокая** (нет снижения шума)
+
+### Целевые метрики (После Phase 1-2)
+- Время установки: **< 30 минут** (автоматизировано)
+- Покрытие платформ: **90%** (Windows, Linux, macOS)
+- Уровень ложных срабатываний: **< 5%** (с обогащением)
+- MTTR: **< 15 минут** (с playbooks)
+- Усталость от алертов: **Низкая** (с корреляцией)
+
+---
+
+## Возможности для инноваций
+
+### Уникальные отличия (Нет в других SIEM)
+1. **Интеграция DeepSeek AI** - Бесплатный, мощный AI анализ
+2. **Соответствие ЦБ РФ** - Российские регуляции "из коробки"
+3. **Нулевая стоимость лицензий** - Полностью open-source
+4. **Современный технологический стек** - React + FastAPI + TimescaleDB
+5. **5-минутная установка** - Самое быстрое развёртывание на рынке
+
+### Будущие инновации
+- **AI-генерируемые Playbooks** - Автосоздание рабочих процессов реагирования
+- **Запросы на естественном языке** - "Покажи все brute force атаки сегодня"
+- **Предиктивная аналитика** - "Вероятно вас атакуют через 2 часа"
+- **Автономное реагирование** - AI решает лучшее действие реагирования
+- **Блокчейн для доказательств** - Неизменяемый журнал аудита
+
+---
+
+## Заключение
+
+Наша SIEM система имеет прочную основу с сильным управлением инцидентами и AI возможностями. Для конкуренции с коммерческими решениями необходимо приоритизировать:
+
+1. **Простая установка** - Убрать барьеры развёртывания
+2. **Мультиплатформенная поддержка** - Расшириться за пределы Windows
+3. **Threat Intelligence** - Добавить контекст к событиям
+4. **Автоматизация** - Снизить ручную работу
+5. **Email уведомления** - Не пропускать критические алерты
+
+**Следующие шаги**: Реализовать Phase 1 (Продакшен MVP) в следующем спринте.
+
+---
+
+**Версия документа**: 1.0
+**Последнее обновление**: 2025-12-05
+**Автор**: Команда разработки SIEM

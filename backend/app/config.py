@@ -126,6 +126,32 @@ class Settings(BaseSettings):
         env="JWT_SECRET_KEY"
     )
     jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
+
+    @validator('jwt_secret_key')
+    def validate_jwt_secret(cls, v, values):
+        """SECURITY: Validate JWT secret is not default and has sufficient entropy"""
+        weak_secrets = [
+            'change_me_in_production',
+            'secret',
+            'jwt_secret',
+            'your_secret_key',
+            'generate_random_32_char_string_CHANGE_ME'
+        ]
+        if v.lower() in [s.lower() for s in weak_secrets]:
+            import warnings
+            warnings.warn(
+                "SECURITY WARNING: JWT_SECRET_KEY is set to a weak default value! "
+                "Generate a secure secret with: openssl rand -hex 32",
+                RuntimeWarning
+            )
+        if len(v) < 32:
+            import warnings
+            warnings.warn(
+                f"SECURITY WARNING: JWT_SECRET_KEY is only {len(v)} characters. "
+                "Recommended minimum is 32 characters for security.",
+                RuntimeWarning
+            )
+        return v
     jwt_access_token_expire_minutes: int = Field(
         default=480,
         env="JWT_ACCESS_TOKEN_EXPIRE_MINUTES"

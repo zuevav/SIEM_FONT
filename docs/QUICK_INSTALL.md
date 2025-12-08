@@ -1,263 +1,263 @@
-# Quick Installation Guide
+# Руководство по быстрой установке
 
-## 🚀 Click-to-Run Installation
+## Установка в один клик
 
-SIEM System now supports fully automated installation with zero manual configuration!
+SIEM система поддерживает полностью автоматизированную установку без ручной настройки!
 
 ---
 
-## Linux/Unix Installation (Recommended)
+## Установка на Linux/Unix (Рекомендуется)
 
-### One-Line Install (Internet Connection Required)
+### Установка одной командой (требуется интернет)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | sudo bash
 ```
 
-Or with wget:
+Или с wget:
 
 ```bash
 wget -qO- https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh | sudo bash
 ```
 
-### Manual Download and Install
+### Ручная загрузка и установка
 
 ```bash
-# Download installer
+# Скачать установщик
 wget https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh
 
-# Make executable
+# Сделать исполняемым
 chmod +x install.sh
 
-# Run installer
+# Запустить установщик
 sudo ./install.sh
 ```
 
-### What the Installer Does
+### Что делает установщик
 
-1. ✅ Checks your OS (Ubuntu, Debian, CentOS, RHEL, Fedora)
-2. ✅ Installs dependencies (Docker, Docker Compose, Git, curl)
-3. ✅ Downloads latest SIEM from GitHub
-4. ✅ Interactive configuration wizard
-5. ✅ Generates secure passwords
-6. ✅ Builds and starts Docker containers
-7. ✅ Health checks
-8. ✅ Creates systemd service for auto-start
-9. ✅ Prints access URLs and credentials
+1. Проверяет вашу ОС (Ubuntu, Debian, CentOS, RHEL, Fedora)
+2. Устанавливает зависимости (Docker, Docker Compose, Git, curl)
+3. Загружает последнюю версию SIEM с GitHub
+4. Запускает интерактивный мастер настройки
+5. Генерирует безопасные пароли
+6. Собирает и запускает Docker контейнеры
+7. Выполняет проверку работоспособности
+8. Создаёт systemd сервис для автозапуска
+9. Выводит URL доступа и учётные данные
 
-### Installation Time
+### Время установки
 
-- ⚡ **Fresh install**: 5-10 minutes (depending on internet speed)
-- ⚡ **Update existing**: 1-2 minutes
+- **Чистая установка**: 5-10 минут (зависит от скорости интернета)
+- **Обновление существующей**: 1-2 минуты
 
 ---
 
-## Windows Installation
+## Установка на Windows
 
-### Requirements
+### Требования
 
-- Windows 10/11 or Windows Server 2019/2022
-- Administrator privileges
-- Docker Desktop for Windows (installer will guide you)
+- Windows 10/11 или Windows Server 2019/2022
+- Права администратора
+- Docker Desktop для Windows (установщик поможет с установкой)
 
-### Steps
+### Шаги
 
-1. **Download PowerShell Installer**
+1. **Скачайте PowerShell установщик**
 
-   Open PowerShell as Administrator and run:
+   Откройте PowerShell от имени администратора и выполните:
 
    ```powershell
    Invoke-WebRequest -Uri https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.ps1 -OutFile install.ps1
    ```
 
-2. **Run Installer**
+2. **Запустите установщик**
 
    ```powershell
    PowerShell -ExecutionPolicy Bypass -File install.ps1
    ```
 
-3. **Follow Wizard**
+3. **Следуйте мастеру**
 
-   The installer will:
-   - Check/install Docker Desktop
-   - Download SIEM from GitHub
-   - Configure system interactively
-   - Start all services
-   - Create scheduled task for auto-start
+   Установщик выполнит:
+   - Проверку/установку Docker Desktop
+   - Загрузку SIEM с GitHub
+   - Интерактивную настройку системы
+   - Запуск всех сервисов
+   - Создание задачи планировщика для автозапуска
 
-### Installation Time
+### Время установки
 
-- ⚡ **With Docker Desktop already installed**: 10-15 minutes
-- ⚡ **First time (need Docker Desktop)**: 20-30 minutes
-
----
-
-## Configuration Wizard
-
-During installation, you'll be asked:
-
-### 1. Admin User
-- **Username** (default: `admin`)
-- **Password** (default: `admin123`)
-
-> ⚠️ **Security**: Change default password after first login!
-
-### 2. Network Ports
-- **API Port** (default: `8000`)
-- **Frontend Port** (default: `3000`)
-
-### 3. AI Provider
-Choose one:
-- **DeepSeek** (free, recommended) - Optional API key
-- **Yandex GPT** - Requires API key + Folder ID
-- **None** - Skip AI features
+- **С уже установленным Docker Desktop**: 10-15 минут
+- **Первичная установка (нужен Docker Desktop)**: 20-30 минут
 
 ---
 
-## Post-Installation
+## Мастер настройки
 
-### Access URLs
+Во время установки вам будут заданы вопросы:
 
-After installation completes:
+### 1. Администратор
+- **Имя пользователя** (по умолчанию: `admin`)
+- **Пароль** (по умолчанию: `admin123`)
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Frontend** | http://localhost:3000 | Web interface |
+> **Безопасность**: Смените пароль по умолчанию после первого входа!
+
+### 2. Сетевые порты
+- **Порт API** (по умолчанию: `8000`)
+- **Порт Frontend** (по умолчанию: `3000`)
+
+### 3. AI провайдер
+Выберите один из вариантов:
+- **DeepSeek** (бесплатный, рекомендуется) - API ключ опционален
+- **Yandex GPT** - Требуется API ключ + Folder ID
+- **Нет** - Пропустить AI функции
+
+---
+
+## После установки
+
+### URL доступа
+
+После завершения установки:
+
+| Сервис | URL | Описание |
+|--------|-----|----------|
+| **Frontend** | http://localhost:3000 | Веб-интерфейс |
 | **API** | http://localhost:8000 | REST API |
-| **API Docs** | http://localhost:8000/docs | Swagger UI |
-| **Redoc** | http://localhost:8000/redoc | Alternative docs |
+| **API Документация** | http://localhost:8000/docs | Swagger UI |
+| **Redoc** | http://localhost:8000/redoc | Альтернативная документация |
 
-### Default Credentials
+### Учётные данные по умолчанию
 
-- **Username**: `admin` (or custom if changed)
-- **Password**: `admin123` (or custom if changed)
+- **Имя пользователя**: `admin` (или пользовательское, если изменено)
+- **Пароль**: `admin123` (или пользовательский, если изменён)
 
-> 🔐 **First Login**: Go to Settings → Change Password
+> **Первый вход**: Перейдите в Настройки → Смена пароля
 
-### Install Location
+### Расположение установки
 
 - **Linux**: `/opt/siem/`
 - **Windows**: `C:\SIEM\`
 
-### Configuration File
+### Файл конфигурации
 
 - **Linux**: `/opt/siem/.env`
 - **Windows**: `C:\SIEM\.env`
 
 ---
 
-## Management Commands
+## Команды управления
 
 ### Linux (systemd)
 
 ```bash
-# Check status
+# Проверить статус
 sudo systemctl status siem
 
-# Start SIEM
+# Запустить SIEM
 sudo systemctl start siem
 
-# Stop SIEM
+# Остановить SIEM
 sudo systemctl stop siem
 
-# Restart SIEM
+# Перезапустить SIEM
 sudo systemctl restart siem
 
-# View logs
+# Просмотр логов
 cd /opt/siem && docker-compose logs -f
 
-# Update SIEM
+# Обновить SIEM
 cd /opt/siem && git pull && docker-compose up -d --build
 ```
 
 ### Windows (Docker Compose)
 
 ```powershell
-# Navigate to install directory
+# Перейти в каталог установки
 cd C:\SIEM
 
-# Check status
+# Проверить статус
 docker-compose ps
 
-# Start SIEM
+# Запустить SIEM
 docker-compose start
 
-# Stop SIEM
+# Остановить SIEM
 docker-compose stop
 
-# Restart SIEM
+# Перезапустить SIEM
 docker-compose restart
 
-# View logs
+# Просмотр логов
 docker-compose logs -f
 
-# Update SIEM
+# Обновить SIEM
 git pull
 docker-compose up -d --build
 ```
 
 ---
 
-## Troubleshooting
+## Устранение неполадок
 
-### Installation Failed
+### Ошибка установки
 
 **Linux:**
 ```bash
-# View installer logs
+# Просмотр логов установщика
 cat /var/log/siem-install.log
 
-# Check Docker service
+# Проверка сервиса Docker
 sudo systemctl status docker
 
-# Manual cleanup
+# Ручная очистка
 cd /opt/siem && sudo docker-compose down
 sudo rm -rf /opt/siem
 ```
 
 **Windows:**
 ```powershell
-# Check Docker Desktop
+# Проверка Docker Desktop
 docker version
 
-# View compose logs
+# Просмотр логов compose
 cd C:\SIEM
 docker-compose logs
 
-# Manual cleanup
+# Ручная очистка
 docker-compose down
 Remove-Item -Recurse -Force C:\SIEM
 ```
 
-### Services Not Starting
+### Сервисы не запускаются
 
 ```bash
-# Check container status
+# Проверка статуса контейнеров
 docker-compose ps
 
-# View specific service logs
+# Просмотр логов конкретного сервиса
 docker-compose logs backend
 docker-compose logs db
 docker-compose logs frontend
 
-# Restart problematic service
+# Перезапуск проблемного сервиса
 docker-compose restart backend
 ```
 
-### Can't Access Frontend
+### Нет доступа к Frontend
 
-1. Check if container is running:
+1. Проверьте, работает ли контейнер:
    ```bash
    docker-compose ps frontend
    ```
 
-2. Check port binding:
+2. Проверьте привязку порта:
    ```bash
    netstat -tuln | grep 3000  # Linux
    netstat -ano | findstr 3000  # Windows
    ```
 
-3. Check firewall:
+3. Проверьте firewall:
    ```bash
    # Linux (Ubuntu)
    sudo ufw allow 3000
@@ -266,44 +266,44 @@ docker-compose restart backend
    New-NetFirewallRule -DisplayName "SIEM Frontend" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow
    ```
 
-### Database Connection Issues
+### Проблемы с подключением к БД
 
 ```bash
-# Check database logs
+# Проверка логов базы данных
 docker-compose logs db
 
-# Verify database is ready
+# Проверка готовности БД
 docker-compose exec db psql -U siem -d siem_db -c "SELECT 1;"
 
-# Reinitialize database
+# Переинициализация БД
 docker-compose down -v
 docker-compose up -d
 ```
 
-### AI Analysis Not Working
+### AI анализ не работает
 
-1. Check AI provider configuration in `.env`:
+1. Проверьте конфигурацию AI провайдера в `.env`:
    ```bash
    cat .env | grep AI_PROVIDER
    ```
 
-2. Verify API key is set:
+2. Убедитесь, что API ключ установлен:
    ```bash
    cat .env | grep DEEPSEEK_API_KEY
-   # or
+   # или
    cat .env | grep YANDEX_GPT_API_KEY
    ```
 
-3. Test AI service:
+3. Тест AI сервиса:
    ```bash
    curl http://localhost:8000/api/v1/ai/health
    ```
 
 ---
 
-## Updating SIEM
+## Обновление SIEM
 
-### Automatic Update
+### Автоматическое обновление
 
 **Linux:**
 ```bash
@@ -321,77 +321,77 @@ docker-compose pull
 docker-compose up -d --build
 ```
 
-### Update Frequency
+### Периодичность обновлений
 
-- **Stable releases**: Monthly
-- **Security patches**: As needed
-- **Feature updates**: Bi-weekly
+- **Стабильные релизы**: Ежемесячно
+- **Патчи безопасности**: По мере необходимости
+- **Обновления функций**: Каждые две недели
 
-### Backup Before Update
+### Резервное копирование перед обновлением
 
 ```bash
-# Backup database
+# Резервная копия БД
 docker-compose exec db pg_dump -U siem siem_db > backup_$(date +%Y%m%d).sql
 
-# Backup configuration
+# Резервная копия конфигурации
 cp .env .env.backup
 
-# Backup detection rules
+# Резервная копия правил детекции
 docker-compose exec db psql -U siem -d siem_db -c "COPY detection_rules TO STDOUT CSV HEADER" > rules_backup.csv
 ```
 
 ---
 
-## Uninstallation
+## Удаление
 
 ### Linux
 
 ```bash
-# Stop services
+# Остановка сервисов
 cd /opt/siem
 sudo docker-compose down -v
 
-# Remove systemd service
+# Удаление systemd сервиса
 sudo systemctl stop siem
 sudo systemctl disable siem
 sudo rm /etc/systemd/system/siem.service
 sudo systemctl daemon-reload
 
-# Remove files
+# Удаление файлов
 sudo rm -rf /opt/siem
 ```
 
 ### Windows
 
 ```powershell
-# Stop services
+# Остановка сервисов
 cd C:\SIEM
 docker-compose down -v
 
-# Remove scheduled task
+# Удаление задачи планировщика
 Unregister-ScheduledTask -TaskName "SIEM System" -Confirm:$false
 
-# Remove files
+# Удаление файлов
 Remove-Item -Recurse -Force C:\SIEM
 ```
 
 ---
 
-## Advanced Installation Options
+## Расширенные опции установки
 
-### Custom Install Directory
+### Пользовательский каталог установки
 
 **Linux:**
 ```bash
-# Download installer
+# Скачать установщик
 wget https://raw.githubusercontent.com/zuevav/SIEM_FONT/main/install.sh
 chmod +x install.sh
 
-# Edit INSTALL_DIR variable
+# Изменить переменную INSTALL_DIR
 nano install.sh
-# Change: INSTALL_DIR="/your/custom/path"
+# Измените: INSTALL_DIR="/your/custom/path"
 
-# Run
+# Запуск
 sudo ./install.sh
 ```
 
@@ -400,12 +400,12 @@ sudo ./install.sh
 .\install.ps1 -InstallPath "D:\MyCustomPath\SIEM"
 ```
 
-### Silent Installation (No Prompts)
+### Тихая установка (без запросов)
 
-Create `.env` file before running installer:
+Создайте файл `.env` перед запуском установщика:
 
 ```bash
-# Create pre-configured .env
+# Создание предварительно настроенного .env
 cat > /opt/siem/.env << EOF
 POSTGRES_PASSWORD=your_secure_password
 JWT_SECRET=your_jwt_secret
@@ -417,31 +417,31 @@ API_PORT=8000
 FRONTEND_PORT=3000
 EOF
 
-# Run installer (will detect existing .env)
+# Запуск установщика (обнаружит существующий .env)
 sudo ./install.sh
 ```
 
-### Air-Gapped Installation
+### Установка в изолированной сети (Air-Gapped)
 
-For environments without internet:
+Для сред без интернета:
 
-1. **Download all files on internet-connected machine:**
+1. **Загрузите все файлы на машине с интернетом:**
    ```bash
    git clone https://github.com/zuevav/SIEM_FONT.git
    cd SIEM_FONT
-   
-   # Pull Docker images
+
+   # Загрузка Docker образов
    docker-compose pull
    docker save -o siem-images.tar \
      postgres:15-alpine \
      $(docker-compose config | grep 'image:' | awk '{print $2}')
    ```
 
-2. **Transfer to air-gapped machine:**
-   - SIEM_FONT directory
+2. **Перенесите на изолированную машину:**
+   - Каталог SIEM_FONT
    - siem-images.tar
 
-3. **Load on air-gapped machine:**
+3. **Загрузите на изолированной машине:**
    ```bash
    docker load -i siem-images.tar
    cd SIEM_FONT
@@ -450,35 +450,35 @@ For environments without internet:
 
 ---
 
-## Security Hardening
+## Усиление безопасности
 
-### After Installation
+### После установки
 
-1. **Change default password** (via UI or API)
+1. **Смените пароль по умолчанию** (через UI или API)
 
-2. **Configure firewall:**
+2. **Настройте firewall:**
    ```bash
    # Linux (ufw)
    sudo ufw allow from YOUR_ADMIN_IP to any port 3000
    sudo ufw allow from YOUR_ADMIN_IP to any port 8000
-   
+
    # Windows
-   # Use Windows Defender Firewall GUI or PowerShell
+   # Используйте GUI Windows Defender Firewall или PowerShell
    ```
 
-3. **Enable HTTPS** (see docs/HTTPS_SETUP.md)
+3. **Включите HTTPS** (см. docs/HTTPS_SETUP.md)
 
-4. **Review .env file permissions:**
+4. **Проверьте права доступа к .env:**
    ```bash
    # Linux
    chmod 600 /opt/siem/.env
-   
+
    # Windows
    icacls C:\SIEM\.env /inheritance:r /grant:r Administrators:F
    ```
 
-5. **Enable audit logging:**
-   Edit `.env`:
+5. **Включите журналирование аудита:**
+   Отредактируйте `.env`:
    ```
    LOG_LEVEL=INFO
    AUDIT_ENABLED=true
@@ -486,47 +486,47 @@ For environments without internet:
 
 ---
 
-## Getting Help
+## Получение помощи
 
-### Documentation
+### Документация
 
-- [Phase 1 Setup Guide](PHASE1_SETUP.md) - Email, FreeScout, Threat Intelligence configuration
-- [FreeScout Integration](FREESCOUT_INTEGRATION.md) - Detailed helpdesk integration guide
-- [Market Analysis](MARKET_ANALYSIS.md) - Feature comparison with commercial SIEM solutions
+- [Руководство по настройке Phase 1](PHASE1_SETUP.md) - Настройка Email, FreeScout, Threat Intelligence
+- [Интеграция с FreeScout](FREESCOUT_INTEGRATION.md) - Подробное руководство по интеграции с helpdesk
+- [Анализ рынка](MARKET_ANALYSIS.md) - Сравнение функций с коммерческими SIEM решениями
 
-### Support Channels
+### Каналы поддержки
 
 - **GitHub Issues**: https://github.com/zuevav/SIEM_FONT/issues
-- **Documentation**: `/opt/siem/docs/` or `C:\SIEM\docs\`
-- **Community**: [Coming soon]
+- **Документация**: `/opt/siem/docs/` или `C:\SIEM\docs\`
+- **Сообщество**: [Скоро]
 
-### Logs Location
+### Расположение логов
 
-- **Linux**: `/opt/siem/logs/` (inside containers)
-- **Windows**: `C:\SIEM\logs\` (inside containers)
+- **Linux**: `/opt/siem/logs/` (внутри контейнеров)
+- **Windows**: `C:\SIEM\logs\` (внутри контейнеров)
 
-View with:
+Просмотр:
 ```bash
 docker-compose logs -f --tail=100 backend
 ```
 
 ---
 
-## Next Steps
+## Следующие шаги
 
-After successful installation:
+После успешной установки:
 
-1. ✅ **Login to Web Interface** - http://localhost:3000
-2. ✅ **Change Default Password** - Settings → Security
-3. ✅ **Configure Phase 1 Features** - See [Phase 1 Setup Guide](PHASE1_SETUP.md)
-4. ✅ **Install Windows Agent** - See `agent/README.md`
-5. ✅ **Review Detection Rules** - 10 pre-installed rules
-6. ✅ **Configure AI Provider** - Settings → AI Configuration
-7. ✅ **Monitor Dashboard** - Real-time event visualization
-8. ✅ **Set Up Integrations** - Email, FreeScout, Threat Intelligence (see [Phase 1 Setup](PHASE1_SETUP.md))
+1. **Войдите в веб-интерфейс** - http://localhost:3000
+2. **Смените пароль по умолчанию** - Настройки → Безопасность
+3. **Настройте функции Phase 1** - См. [Руководство по настройке Phase 1](PHASE1_SETUP.md)
+4. **Установите Windows агент** - См. `agent/README.md`
+5. **Проверьте правила детекции** - 10 предустановленных правил
+6. **Настройте AI провайдер** - Настройки → Конфигурация AI
+7. **Мониторьте Dashboard** - Визуализация событий в реальном времени
+8. **Настройте интеграции** - Email, FreeScout, Threat Intelligence (см. [Настройка Phase 1](PHASE1_SETUP.md))
 
 ---
 
-**Installation Completed Successfully!** 🎉
+**Установка успешно завершена!**
 
-For questions or issues, create a GitHub issue: https://github.com/zuevav/SIEM_FONT/issues
+По вопросам или проблемам создайте GitHub issue: https://github.com/zuevav/SIEM_FONT/issues

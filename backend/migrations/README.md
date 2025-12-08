@@ -1,62 +1,62 @@
-# Database Migrations
+# Миграции базы данных
 
-This folder contains SQL migrations for the SIEM system database.
+Эта папка содержит SQL-миграции для базы данных SIEM системы.
 
-## Running Migrations
+## Выполнение миграций
 
-### Option 1: Manual Execution (Recommended for first time)
+### Вариант 1: Ручное выполнение (рекомендуется для первоначальной установки)
 
-Connect to your SQL Server database and execute migrations in order:
+Подключитесь к базе данных SQL Server и выполните миграции по порядку:
 
 ```bash
-# Using sqlcmd
+# Используя sqlcmd
 sqlcmd -S localhost -U sa -P YourPassword -d SIEMDatabase -i migrations/001_create_system_settings.sql
 
-# Or using SQL Server Management Studio (SSMS)
-# Open the file and execute it
+# Или используя SQL Server Management Studio (SSMS)
+# Откройте файл и выполните его
 ```
 
-### Option 2: Using Python script
+### Вариант 2: Используя Python-скрипт
 
 ```bash
 cd backend
 python scripts/run_migrations.py
 ```
 
-## Migration Files
+## Файлы миграций
 
-- `001_create_system_settings.sql` - Creates SystemSettings, FreeScoutTickets, EmailNotifications, and ThreatIntelligence tables
+- `001_create_system_settings.sql` - Создаёт таблицы SystemSettings, FreeScoutTickets, EmailNotifications и ThreatIntelligence
 
-## Tables Created
+## Создаваемые таблицы
 
 ### config.SystemSettings
-Stores all system settings (FreeScout, Email, AI, etc.) with encryption support for sensitive data.
+Хранит все системные настройки (FreeScout, Email, AI и др.) с поддержкой шифрования конфиденциальных данных.
 
 ### incidents.FreeScoutTickets
-Tracks mapping between SIEM alerts/incidents and FreeScout tickets for synchronization.
+Отслеживает связь между алертами/инцидентами SIEM и тикетами FreeScout для синхронизации.
 
 ### config.EmailNotifications
-Logs all sent email notifications for audit trail.
+Логирует все отправленные email-уведомления для аудита.
 
 ### enrichment.ThreatIntelligence
-Caches threat intelligence lookups (VirusTotal, AbuseIPDB, etc.) to avoid rate limiting.
+Кэширует результаты запросов к источникам Threat Intelligence (VirusTotal, AbuseIPDB и др.) для избежания превышения лимитов API.
 
-## Post-Migration Steps
+## Действия после миграции
 
-After running migrations, configure settings via the Settings page in the web UI:
+После выполнения миграций настройте параметры через страницу "Настройки" в веб-интерфейсе:
 
-1. **Email Configuration**
-   - SMTP server, port, credentials
-   - Test email delivery
+1. **Настройка Email**
+   - SMTP сервер, порт, учётные данные
+   - Тестовая отправка email
 
-2. **FreeScout Integration**
-   - FreeScout URL, API key, Mailbox ID
-   - Test connection
+2. **Интеграция с FreeScout**
+   - URL FreeScout, API ключ, ID почтового ящика
+   - Проверка подключения
 
-3. **AI Configuration**
-   - Choose provider (DeepSeek/YandexGPT)
-   - Add API keys
+3. **Настройка AI**
+   - Выбор провайдера (DeepSeek/YandexGPT)
+   - Добавление API ключей
 
 4. **Threat Intelligence**
-   - Add VirusTotal API key
-   - Add AbuseIPDB API key
+   - Добавление API ключа VirusTotal
+   - Добавление API ключа AbuseIPDB
