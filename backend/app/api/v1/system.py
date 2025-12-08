@@ -39,11 +39,19 @@ update_status = {}
 def run_command(command: str, cwd: Optional[str] = None) -> tuple:
     """
     Run shell command and return (success, stdout, stderr)
+    SECURITY: Uses shell=False with argument list to prevent command injection
     """
+    import shlex
     try:
+        # Parse command string into list for safe execution
+        if isinstance(command, str):
+            cmd_list = shlex.split(command)
+        else:
+            cmd_list = command
+
         result = subprocess.run(
-            command,
-            shell=True,
+            cmd_list,
+            shell=False,  # SECURITY: Disabled shell to prevent injection
             cwd=cwd,
             capture_output=True,
             text=True,

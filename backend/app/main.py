@@ -121,17 +121,38 @@ app = FastAPI(
 # MIDDLEWARE
 # ============================================================================
 
-# CORS Middleware
+# CORS Middleware - SECURITY: Restricted methods instead of ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
 # Gzip Compression
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+
+# SECURITY: Add security headers middleware
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    """Add security headers to all responses"""
+    response = await call_next(request)
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Prevent MIME type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # XSS Protection (for older browsers)
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    # Referrer policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Content Security Policy
+    response.headers["Content-Security-Policy"] = "default-src 'self'; frame-ancestors 'none'"
+    # HSTS (only in production with HTTPS)
+    if settings.app_env == "production":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
 
 
 # Request timing middleware
