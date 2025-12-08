@@ -16,6 +16,7 @@ import Documentation from './pages/Documentation'
 import Playbooks from './pages/Playbooks'
 import PlaybookExecutions from './pages/PlaybookExecutions'
 import FileIntegrityMonitoring from './pages/FileIntegrityMonitoring'
+import DetectionRules from './pages/DetectionRules'
 import ComingSoon from './pages/ComingSoon'
 import './App.css'
 
@@ -58,10 +59,7 @@ function App() {
               path="network"
               element={<ComingSoon title="Мониторинг сети" description="Мониторинг сетевых устройств (SNMP, Syslog, NetFlow)" />}
             />
-            <Route
-              path="rules"
-              element={<ComingSoon title="Правила детекции" description="Управление правилами обнаружения угроз" />}
-            />
+            <Route path="rules" element={<DetectionRules />} />
             <Route
               path="reports"
               element={<ComingSoon title="Отчёты" description="Отчёты для регуляторов и аудита" />}

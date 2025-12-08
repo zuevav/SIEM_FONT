@@ -107,6 +107,92 @@ export interface EventStatistics {
 }
 
 // ============================================================================
+// Detection Rule Types
+// ============================================================================
+
+export interface DetectionRule {
+  RuleId: number
+  RuleName: string
+  Description?: string
+  IsEnabled: boolean
+  Severity: number
+  Priority: number
+  RuleType: 'simple' | 'threshold' | 'correlation' | 'anomaly'
+  RuleLogic: Record<string, any>
+  TimeWindowMinutes?: number
+  ThresholdCount?: number
+  GroupByFields?: string[]
+  SourceTypes?: string[]
+  EventCodes?: number[]
+  Categories?: string[]
+  Actions?: string[]
+  AutoEscalate: boolean
+  MitreAttackTactic?: string
+  MitreAttackTechnique?: string
+  MitreAttackSubtechnique?: string
+  Exceptions?: Record<string, any>
+  Tags?: string[]
+  CreatedBy?: number
+  CreatedAt: string
+  LastTriggered?: string
+  TriggerCount?: number
+}
+
+export interface DetectionRuleFilter {
+  enabled_only?: boolean
+  rule_type?: string
+  search?: string
+  limit?: number
+  offset?: number
+}
+
+export interface DetectionRuleCreate {
+  rule_name: string
+  description?: string
+  is_enabled?: boolean
+  severity: number
+  priority: number
+  rule_type: 'simple' | 'threshold' | 'correlation' | 'anomaly'
+  rule_logic: Record<string, any>
+  time_window_minutes?: number
+  threshold_count?: number
+  group_by_fields?: string[]
+  source_types?: string[]
+  event_codes?: number[]
+  categories?: string[]
+  actions?: string[]
+  auto_escalate?: boolean
+  mitre_attack_tactic?: string
+  mitre_attack_technique?: string
+  mitre_attack_subtechnique?: string
+  exceptions?: Record<string, any>
+  tags?: string[]
+}
+
+export interface DetectionRuleUpdate {
+  rule_name?: string
+  description?: string
+  is_enabled?: boolean
+  severity?: number
+  priority?: number
+  rule_type?: 'simple' | 'threshold' | 'correlation' | 'anomaly'
+  rule_logic?: Record<string, any>
+  time_window_minutes?: number
+  threshold_count?: number
+  group_by_fields?: string[]
+  source_types?: string[]
+  event_codes?: number[]
+  categories?: string[]
+  actions?: string[]
+  auto_escalate?: boolean
+  mitre_attack_tactic?: string
+  mitre_attack_technique?: string
+  mitre_attack_subtechnique?: string
+  exceptions?: Record<string, any>
+  tags?: string[]
+}
+
+// ============================================================================
 // Alert Types
 // ============================================================================
 
