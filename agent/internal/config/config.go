@@ -9,14 +9,15 @@ import (
 
 // Config represents the agent configuration
 type Config struct {
-	SIEM        SIEMConfig        `yaml:"siem"`
-	EventLog    EventLogConfig    `yaml:"eventlog"`
-	Sysmon      SysmonConfig      `yaml:"sysmon"`
-	Inventory   InventoryConfig   `yaml:"inventory"`
-	Performance PerformanceConfig `yaml:"performance"`
-	Logging     LoggingConfig     `yaml:"logging"`
-	Agent       AgentConfig       `yaml:"agent"`
-	Advanced    AdvancedConfig    `yaml:"advanced"`
+	SIEM            SIEMConfig            `yaml:"siem"`
+	EventLog        EventLogConfig        `yaml:"eventlog"`
+	Sysmon          SysmonConfig          `yaml:"sysmon"`
+	Inventory       InventoryConfig       `yaml:"inventory"`
+	SoftwareControl SoftwareControlConfig `yaml:"software_control"`
+	Performance     PerformanceConfig     `yaml:"performance"`
+	Logging         LoggingConfig         `yaml:"logging"`
+	Agent           AgentConfig           `yaml:"agent"`
+	Advanced        AdvancedConfig        `yaml:"advanced"`
 }
 
 type SIEMConfig struct {
@@ -56,6 +57,22 @@ type InventoryConfig struct {
 	CollectServices   bool `yaml:"collect_services"`
 	CollectStartup    bool `yaml:"collect_startup"`
 	CollectNetwork    bool `yaml:"collect_network"`
+}
+
+// SoftwareControlConfig configures software installation control
+type SoftwareControlConfig struct {
+	Enabled              bool     `yaml:"enabled"`
+	RequireApproval      bool     `yaml:"require_approval"`
+	MonitorInstallers    bool     `yaml:"monitor_installers"`
+	AllowedExtensions    []string `yaml:"allowed_extensions"`
+	BlockedPublishers    []string `yaml:"blocked_publishers"`
+	AllowedPublishers    []string `yaml:"allowed_publishers"`
+	PollInterval         int      `yaml:"poll_interval"`
+	ApprovalTimeout      int      `yaml:"approval_timeout"`
+	NotifyOnBlock        bool     `yaml:"notify_on_block"`
+	LogAllAttempts       bool     `yaml:"log_all_attempts"`
+	WhitelistPaths       []string `yaml:"whitelist_paths"`
+	InstallerPatterns    []string `yaml:"installer_patterns"`
 }
 
 type PerformanceConfig struct {

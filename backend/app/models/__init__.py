@@ -18,6 +18,7 @@ from app.models.settings import SystemSettings
 from app.models.integrations import FreeScoutTicket, EmailNotification, ThreatIntelligence
 from app.models.saved_search import SavedSearch
 from app.models.playbook import Playbook, PlaybookAction, PlaybookExecution, ActionResult
+from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest
 
 __all__ = [
     # User models
@@ -49,4 +50,10 @@ __all__ = [
     "PlaybookAction",
     "PlaybookExecution",
     "ActionResult",
+    # AD models
+    "ADUser",
+    "ADComputer",
+    "ADGroup",
+    "ADSyncLog",
+    "SoftwareInstallRequest",
 ]

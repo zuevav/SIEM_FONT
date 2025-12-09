@@ -21,6 +21,8 @@ import NetworkMonitoring from './pages/NetworkMonitoring'
 import UserManagement from './pages/UserManagement'
 import Profile from './pages/Profile'
 import Reports from './pages/Reports'
+import ActiveDirectory from './pages/ActiveDirectory'
+import SoftwareRequests from './pages/SoftwareRequests'
 import './App.css'
 
 function App() {
@@ -122,6 +124,8 @@ function App() {
             <Route path="playbook-executions" element={<PlaybookExecutions />} />
             <Route path="fim" element={<FileIntegrityMonitoring />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="active-directory" element={<ActiveDirectory />} />
+            <Route path="software-requests" element={<SoftwareRequests />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -251,6 +251,49 @@ func (c *APIClient) Ping() error {
 	return nil
 }
 
+// SendSoftwareInstallRequest sends a software installation request to SIEM
+func (c *APIClient) SendSoftwareInstallRequest(request *collector.SoftwareInstallRequest) (*collector.SoftwareInstallRequest, error) {
+	url := c.baseURL + "/api/v1/ad/software-requests"
+
+	respData, err := c.doRequest("POST", url, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send install request: %w", err)
+	}
+
+	// Parse response to get request ID
+	if respMap, ok := respData.(map[string]interface{}); ok {
+		if requestID, ok := respMap["request_id"].(string); ok {
+			request.RequestID = requestID
+		}
+	}
+
+	log.Printf("Software install request sent: %s (ID: %s)", request.SoftwareName, request.RequestID)
+	return request, nil
+}
+
+// CheckSoftwareRequestStatus checks the status of a software install request
+func (c *APIClient) CheckSoftwareRequestStatus(requestID string) (*collector.SoftwareInstallRequest, error) {
+	url := c.baseURL + "/api/v1/ad/software-requests/" + requestID + "/status"
+
+	respData, err := c.doRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check request status: %w", err)
+	}
+
+	// Parse response
+	jsonData, err := json.Marshal(respData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal response: %w", err)
+	}
+
+	var request collector.SoftwareInstallRequest
+	if err := json.Unmarshal(jsonData, &request); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return &request, nil
+}
+
 // Close closes the HTTP client
 func (c *APIClient) Close() {
 	c.httpClient.CloseIdleConnections()
