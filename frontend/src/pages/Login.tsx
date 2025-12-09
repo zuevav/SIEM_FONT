@@ -36,24 +36,26 @@ export default function Login() {
       align="middle"
       style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #007AFF 0%, #5856D6 100%)',
       }}
     >
       <Col xs={22} sm={18} md={12} lg={8} xl={6}>
         <Card
           bordered={false}
           style={{
-            borderRadius: 16,
+            borderRadius: 20,
             boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(20px)',
+            background: 'rgba(255, 255, 255, 0.95)',
           }}
         >
           <Space direction="vertical" size="large" style={{ width: '100%', textAlign: 'center' }}>
             <div>
-              <SafetyOutlined style={{ fontSize: 64, color: '#667eea' }} />
-              <Title level={2} style={{ marginTop: 16, marginBottom: 0 }}>
+              <SafetyOutlined style={{ fontSize: 64, color: '#007AFF' }} />
+              <Title level={2} style={{ marginTop: 16, marginBottom: 0, fontWeight: 600 }}>
                 SIEM System
               </Title>
-              <Text type="secondary">Security Information & Event Management</Text>
+              <Text type="secondary">Система мониторинга безопасности</Text>
             </div>
 
             {error && (
@@ -64,6 +66,7 @@ export default function Login() {
                 showIcon
                 closable
                 onClose={clearError}
+                style={{ borderRadius: 12, textAlign: 'left' }}
               />
             )}
 
@@ -80,9 +83,10 @@ export default function Login() {
                 rules={[{ required: true, message: 'Введите имя пользователя' }]}
               >
                 <Input
-                  prefix={<UserOutlined />}
+                  prefix={<UserOutlined style={{ color: '#86868B' }} />}
                   placeholder="Имя пользователя"
                   autoComplete="username"
+                  style={{ height: 48, borderRadius: 12 }}
                 />
               </Form.Item>
 
@@ -91,36 +95,37 @@ export default function Login() {
                 rules={[{ required: true, message: 'Введите пароль' }]}
               >
                 <Input.Password
-                  prefix={<LockOutlined />}
+                  prefix={<LockOutlined style={{ color: '#86868B' }} />}
                   placeholder="Пароль"
                   autoComplete="current-password"
+                  style={{ height: 48, borderRadius: 12 }}
                 />
               </Form.Item>
 
               <Form.Item>
-                <Button type="primary" htmlType="submit" block loading={isLoading}>
-                  Войти
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  loading={isLoading}
+                  style={{
+                    height: 48,
+                    borderRadius: 12,
+                    fontWeight: 500,
+                    fontSize: 16,
+                  }}
+                >
+                  Войти в систему
                 </Button>
               </Form.Item>
             </Form>
 
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Учётные данные по умолчанию:
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                admin / Admin123!
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                analyst / Admin123!
-              </Text>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                viewer / Admin123!
-              </Text>
-            </Space>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              Обратитесь к администратору для получения учётных данных
+            </Text>
 
             <Text type="secondary" style={{ fontSize: 12 }}>
-              © 2024 SIEM System. Version 0.9.0
+              © 2025 SIEM System. Version 1.0.0
             </Text>
           </Space>
         </Card>
