@@ -18,6 +18,7 @@ import {
   TeamOutlined,
   DownloadOutlined,
   ApartmentOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -64,6 +65,7 @@ export default function Sidebar({ collapsed }: SidebarProps) {
     getItem('Active Directory', 'ad', <ApartmentOutlined />, [
       getItem('Пользователи и ПК', '/active-directory', <TeamOutlined />),
       getItem('Запросы на ПО', '/software-requests', <DownloadOutlined />),
+      getItem('Удалённый доступ', '/remote-sessions', <DesktopOutlined />),
     ]),
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),

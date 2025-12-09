@@ -268,3 +268,91 @@ class ADSyncLog(Base):
 
     def __repr__(self):
         return f"<ADSyncLog(id={self.LogId}, type='{self.SyncType}', status='{self.Status}')>"
+
+
+class RemoteSession(Base):
+    """Remote Desktop Session for IT support - assets.RemoteSessions table
+
+    Workflow:
+    1. User calls IT support requesting help
+    2. Admin finds user in SIEM and clicks "Remote Connect"
+    3. SIEM creates session record and sends command to agent
+    4. Agent shows popup to user asking for consent
+    5. User accepts - agent starts Remote Assistance
+    6. Admin connects using provided connection info
+    7. Session ends - admin or user terminates
+    """
+
+    __tablename__ = "RemoteSessions"
+    __table_args__ = {'schema': 'assets'}
+
+    SessionId = Column(BigInteger, primary_key=True, autoincrement=True)
+    SessionGUID = Column(String(36), unique=True, index=True, nullable=False)
+
+    # Target (where to connect)
+    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    ComputerName = Column(String(256), index=True)
+    ComputerIP = Column(String(45))
+
+    # Target user
+    TargetUserName = Column(String(256), index=True)
+    TargetUserDisplayName = Column(String(256))
+    ADUserId = Column(BigInteger, ForeignKey('ad.Users.ADUserId'), nullable=True)
+
+    # Admin (who connects)
+    InitiatedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    InitiatedByName = Column(String(256))
+
+    # Session type
+    SessionType = Column(String(50), default='remote_assistance')
+    # remote_assistance - Windows Remote Assistance (msra)
+    # shadow - RDP Shadow session
+    # vnc - VNC connection
+    # screen_share - Screen share only (view)
+
+    # Session details
+    Reason = Column(String(500))  # Why admin needs to connect
+    TicketNumber = Column(String(100))  # Related support ticket
+
+    # Status workflow
+    Status = Column(String(30), default='pending', index=True)
+    # pending - waiting for user consent
+    # user_declined - user rejected
+    # connecting - establishing connection
+    # active - session in progress
+    # completed - ended normally
+    # timeout - user didn't respond
+    # failed - connection error
+    # cancelled - admin cancelled
+
+    # Timestamps
+    RequestedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    UserRespondedAt = Column(DateTime)
+    ConnectedAt = Column(DateTime)
+    EndedAt = Column(DateTime)
+
+    # Connection info (for admin to connect)
+    ConnectionString = Column(String(1000))  # Invitation file content or connection URL
+    ConnectionPassword = Column(String(100))  # One-time password if needed
+    Port = Column(Integer)  # Port for connection
+
+    # User consent
+    UserConsented = Column(Boolean, default=False)
+    UserConsentMessage = Column(String(500))
+
+    # Session recording
+    RecordSession = Column(Boolean, default=False)
+    RecordingPath = Column(String(500))
+
+    # Duration
+    DurationSeconds = Column(Integer)
+
+    # Notes
+    Notes = Column(Text)
+
+    # Relationships
+    initiator = relationship("User", foreign_keys=[InitiatedBy])
+    ad_user = relationship("ADUser", foreign_keys=[ADUserId])
+
+    def __repr__(self):
+        return f"<RemoteSession(id={self.SessionId}, target='{self.ComputerName}', status='{self.Status}')>"

@@ -11,9 +11,11 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest
+from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest, RemoteSession
 from app.models.user import User
+from app.models.agent import Agent
 from app.api.v1.auth import get_current_user, require_role
+import uuid
 
 router = APIRouter()
 
@@ -658,5 +660,372 @@ async def get_ad_stats(
             "pending": db.query(SoftwareInstallRequest).filter(SoftwareInstallRequest.Status == "pending").count(),
             "approved": db.query(SoftwareInstallRequest).filter(SoftwareInstallRequest.Status == "approved").count(),
             "denied": db.query(SoftwareInstallRequest).filter(SoftwareInstallRequest.Status == "denied").count(),
+        },
+        "remote_sessions": {
+            "active": db.query(RemoteSession).filter(RemoteSession.Status == "active").count(),
+            "pending": db.query(RemoteSession).filter(RemoteSession.Status == "pending").count(),
         }
     }
+
+
+# ============================================================================
+# REMOTE SESSION SCHEMAS
+# ============================================================================
+
+class RemoteSessionCreate(BaseModel):
+    """Schema for creating a remote session request"""
+    target_user_id: Optional[int] = None  # ADUserId
+    target_computer_id: Optional[int] = None  # ADComputerId
+    target_agent_id: Optional[str] = None  # AgentId directly
+    session_type: str = Field(default="remote_assistance", pattern="^(remote_assistance|shadow|screen_share)$")
+    reason: Optional[str] = None
+    ticket_number: Optional[str] = None
+    record_session: bool = False
+
+
+class RemoteSessionResponse(BaseModel):
+    SessionId: int
+    SessionGUID: str
+    AgentId: str
+    ComputerName: Optional[str]
+    ComputerIP: Optional[str]
+    TargetUserName: Optional[str]
+    TargetUserDisplayName: Optional[str]
+    InitiatedByName: Optional[str]
+    SessionType: str
+    Reason: Optional[str]
+    TicketNumber: Optional[str]
+    Status: str
+    RequestedAt: datetime
+    UserRespondedAt: Optional[datetime]
+    ConnectedAt: Optional[datetime]
+    EndedAt: Optional[datetime]
+    ConnectionString: Optional[str]
+    ConnectionPassword: Optional[str]
+    Port: Optional[int]
+    UserConsented: bool
+    DurationSeconds: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+class RemoteSessionUserResponse(BaseModel):
+    """Response for agent - user consent request"""
+    action: str = Field(..., pattern="^(accept|decline)$")
+    connection_string: Optional[str] = None
+    connection_password: Optional[str] = None
+    port: Optional[int] = None
+    message: Optional[str] = None
+
+
+# ============================================================================
+# REMOTE SESSION ENDPOINTS
+# ============================================================================
+
+@router.post("/remote-sessions", status_code=status.HTTP_201_CREATED)
+async def create_remote_session(
+    request: RemoteSessionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """
+    Create a new remote session request
+    Admin selects a user/computer and initiates remote connection
+    """
+    agent_id = None
+    computer_name = None
+    computer_ip = None
+    target_user_name = None
+    target_user_display = None
+    ad_user_id = None
+
+    # Determine target by user, computer, or agent
+    if request.target_user_id:
+        # Find user and their computer
+        ad_user = db.query(ADUser).filter(ADUser.ADUserId == request.target_user_id).first()
+        if not ad_user:
+            raise HTTPException(status_code=404, detail="AD user not found")
+
+        ad_user_id = ad_user.ADUserId
+        target_user_name = ad_user.SamAccountName
+        target_user_display = ad_user.DisplayName
+
+        # Find computer where user last logged in (if available)
+        # For now, we need to specify computer separately or use agent
+        if not request.target_agent_id and not request.target_computer_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Please specify target_computer_id or target_agent_id for this user"
+            )
+
+    if request.target_computer_id:
+        computer = db.query(ADComputer).filter(ADComputer.ADComputerId == request.target_computer_id).first()
+        if not computer:
+            raise HTTPException(status_code=404, detail="AD computer not found")
+
+        computer_name = computer.Name
+        computer_ip = computer.IPv4Address
+        agent_id = computer.AgentId
+
+        if not agent_id:
+            raise HTTPException(
+                status_code=400,
+                detail="This computer does not have an agent installed"
+            )
+
+    if request.target_agent_id:
+        agent = db.query(Agent).filter(Agent.AgentId == request.target_agent_id).first()
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        agent_id = agent.AgentId
+        computer_name = agent.Hostname
+        computer_ip = agent.IPAddress
+
+    if not agent_id:
+        raise HTTPException(status_code=400, detail="Could not determine target agent")
+
+    # Create session
+    session_guid = str(uuid.uuid4())
+
+    new_session = RemoteSession(
+        SessionGUID=session_guid,
+        AgentId=agent_id,
+        ComputerName=computer_name,
+        ComputerIP=computer_ip,
+        TargetUserName=target_user_name,
+        TargetUserDisplayName=target_user_display,
+        ADUserId=ad_user_id,
+        InitiatedBy=current_user.UserId,
+        InitiatedByName=current_user.Username,
+        SessionType=request.session_type,
+        Reason=request.reason,
+        TicketNumber=request.ticket_number,
+        Status="pending",
+        RecordSession=request.record_session,
+        RequestedAt=datetime.utcnow()
+    )
+
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+
+    # TODO: Send command to agent via WebSocket/message queue
+    # The agent will receive this and show consent dialog to user
+
+    return {
+        "session_id": new_session.SessionId,
+        "session_guid": session_guid,
+        "status": "pending",
+        "message": "Remote session request created. Waiting for user consent.",
+        "agent_id": agent_id,
+        "computer": computer_name
+    }
+
+
+@router.get("/remote-sessions", response_model=PaginatedResponse)
+async def get_remote_sessions(
+    status_filter: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of remote sessions"""
+    query = db.query(RemoteSession)
+
+    if status_filter:
+        query = query.filter(RemoteSession.Status == status_filter)
+
+    query = query.order_by(RemoteSession.RequestedAt.desc())
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    sessions = query.offset(offset).limit(page_size).all()
+
+    return PaginatedResponse(
+        items=[RemoteSessionResponse.model_validate(s) for s in sessions],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+
+@router.get("/remote-sessions/active")
+async def get_active_sessions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get all active remote sessions"""
+    sessions = db.query(RemoteSession).filter(
+        RemoteSession.Status.in_(["pending", "connecting", "active"])
+    ).order_by(RemoteSession.RequestedAt.desc()).all()
+
+    return [RemoteSessionResponse.model_validate(s) for s in sessions]
+
+
+@router.get("/remote-sessions/{session_id}", response_model=RemoteSessionResponse)
+async def get_remote_session(
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get remote session details"""
+    session = db.query(RemoteSession).filter(RemoteSession.SessionId == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+
+@router.get("/remote-sessions/pending/{agent_id}")
+async def get_pending_session_for_agent(
+    agent_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get pending remote session for agent (called by agent)
+    Agent polls this to check if admin wants to connect
+    """
+    session = db.query(RemoteSession).filter(
+        RemoteSession.AgentId == agent_id,
+        RemoteSession.Status == "pending"
+    ).order_by(RemoteSession.RequestedAt.desc()).first()
+
+    if not session:
+        return {"has_pending": False}
+
+    return {
+        "has_pending": True,
+        "session_guid": session.SessionGUID,
+        "session_type": session.SessionType,
+        "initiated_by": session.InitiatedByName,
+        "reason": session.Reason,
+        "requested_at": session.RequestedAt.isoformat()
+    }
+
+
+@router.post("/remote-sessions/{session_guid}/user-response")
+async def user_response_to_session(
+    session_guid: str,
+    response: RemoteSessionUserResponse,
+    db: Session = Depends(get_db)
+):
+    """
+    User responds to remote session request (called by agent)
+    User accepts or declines the connection request
+    """
+    session = db.query(RemoteSession).filter(
+        RemoteSession.SessionGUID == session_guid
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.Status != "pending":
+        raise HTTPException(status_code=400, detail="Session is not pending")
+
+    session.UserRespondedAt = datetime.utcnow()
+
+    if response.action == "accept":
+        session.UserConsented = True
+        session.Status = "connecting"
+        session.ConnectionString = response.connection_string
+        session.ConnectionPassword = response.connection_password
+        session.Port = response.port
+        session.UserConsentMessage = response.message
+    else:
+        session.UserConsented = False
+        session.Status = "user_declined"
+        session.UserConsentMessage = response.message
+
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "session_guid": session.SessionGUID,
+        "status": session.Status,
+        "user_consented": session.UserConsented
+    }
+
+
+@router.post("/remote-sessions/{session_guid}/connected")
+async def mark_session_connected(
+    session_guid: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Mark session as connected (admin clicked connect)"""
+    session = db.query(RemoteSession).filter(
+        RemoteSession.SessionGUID == session_guid
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.Status != "connecting":
+        raise HTTPException(status_code=400, detail="Session is not in connecting state")
+
+    session.Status = "active"
+    session.ConnectedAt = datetime.utcnow()
+    db.commit()
+
+    return {"status": "active", "connected_at": session.ConnectedAt.isoformat()}
+
+
+@router.post("/remote-sessions/{session_guid}/end")
+async def end_remote_session(
+    session_guid: str,
+    notes: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """End a remote session"""
+    session = db.query(RemoteSession).filter(
+        RemoteSession.SessionGUID == session_guid
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session.Status = "completed"
+    session.EndedAt = datetime.utcnow()
+
+    if session.ConnectedAt:
+        duration = (session.EndedAt - session.ConnectedAt).total_seconds()
+        session.DurationSeconds = int(duration)
+
+    if notes:
+        session.Notes = notes
+
+    db.commit()
+
+    return {
+        "status": "completed",
+        "duration_seconds": session.DurationSeconds
+    }
+
+
+@router.post("/remote-sessions/{session_guid}/cancel")
+async def cancel_remote_session(
+    session_guid: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Cancel a pending remote session"""
+    session = db.query(RemoteSession).filter(
+        RemoteSession.SessionGUID == session_guid
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.Status not in ["pending", "connecting"]:
+        raise HTTPException(status_code=400, detail="Can only cancel pending or connecting sessions")
+
+    session.Status = "cancelled"
+    session.EndedAt = datetime.utcnow()
+    db.commit()
+
+    return {"status": "cancelled"}

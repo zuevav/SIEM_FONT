@@ -23,6 +23,7 @@ import Profile from './pages/Profile'
 import Reports from './pages/Reports'
 import ActiveDirectory from './pages/ActiveDirectory'
 import SoftwareRequests from './pages/SoftwareRequests'
+import RemoteSessions from './pages/RemoteSessions'
 import './App.css'
 
 function App() {
@@ -126,6 +127,7 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="active-directory" element={<ActiveDirectory />} />
             <Route path="software-requests" element={<SoftwareRequests />} />
+            <Route path="remote-sessions" element={<RemoteSessions />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
