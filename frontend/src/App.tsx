@@ -24,6 +24,7 @@ import Reports from './pages/Reports'
 import ActiveDirectory from './pages/ActiveDirectory'
 import SoftwareRequests from './pages/SoftwareRequests'
 import RemoteSessions from './pages/RemoteSessions'
+import PeerHelp from './pages/PeerHelp'
 import './App.css'
 
 function App() {
@@ -102,6 +103,8 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Public route for peer help - no authentication required */}
+          <Route path="/help/:token" element={<PeerHelp />} />
           <Route
             path="/"
             element={

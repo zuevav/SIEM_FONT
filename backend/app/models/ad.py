@@ -356,3 +356,68 @@ class RemoteSession(Base):
 
     def __repr__(self):
         return f"<RemoteSession(id={self.SessionId}, target='{self.ComputerName}', status='{self.Status}')>"
+
+
+class PeerHelpSession(Base):
+    """Peer-to-Peer Help Session - users helping each other
+
+    Workflow:
+    1. User A clicks "Help me" button on desktop
+    2. Agent generates unique token and sends to SIEM
+    3. SIEM creates session and returns shareable link
+    4. User A sends link to User B via messenger (Yandex, Telegram, etc.)
+    5. User B opens link in browser
+    6. Agent on User A's computer shows consent dialog
+    7. User A confirms - screen sharing starts
+    8. Both users can see screen and interact
+    """
+
+    __tablename__ = "PeerHelpSessions"
+    __table_args__ = {'schema': 'assets'}
+
+    SessionId = Column(BigInteger, primary_key=True, autoincrement=True)
+    SessionToken = Column(String(64), unique=True, index=True, nullable=False)  # Short token for URL
+
+    # Requester (who needs help)
+    RequesterAgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    RequesterComputerName = Column(String(256))
+    RequesterIP = Column(String(45))
+    RequesterUserName = Column(String(256))
+    RequesterDisplayName = Column(String(256))
+
+    # Helper (who provides help) - filled when helper joins
+    HelperName = Column(String(256))
+    HelperIP = Column(String(45))
+    HelperUserAgent = Column(String(500))
+
+    # Session details
+    Description = Column(String(500))  # What help is needed
+    ShareableLink = Column(String(500))  # Full URL to share
+
+    # Status
+    Status = Column(String(30), default='waiting', index=True)
+    # waiting - waiting for helper to join
+    # helper_joined - helper opened the link
+    # pending_consent - waiting for requester to confirm
+    # active - session in progress
+    # completed - ended normally
+    # expired - link expired
+    # declined - requester declined
+    # cancelled - requester cancelled
+
+    # Timestamps
+    CreatedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    ExpiresAt = Column(DateTime)  # Link expiration
+    HelperJoinedAt = Column(DateTime)
+    ConsentGivenAt = Column(DateTime)
+    EndedAt = Column(DateTime)
+
+    # Connection info
+    ConnectionPassword = Column(String(100))
+    Port = Column(Integer)
+
+    # Duration
+    DurationSeconds = Column(Integer)
+
+    def __repr__(self):
+        return f"<PeerHelpSession(id={self.SessionId}, requester='{self.RequesterUserName}', status='{self.Status}')>"

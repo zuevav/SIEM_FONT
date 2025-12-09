@@ -11,7 +11,9 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest, RemoteSession
+from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest, RemoteSession, PeerHelpSession
+import secrets
+import string
 from app.models.user import User
 from app.models.agent import Agent
 from app.api.v1.auth import get_current_user, require_role
@@ -1023,6 +1025,341 @@ async def cancel_remote_session(
 
     if session.Status not in ["pending", "connecting"]:
         raise HTTPException(status_code=400, detail="Can only cancel pending or connecting sessions")
+
+    session.Status = "cancelled"
+    session.EndedAt = datetime.utcnow()
+    db.commit()
+
+    return {"status": "cancelled"}
+
+
+# ============================================================================
+# PEER HELP (USER-TO-USER) SCHEMAS
+# ============================================================================
+
+class PeerHelpRequest(BaseModel):
+    """Request from agent to create a help session"""
+    agent_id: str
+    computer_name: str
+    computer_ip: Optional[str] = None
+    user_name: str
+    user_display_name: Optional[str] = None
+    description: Optional[str] = None
+    expiry_minutes: int = Field(default=30, ge=5, le=120)
+
+
+class PeerHelpJoin(BaseModel):
+    """Helper joining a session"""
+    helper_name: str
+    helper_ip: Optional[str] = None
+
+
+class PeerHelpConsent(BaseModel):
+    """Requester's consent response"""
+    action: str = Field(..., pattern="^(accept|decline)$")
+    connection_password: Optional[str] = None
+    port: Optional[int] = None
+
+
+class PeerHelpResponse(BaseModel):
+    SessionId: int
+    SessionToken: str
+    RequesterComputerName: Optional[str]
+    RequesterUserName: Optional[str]
+    RequesterDisplayName: Optional[str]
+    HelperName: Optional[str]
+    Description: Optional[str]
+    ShareableLink: Optional[str]
+    Status: str
+    CreatedAt: datetime
+    ExpiresAt: Optional[datetime]
+    HelperJoinedAt: Optional[datetime]
+    ConnectionPassword: Optional[str]
+    Port: Optional[int]
+    DurationSeconds: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+def generate_short_token(length: int = 8) -> str:
+    """Generate a short, easy to share token"""
+    # Use only uppercase letters and digits, excluding confusing chars (0,O,I,1,L)
+    alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+# ============================================================================
+# PEER HELP ENDPOINTS
+# ============================================================================
+
+@router.post("/peer-help/request")
+async def create_peer_help_request(
+    request: PeerHelpRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Create a new peer help request (called by agent when user clicks "Help me")
+    Returns a shareable link that can be sent to a colleague
+    """
+    # Generate unique token
+    token = generate_short_token(8)
+
+    # Ensure token is unique
+    while db.query(PeerHelpSession).filter(PeerHelpSession.SessionToken == token).first():
+        token = generate_short_token(8)
+
+    # Calculate expiration
+    expires_at = datetime.utcnow() + timedelta(minutes=request.expiry_minutes)
+
+    # Create session
+    session = PeerHelpSession(
+        SessionToken=token,
+        RequesterAgentId=request.agent_id,
+        RequesterComputerName=request.computer_name,
+        RequesterIP=request.computer_ip,
+        RequesterUserName=request.user_name,
+        RequesterDisplayName=request.user_display_name,
+        Description=request.description,
+        Status="waiting",
+        ExpiresAt=expires_at,
+        CreatedAt=datetime.utcnow()
+    )
+
+    # Generate shareable link (will be set based on server config)
+    # Format: https://siem.company.com/help/{token}
+    session.ShareableLink = f"/help/{token}"
+
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "session_id": session.SessionId,
+        "token": token,
+        "shareable_link": session.ShareableLink,
+        "expires_at": expires_at.isoformat(),
+        "message": f"Отправьте эту ссылку коллеге: /help/{token}"
+    }
+
+
+@router.get("/peer-help/{token}")
+async def get_peer_help_session(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get peer help session info by token (for helper joining)
+    No authentication required - anyone with link can join
+    """
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена или ссылка недействительна")
+
+    # Check expiration
+    if session.ExpiresAt and datetime.utcnow() > session.ExpiresAt:
+        session.Status = "expired"
+        db.commit()
+        raise HTTPException(status_code=410, detail="Ссылка истекла")
+
+    if session.Status not in ["waiting", "helper_joined", "pending_consent"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Сессия недоступна (статус: {session.Status})"
+        )
+
+    return {
+        "session_id": session.SessionId,
+        "token": token,
+        "requester_name": session.RequesterDisplayName or session.RequesterUserName,
+        "requester_computer": session.RequesterComputerName,
+        "description": session.Description,
+        "status": session.Status,
+        "expires_at": session.ExpiresAt.isoformat() if session.ExpiresAt else None
+    }
+
+
+@router.post("/peer-help/{token}/join")
+async def join_peer_help_session(
+    token: str,
+    join_data: PeerHelpJoin,
+    db: Session = Depends(get_db)
+):
+    """
+    Helper joins the session (clicks the link and enters their name)
+    """
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    if session.ExpiresAt and datetime.utcnow() > session.ExpiresAt:
+        session.Status = "expired"
+        db.commit()
+        raise HTTPException(status_code=410, detail="Ссылка истекла")
+
+    if session.Status not in ["waiting"]:
+        raise HTTPException(status_code=400, detail="Сессия уже активна или завершена")
+
+    # Record helper info
+    session.HelperName = join_data.helper_name
+    session.HelperIP = join_data.helper_ip
+    session.HelperJoinedAt = datetime.utcnow()
+    session.Status = "helper_joined"
+
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "status": "helper_joined",
+        "message": f"Ожидание подтверждения от {session.RequesterDisplayName or session.RequesterUserName}",
+        "session_id": session.SessionId
+    }
+
+
+@router.get("/peer-help/{token}/status")
+async def check_peer_help_status(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Check status of peer help session
+    Called by both agent and helper's browser
+    """
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    # Check expiration
+    if session.Status == "waiting" and session.ExpiresAt and datetime.utcnow() > session.ExpiresAt:
+        session.Status = "expired"
+        db.commit()
+
+    return {
+        "status": session.Status,
+        "helper_name": session.HelperName,
+        "helper_joined_at": session.HelperJoinedAt.isoformat() if session.HelperJoinedAt else None,
+        "connection_password": session.ConnectionPassword if session.Status == "active" else None,
+        "port": session.Port if session.Status == "active" else None,
+        "can_connect": session.Status == "active"
+    }
+
+
+@router.get("/peer-help/pending/{agent_id}")
+async def get_pending_peer_help(
+    agent_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get pending peer help session for agent
+    Agent polls this to check if someone wants to help
+    """
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.RequesterAgentId == agent_id,
+        PeerHelpSession.Status == "helper_joined"
+    ).order_by(PeerHelpSession.CreatedAt.desc()).first()
+
+    if not session:
+        return {"has_pending": False}
+
+    return {
+        "has_pending": True,
+        "token": session.SessionToken,
+        "helper_name": session.HelperName,
+        "helper_ip": session.HelperIP,
+        "helper_joined_at": session.HelperJoinedAt.isoformat()
+    }
+
+
+@router.post("/peer-help/{token}/consent")
+async def peer_help_consent(
+    token: str,
+    consent: PeerHelpConsent,
+    db: Session = Depends(get_db)
+):
+    """
+    Requester gives consent (or declines) for helper to connect
+    Called by agent after showing consent dialog to user
+    """
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    if session.Status != "helper_joined":
+        raise HTTPException(status_code=400, detail="Нет ожидающего помощника")
+
+    if consent.action == "accept":
+        session.Status = "active"
+        session.ConsentGivenAt = datetime.utcnow()
+        session.ConnectionPassword = consent.connection_password
+        session.Port = consent.port
+        message = "Подключение разрешено"
+    else:
+        session.Status = "declined"
+        message = "Подключение отклонено пользователем"
+
+    db.commit()
+
+    return {
+        "status": session.Status,
+        "message": message
+    }
+
+
+@router.post("/peer-help/{token}/end")
+async def end_peer_help_session(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """End a peer help session"""
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    session.Status = "completed"
+    session.EndedAt = datetime.utcnow()
+
+    if session.ConsentGivenAt:
+        duration = (session.EndedAt - session.ConsentGivenAt).total_seconds()
+        session.DurationSeconds = int(duration)
+
+    db.commit()
+
+    return {
+        "status": "completed",
+        "duration_seconds": session.DurationSeconds
+    }
+
+
+@router.post("/peer-help/{token}/cancel")
+async def cancel_peer_help_session(
+    token: str,
+    db: Session = Depends(get_db)
+):
+    """Cancel a peer help session"""
+    session = db.query(PeerHelpSession).filter(
+        PeerHelpSession.SessionToken == token
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    if session.Status in ["completed", "cancelled", "expired"]:
+        raise HTTPException(status_code=400, detail="Сессия уже завершена")
 
     session.Status = "cancelled"
     session.EndedAt = datetime.utcnow()
