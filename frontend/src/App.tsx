@@ -24,6 +24,8 @@ import Reports from './pages/Reports'
 import ActiveDirectory from './pages/ActiveDirectory'
 import SoftwareRequests from './pages/SoftwareRequests'
 import RemoteSessions from './pages/RemoteSessions'
+import RemoteScripts from './pages/RemoteScripts'
+import AppStore from './pages/AppStore'
 import PeerHelp from './pages/PeerHelp'
 import './App.css'
 
@@ -131,6 +133,8 @@ function App() {
             <Route path="active-directory" element={<ActiveDirectory />} />
             <Route path="software-requests" element={<SoftwareRequests />} />
             <Route path="remote-sessions" element={<RemoteSessions />} />
+            <Route path="remote-scripts" element={<RemoteScripts />} />
+            <Route path="app-store" element={<AppStore />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

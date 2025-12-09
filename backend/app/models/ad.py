@@ -421,3 +421,215 @@ class PeerHelpSession(Base):
 
     def __repr__(self):
         return f"<PeerHelpSession(id={self.SessionId}, requester='{self.RequesterUserName}', status='{self.Status}')>"
+
+
+class RemoteScript(Base):
+    """Remote Script for quick admin configurations - assets.RemoteScripts table
+
+    Admin creates scripts that can be executed on any agent
+    """
+
+    __tablename__ = "RemoteScripts"
+    __table_args__ = {'schema': 'assets'}
+
+    ScriptId = Column(BigInteger, primary_key=True, autoincrement=True)
+    ScriptGUID = Column(String(36), unique=True, index=True, nullable=False)
+
+    # Script info
+    Name = Column(String(256), nullable=False, index=True)
+    Description = Column(Text)
+    Category = Column(String(100), index=True)  # network, security, maintenance, etc.
+
+    # Script content
+    ScriptType = Column(String(20), default='powershell')  # powershell, batch, python
+    ScriptContent = Column(Text, nullable=False)
+
+    # Parameters (JSON array of parameter definitions)
+    Parameters = Column(Text)  # [{"name": "param1", "type": "string", "required": true}]
+
+    # Execution settings
+    RequiresAdmin = Column(Boolean, default=True)
+    Timeout = Column(Integer, default=300)  # seconds
+    AllowedTargets = Column(String(500))  # JSON: ["all", "domain:IT", "ou:Servers"]
+
+    # Audit
+    CreatedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    CreatedByName = Column(String(256))
+    CreatedAt = Column(DateTime, server_default=func.getutcdate())
+    UpdatedAt = Column(DateTime)
+
+    # Status
+    IsActive = Column(Boolean, default=True, index=True)
+
+    # Relationships
+    creator = relationship("User", foreign_keys=[CreatedBy])
+    executions = relationship("RemoteScriptExecution", back_populates="script")
+
+    def __repr__(self):
+        return f"<RemoteScript(id={self.ScriptId}, name='{self.Name}', type='{self.ScriptType}')>"
+
+
+class RemoteScriptExecution(Base):
+    """Remote Script Execution Log - assets.RemoteScriptExecutions table
+
+    Log of all script executions
+    """
+
+    __tablename__ = "RemoteScriptExecutions"
+    __table_args__ = {'schema': 'assets'}
+
+    ExecutionId = Column(BigInteger, primary_key=True, autoincrement=True)
+    ExecutionGUID = Column(String(36), unique=True, index=True, nullable=False)
+
+    # Script reference
+    ScriptId = Column(BigInteger, ForeignKey('assets.RemoteScripts.ScriptId'), nullable=False)
+    ScriptName = Column(String(256))
+
+    # Target
+    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    ComputerName = Column(String(256))
+
+    # Execution
+    ExecutedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    ExecutedByName = Column(String(256))
+    ExecutedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+
+    # Parameters passed (JSON)
+    ExecutionParameters = Column(Text)
+
+    # Status
+    Status = Column(String(30), default='pending', index=True)
+    # pending, sent, running, completed, failed, timeout, cancelled
+
+    # Results
+    StartedAt = Column(DateTime)
+    CompletedAt = Column(DateTime)
+    ExitCode = Column(Integer)
+    Output = Column(Text)  # stdout
+    ErrorOutput = Column(Text)  # stderr
+    DurationMs = Column(Integer)
+
+    # Relationships
+    script = relationship("RemoteScript", back_populates="executions")
+    executor = relationship("User", foreign_keys=[ExecutedBy])
+
+    def __repr__(self):
+        return f"<RemoteScriptExecution(id={self.ExecutionId}, script='{self.ScriptName}', status='{self.Status}')>"
+
+
+class AppStoreApp(Base):
+    """App Store Application - assets.AppStoreApps table
+
+    Applications available in the client app store
+    Two types: always_allowed (user can install anytime) and by_request (requires admin approval)
+    """
+
+    __tablename__ = "AppStoreApps"
+    __table_args__ = {'schema': 'assets'}
+
+    AppId = Column(BigInteger, primary_key=True, autoincrement=True)
+    AppGUID = Column(String(36), unique=True, index=True, nullable=False)
+
+    # App info
+    Name = Column(String(256), nullable=False, index=True)
+    DisplayName = Column(String(256))
+    Description = Column(Text)
+    Publisher = Column(String(256))
+    Version = Column(String(50))
+    Category = Column(String(100), index=True)  # productivity, development, utilities, etc.
+
+    # App type
+    AppType = Column(String(30), default='by_request', index=True)
+    # always_allowed - user can install without approval
+    # by_request - requires admin approval
+
+    # Installation
+    InstallerType = Column(String(20), default='exe')  # exe, msi, msix, script
+    InstallerUrl = Column(String(1000))  # URL to download installer
+    InstallerPath = Column(String(1000))  # UNC path to installer
+    InstallerHash = Column(String(128))  # SHA256 hash
+    InstallerSize = Column(BigInteger)  # bytes
+    SilentInstallArgs = Column(String(500))  # Silent install arguments
+
+    # Uninstall
+    UninstallCommand = Column(String(500))
+
+    # Requirements
+    MinOSVersion = Column(String(50))
+    RequiredDiskSpace = Column(BigInteger)  # MB
+    RequiresReboot = Column(Boolean, default=False)
+
+    # Icon (base64 or URL)
+    IconUrl = Column(String(500))
+    IconBase64 = Column(Text)
+
+    # Audit
+    AddedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    AddedByName = Column(String(256))
+    AddedAt = Column(DateTime, server_default=func.getutcdate())
+    UpdatedAt = Column(DateTime)
+
+    # Status
+    IsActive = Column(Boolean, default=True, index=True)
+    IsFeatured = Column(Boolean, default=False)  # Show on main page
+
+    # Statistics
+    TotalInstalls = Column(Integer, default=0)
+    PendingRequests = Column(Integer, default=0)
+
+    # Relationships
+    adder = relationship("User", foreign_keys=[AddedBy])
+    install_requests = relationship("AppStoreInstallRequest", back_populates="app")
+
+    def __repr__(self):
+        return f"<AppStoreApp(id={self.AppId}, name='{self.Name}', type='{self.AppType}')>"
+
+
+class AppStoreInstallRequest(Base):
+    """App Store Installation Request - assets.AppStoreInstallRequests table
+
+    Request to install an app from the store (for by_request apps)
+    """
+
+    __tablename__ = "AppStoreInstallRequests"
+    __table_args__ = {'schema': 'assets'}
+
+    RequestId = Column(BigInteger, primary_key=True, autoincrement=True)
+    RequestGUID = Column(String(36), unique=True, index=True, nullable=False)
+
+    # App reference
+    AppId = Column(BigInteger, ForeignKey('assets.AppStoreApps.AppId'), nullable=False, index=True)
+    AppName = Column(String(256))
+
+    # Requester
+    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    ComputerName = Column(String(256))
+    UserName = Column(String(256), nullable=False, index=True)
+    UserDisplayName = Column(String(256))
+    UserDepartment = Column(String(256))
+
+    # Request details
+    RequestReason = Column(Text)  # Why user needs this app
+    RequestedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+
+    # Status
+    Status = Column(String(30), default='pending', index=True)
+    # pending, approved, denied, installing, installed, failed, cancelled
+
+    # Admin review
+    ReviewedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=True)
+    ReviewedByName = Column(String(256))
+    ReviewedAt = Column(DateTime)
+    AdminComment = Column(Text)
+
+    # Installation
+    InstalledAt = Column(DateTime)
+    InstallExitCode = Column(Integer)
+    InstallOutput = Column(Text)
+
+    # Relationships
+    app = relationship("AppStoreApp", back_populates="install_requests")
+    reviewer = relationship("User", foreign_keys=[ReviewedBy])
+
+    def __repr__(self):
+        return f"<AppStoreInstallRequest(id={self.RequestId}, app='{self.AppName}', user='{self.UserName}', status='{self.Status}')>"

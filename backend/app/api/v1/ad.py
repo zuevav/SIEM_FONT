@@ -11,7 +11,12 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
 from app.database import get_db
-from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest, RemoteSession, PeerHelpSession
+from app.models.ad import (
+    ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest,
+    RemoteSession, PeerHelpSession, RemoteScript, RemoteScriptExecution,
+    AppStoreApp, AppStoreInstallRequest
+)
+import json
 import secrets
 import string
 from app.models.user import User
@@ -1366,3 +1371,972 @@ async def cancel_peer_help_session(
     db.commit()
 
     return {"status": "cancelled"}
+
+
+# ============================================================================
+# REMOTE SCRIPTS SCHEMAS
+# ============================================================================
+
+class RemoteScriptCreate(BaseModel):
+    """Schema for creating a remote script"""
+    name: str = Field(..., min_length=1, max_length=256)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    script_type: str = Field(default="powershell", pattern="^(powershell|batch|python)$")
+    script_content: str = Field(..., min_length=1)
+    parameters: Optional[List[dict]] = None  # [{"name": "param1", "type": "string", "required": true}]
+    requires_admin: bool = True
+    timeout: int = Field(default=300, ge=30, le=3600)
+
+
+class RemoteScriptUpdate(BaseModel):
+    """Schema for updating a remote script"""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    script_content: Optional[str] = None
+    parameters: Optional[List[dict]] = None
+    requires_admin: Optional[bool] = None
+    timeout: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+class RemoteScriptResponse(BaseModel):
+    ScriptId: int
+    ScriptGUID: str
+    Name: str
+    Description: Optional[str]
+    Category: Optional[str]
+    ScriptType: str
+    ScriptContent: str
+    Parameters: Optional[str]
+    RequiresAdmin: bool
+    Timeout: int
+    CreatedByName: Optional[str]
+    CreatedAt: datetime
+    IsActive: bool
+
+    class Config:
+        from_attributes = True
+
+
+class ExecuteScriptRequest(BaseModel):
+    """Request to execute a script on target"""
+    script_id: int
+    agent_ids: List[str]  # Can execute on multiple agents
+    parameters: Optional[dict] = None  # {"param1": "value1"}
+
+
+class RemoteScriptExecutionResponse(BaseModel):
+    ExecutionId: int
+    ExecutionGUID: str
+    ScriptId: int
+    ScriptName: Optional[str]
+    AgentId: str
+    ComputerName: Optional[str]
+    ExecutedByName: Optional[str]
+    ExecutedAt: datetime
+    ExecutionParameters: Optional[str]
+    Status: str
+    StartedAt: Optional[datetime]
+    CompletedAt: Optional[datetime]
+    ExitCode: Optional[int]
+    Output: Optional[str]
+    ErrorOutput: Optional[str]
+    DurationMs: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+# ============================================================================
+# REMOTE SCRIPTS ENDPOINTS
+# ============================================================================
+
+@router.post("/scripts", status_code=status.HTTP_201_CREATED)
+async def create_remote_script(
+    script: RemoteScriptCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Create a new remote script (admin only)"""
+    script_guid = str(uuid.uuid4())
+
+    new_script = RemoteScript(
+        ScriptGUID=script_guid,
+        Name=script.name,
+        Description=script.description,
+        Category=script.category,
+        ScriptType=script.script_type,
+        ScriptContent=script.script_content,
+        Parameters=json.dumps(script.parameters) if script.parameters else None,
+        RequiresAdmin=script.requires_admin,
+        Timeout=script.timeout,
+        CreatedBy=current_user.UserId,
+        CreatedByName=current_user.Username,
+        CreatedAt=datetime.utcnow(),
+        IsActive=True
+    )
+
+    db.add(new_script)
+    db.commit()
+    db.refresh(new_script)
+
+    return {
+        "script_id": new_script.ScriptId,
+        "script_guid": script_guid,
+        "message": "Script created successfully"
+    }
+
+
+@router.get("/scripts", response_model=PaginatedResponse)
+async def get_remote_scripts(
+    search: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    active_only: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of remote scripts"""
+    query = db.query(RemoteScript)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                RemoteScript.Name.ilike(search_term),
+                RemoteScript.Description.ilike(search_term),
+            )
+        )
+
+    if category:
+        query = query.filter(RemoteScript.Category == category)
+
+    if active_only:
+        query = query.filter(RemoteScript.IsActive == True)
+
+    query = query.order_by(RemoteScript.Name)
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    scripts = query.offset(offset).limit(page_size).all()
+
+    return PaginatedResponse(
+        items=[RemoteScriptResponse.model_validate(s) for s in scripts],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+
+@router.get("/scripts/categories")
+async def get_script_categories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of script categories"""
+    categories = db.query(RemoteScript.Category).distinct().filter(
+        RemoteScript.Category.isnot(None),
+        RemoteScript.IsActive == True
+    ).all()
+    return [c[0] for c in categories if c[0]]
+
+
+@router.get("/scripts/{script_id}", response_model=RemoteScriptResponse)
+async def get_remote_script(
+    script_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get script details"""
+    script = db.query(RemoteScript).filter(RemoteScript.ScriptId == script_id).first()
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+    return script
+
+
+@router.put("/scripts/{script_id}")
+async def update_remote_script(
+    script_id: int,
+    update: RemoteScriptUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Update a remote script"""
+    script = db.query(RemoteScript).filter(RemoteScript.ScriptId == script_id).first()
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+
+    if update.name is not None:
+        script.Name = update.name
+    if update.description is not None:
+        script.Description = update.description
+    if update.category is not None:
+        script.Category = update.category
+    if update.script_content is not None:
+        script.ScriptContent = update.script_content
+    if update.parameters is not None:
+        script.Parameters = json.dumps(update.parameters)
+    if update.requires_admin is not None:
+        script.RequiresAdmin = update.requires_admin
+    if update.timeout is not None:
+        script.Timeout = update.timeout
+    if update.is_active is not None:
+        script.IsActive = update.is_active
+
+    script.UpdatedAt = datetime.utcnow()
+    db.commit()
+
+    return {"message": "Script updated successfully"}
+
+
+@router.delete("/scripts/{script_id}")
+async def delete_remote_script(
+    script_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Delete a remote script (soft delete)"""
+    script = db.query(RemoteScript).filter(RemoteScript.ScriptId == script_id).first()
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found")
+
+    script.IsActive = False
+    script.UpdatedAt = datetime.utcnow()
+    db.commit()
+
+    return {"message": "Script deleted successfully"}
+
+
+@router.post("/scripts/execute")
+async def execute_remote_script(
+    request: ExecuteScriptRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """Execute a script on one or more agents"""
+    # Verify script exists
+    script = db.query(RemoteScript).filter(
+        RemoteScript.ScriptId == request.script_id,
+        RemoteScript.IsActive == True
+    ).first()
+
+    if not script:
+        raise HTTPException(status_code=404, detail="Script not found or inactive")
+
+    # Verify agents exist
+    agents = db.query(Agent).filter(Agent.AgentId.in_(request.agent_ids)).all()
+    if len(agents) != len(request.agent_ids):
+        raise HTTPException(status_code=400, detail="One or more agents not found")
+
+    executions = []
+
+    for agent in agents:
+        execution_guid = str(uuid.uuid4())
+
+        execution = RemoteScriptExecution(
+            ExecutionGUID=execution_guid,
+            ScriptId=script.ScriptId,
+            ScriptName=script.Name,
+            AgentId=agent.AgentId,
+            ComputerName=agent.Hostname,
+            ExecutedBy=current_user.UserId,
+            ExecutedByName=current_user.Username,
+            ExecutedAt=datetime.utcnow(),
+            ExecutionParameters=json.dumps(request.parameters) if request.parameters else None,
+            Status="pending"
+        )
+
+        db.add(execution)
+        executions.append({
+            "execution_guid": execution_guid,
+            "agent_id": agent.AgentId,
+            "computer_name": agent.Hostname
+        })
+
+    db.commit()
+
+    # TODO: Send execution command to agents via WebSocket/message queue
+
+    return {
+        "script_id": script.ScriptId,
+        "script_name": script.Name,
+        "executions": executions,
+        "message": f"Script execution initiated on {len(executions)} agent(s)"
+    }
+
+
+@router.get("/scripts/executions/pending/{agent_id}")
+async def get_pending_script_execution(
+    agent_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get pending script execution for agent (called by agent)"""
+    execution = db.query(RemoteScriptExecution).filter(
+        RemoteScriptExecution.AgentId == agent_id,
+        RemoteScriptExecution.Status == "pending"
+    ).order_by(RemoteScriptExecution.ExecutedAt).first()
+
+    if not execution:
+        return {"has_pending": False}
+
+    script = db.query(RemoteScript).filter(
+        RemoteScript.ScriptId == execution.ScriptId
+    ).first()
+
+    if not script:
+        return {"has_pending": False}
+
+    # Mark as sent
+    execution.Status = "sent"
+    db.commit()
+
+    return {
+        "has_pending": True,
+        "execution_guid": execution.ExecutionGUID,
+        "script_type": script.ScriptType,
+        "script_content": script.ScriptContent,
+        "parameters": json.loads(execution.ExecutionParameters) if execution.ExecutionParameters else None,
+        "requires_admin": script.RequiresAdmin,
+        "timeout": script.Timeout
+    }
+
+
+@router.post("/scripts/executions/{execution_guid}/result")
+async def report_script_execution_result(
+    execution_guid: str,
+    exit_code: int,
+    output: Optional[str] = None,
+    error_output: Optional[str] = None,
+    duration_ms: Optional[int] = None,
+    db: Session = Depends(get_db)
+):
+    """Report script execution result (called by agent)"""
+    execution = db.query(RemoteScriptExecution).filter(
+        RemoteScriptExecution.ExecutionGUID == execution_guid
+    ).first()
+
+    if not execution:
+        raise HTTPException(status_code=404, detail="Execution not found")
+
+    execution.Status = "completed" if exit_code == 0 else "failed"
+    execution.CompletedAt = datetime.utcnow()
+    execution.ExitCode = exit_code
+    execution.Output = output
+    execution.ErrorOutput = error_output
+    execution.DurationMs = duration_ms
+
+    db.commit()
+
+    return {"status": execution.Status}
+
+
+@router.get("/scripts/executions", response_model=PaginatedResponse)
+async def get_script_executions(
+    script_id: Optional[int] = Query(None),
+    agent_id: Optional[str] = Query(None),
+    status_filter: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get script execution history"""
+    query = db.query(RemoteScriptExecution)
+
+    if script_id:
+        query = query.filter(RemoteScriptExecution.ScriptId == script_id)
+
+    if agent_id:
+        query = query.filter(RemoteScriptExecution.AgentId == agent_id)
+
+    if status_filter:
+        query = query.filter(RemoteScriptExecution.Status == status_filter)
+
+    query = query.order_by(RemoteScriptExecution.ExecutedAt.desc())
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    executions = query.offset(offset).limit(page_size).all()
+
+    return PaginatedResponse(
+        items=[RemoteScriptExecutionResponse.model_validate(e) for e in executions],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+
+# ============================================================================
+# APP STORE SCHEMAS
+# ============================================================================
+
+class AppStoreAppCreate(BaseModel):
+    """Schema for creating an app store app"""
+    name: str = Field(..., min_length=1, max_length=256)
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    publisher: Optional[str] = None
+    version: Optional[str] = None
+    category: Optional[str] = None
+    app_type: str = Field(default="by_request", pattern="^(always_allowed|by_request)$")
+    installer_type: str = Field(default="exe", pattern="^(exe|msi|msix|script)$")
+    installer_url: Optional[str] = None
+    installer_path: Optional[str] = None
+    installer_hash: Optional[str] = None
+    installer_size: Optional[int] = None
+    silent_install_args: Optional[str] = None
+    uninstall_command: Optional[str] = None
+    min_os_version: Optional[str] = None
+    required_disk_space: Optional[int] = None
+    requires_reboot: bool = False
+    icon_url: Optional[str] = None
+    is_featured: bool = False
+
+
+class AppStoreAppUpdate(BaseModel):
+    """Schema for updating an app store app"""
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    publisher: Optional[str] = None
+    version: Optional[str] = None
+    category: Optional[str] = None
+    app_type: Optional[str] = None
+    installer_url: Optional[str] = None
+    installer_path: Optional[str] = None
+    installer_hash: Optional[str] = None
+    silent_install_args: Optional[str] = None
+    is_active: Optional[bool] = None
+    is_featured: Optional[bool] = None
+
+
+class AppStoreAppResponse(BaseModel):
+    AppId: int
+    AppGUID: str
+    Name: str
+    DisplayName: Optional[str]
+    Description: Optional[str]
+    Publisher: Optional[str]
+    Version: Optional[str]
+    Category: Optional[str]
+    AppType: str
+    InstallerType: str
+    InstallerUrl: Optional[str]
+    InstallerPath: Optional[str]
+    SilentInstallArgs: Optional[str]
+    RequiresReboot: bool
+    IconUrl: Optional[str]
+    AddedByName: Optional[str]
+    AddedAt: datetime
+    IsActive: bool
+    IsFeatured: bool
+    TotalInstalls: int
+    PendingRequests: int
+
+    class Config:
+        from_attributes = True
+
+
+class AppStoreInstallRequestCreate(BaseModel):
+    """Schema for user requesting app installation"""
+    app_id: int
+    agent_id: str
+    computer_name: str
+    user_name: str
+    user_display_name: Optional[str] = None
+    user_department: Optional[str] = None
+    request_reason: Optional[str] = None
+
+
+class AppStoreInstallRequestResponse(BaseModel):
+    RequestId: int
+    RequestGUID: str
+    AppId: int
+    AppName: Optional[str]
+    AgentId: str
+    ComputerName: Optional[str]
+    UserName: str
+    UserDisplayName: Optional[str]
+    UserDepartment: Optional[str]
+    RequestReason: Optional[str]
+    RequestedAt: datetime
+    Status: str
+    ReviewedByName: Optional[str]
+    ReviewedAt: Optional[datetime]
+    AdminComment: Optional[str]
+    InstalledAt: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class ReviewAppRequest(BaseModel):
+    """Schema for admin reviewing app install request"""
+    action: str = Field(..., pattern="^(approve|deny)$")
+    admin_comment: Optional[str] = None
+
+
+# ============================================================================
+# APP STORE ENDPOINTS
+# ============================================================================
+
+@router.post("/appstore/apps", status_code=status.HTTP_201_CREATED)
+async def create_appstore_app(
+    app: AppStoreAppCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Create a new app in the store (admin only)"""
+    app_guid = str(uuid.uuid4())
+
+    new_app = AppStoreApp(
+        AppGUID=app_guid,
+        Name=app.name,
+        DisplayName=app.display_name or app.name,
+        Description=app.description,
+        Publisher=app.publisher,
+        Version=app.version,
+        Category=app.category,
+        AppType=app.app_type,
+        InstallerType=app.installer_type,
+        InstallerUrl=app.installer_url,
+        InstallerPath=app.installer_path,
+        InstallerHash=app.installer_hash,
+        InstallerSize=app.installer_size,
+        SilentInstallArgs=app.silent_install_args,
+        UninstallCommand=app.uninstall_command,
+        MinOSVersion=app.min_os_version,
+        RequiredDiskSpace=app.required_disk_space,
+        RequiresReboot=app.requires_reboot,
+        IconUrl=app.icon_url,
+        AddedBy=current_user.UserId,
+        AddedByName=current_user.Username,
+        AddedAt=datetime.utcnow(),
+        IsActive=True,
+        IsFeatured=app.is_featured
+    )
+
+    db.add(new_app)
+    db.commit()
+    db.refresh(new_app)
+
+    return {
+        "app_id": new_app.AppId,
+        "app_guid": app_guid,
+        "message": "App added to store successfully"
+    }
+
+
+@router.get("/appstore/apps", response_model=PaginatedResponse)
+async def get_appstore_apps(
+    search: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    app_type: Optional[str] = Query(None),
+    featured_only: bool = Query(False),
+    active_only: bool = Query(True),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of apps in the store"""
+    query = db.query(AppStoreApp)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                AppStoreApp.Name.ilike(search_term),
+                AppStoreApp.DisplayName.ilike(search_term),
+                AppStoreApp.Description.ilike(search_term),
+                AppStoreApp.Publisher.ilike(search_term),
+            )
+        )
+
+    if category:
+        query = query.filter(AppStoreApp.Category == category)
+
+    if app_type:
+        query = query.filter(AppStoreApp.AppType == app_type)
+
+    if featured_only:
+        query = query.filter(AppStoreApp.IsFeatured == True)
+
+    if active_only:
+        query = query.filter(AppStoreApp.IsActive == True)
+
+    query = query.order_by(AppStoreApp.IsFeatured.desc(), AppStoreApp.Name)
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    apps = query.offset(offset).limit(page_size).all()
+
+    return PaginatedResponse(
+        items=[AppStoreAppResponse.model_validate(a) for a in apps],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+
+@router.get("/appstore/apps/client")
+async def get_appstore_apps_for_client(
+    agent_id: str,
+    category: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Get available apps for client app store (called by agent)
+    Returns apps with install status for this agent
+    """
+    query = db.query(AppStoreApp).filter(AppStoreApp.IsActive == True)
+
+    if category:
+        query = query.filter(AppStoreApp.Category == category)
+
+    apps = query.order_by(AppStoreApp.IsFeatured.desc(), AppStoreApp.Name).all()
+
+    result = []
+    for app in apps:
+        # Check if there's a pending request for this app and agent
+        pending_request = db.query(AppStoreInstallRequest).filter(
+            AppStoreInstallRequest.AppId == app.AppId,
+            AppStoreInstallRequest.AgentId == agent_id,
+            AppStoreInstallRequest.Status.in_(["pending", "approved", "installing"])
+        ).first()
+
+        result.append({
+            "app_id": app.AppId,
+            "app_guid": app.AppGUID,
+            "name": app.Name,
+            "display_name": app.DisplayName,
+            "description": app.Description,
+            "publisher": app.Publisher,
+            "version": app.Version,
+            "category": app.Category,
+            "app_type": app.AppType,
+            "icon_url": app.IconUrl,
+            "is_featured": app.IsFeatured,
+            "requires_reboot": app.RequiresReboot,
+            "can_install": app.AppType == "always_allowed" or (pending_request and pending_request.Status == "approved"),
+            "request_status": pending_request.Status if pending_request else None,
+            "request_id": pending_request.RequestId if pending_request else None
+        })
+
+    return result
+
+
+@router.get("/appstore/apps/categories")
+async def get_appstore_categories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get list of app categories"""
+    categories = db.query(AppStoreApp.Category).distinct().filter(
+        AppStoreApp.Category.isnot(None),
+        AppStoreApp.IsActive == True
+    ).all()
+    return [c[0] for c in categories if c[0]]
+
+
+@router.get("/appstore/apps/{app_id}", response_model=AppStoreAppResponse)
+async def get_appstore_app(
+    app_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get app details"""
+    app = db.query(AppStoreApp).filter(AppStoreApp.AppId == app_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="App not found")
+    return app
+
+
+@router.put("/appstore/apps/{app_id}")
+async def update_appstore_app(
+    app_id: int,
+    update: AppStoreAppUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Update an app in the store"""
+    app = db.query(AppStoreApp).filter(AppStoreApp.AppId == app_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="App not found")
+
+    for field, value in update.model_dump(exclude_unset=True).items():
+        setattr(app, field.replace("_", "").title() if "_" in field else field.title().replace("_", ""), value)
+
+    app.UpdatedAt = datetime.utcnow()
+    db.commit()
+
+    return {"message": "App updated successfully"}
+
+
+@router.delete("/appstore/apps/{app_id}")
+async def delete_appstore_app(
+    app_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin"]))
+):
+    """Delete an app from the store (soft delete)"""
+    app = db.query(AppStoreApp).filter(AppStoreApp.AppId == app_id).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="App not found")
+
+    app.IsActive = False
+    app.UpdatedAt = datetime.utcnow()
+    db.commit()
+
+    return {"message": "App removed from store"}
+
+
+@router.post("/appstore/requests", status_code=status.HTTP_201_CREATED)
+async def create_app_install_request(
+    request: AppStoreInstallRequestCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    Request to install an app (called by agent)
+    For always_allowed apps, immediately returns install info
+    For by_request apps, creates a pending request
+    """
+    app = db.query(AppStoreApp).filter(
+        AppStoreApp.AppId == request.app_id,
+        AppStoreApp.IsActive == True
+    ).first()
+
+    if not app:
+        raise HTTPException(status_code=404, detail="App not found")
+
+    # Check for existing pending request
+    existing = db.query(AppStoreInstallRequest).filter(
+        AppStoreInstallRequest.AppId == request.app_id,
+        AppStoreInstallRequest.AgentId == request.agent_id,
+        AppStoreInstallRequest.Status.in_(["pending", "approved"])
+    ).first()
+
+    if existing:
+        return {
+            "request_id": existing.RequestId,
+            "status": existing.Status,
+            "message": "Request already exists",
+            "can_install": existing.Status == "approved" or app.AppType == "always_allowed"
+        }
+
+    request_guid = str(uuid.uuid4())
+
+    # For always_allowed, auto-approve
+    initial_status = "approved" if app.AppType == "always_allowed" else "pending"
+
+    new_request = AppStoreInstallRequest(
+        RequestGUID=request_guid,
+        AppId=app.AppId,
+        AppName=app.Name,
+        AgentId=request.agent_id,
+        ComputerName=request.computer_name,
+        UserName=request.user_name,
+        UserDisplayName=request.user_display_name,
+        UserDepartment=request.user_department,
+        RequestReason=request.request_reason,
+        RequestedAt=datetime.utcnow(),
+        Status=initial_status
+    )
+
+    if app.AppType == "always_allowed":
+        new_request.ReviewedAt = datetime.utcnow()
+        new_request.AdminComment = "Auto-approved (always allowed app)"
+
+    db.add(new_request)
+
+    # Update pending count
+    if app.AppType == "by_request":
+        app.PendingRequests = (app.PendingRequests or 0) + 1
+
+    db.commit()
+    db.refresh(new_request)
+
+    response = {
+        "request_id": new_request.RequestId,
+        "request_guid": request_guid,
+        "status": new_request.Status,
+        "can_install": app.AppType == "always_allowed"
+    }
+
+    if app.AppType == "always_allowed":
+        response["install_info"] = {
+            "installer_type": app.InstallerType,
+            "installer_url": app.InstallerUrl,
+            "installer_path": app.InstallerPath,
+            "silent_install_args": app.SilentInstallArgs
+        }
+        response["message"] = "App approved for installation"
+    else:
+        response["message"] = "Request submitted. Waiting for admin approval."
+
+    return response
+
+
+@router.get("/appstore/requests", response_model=PaginatedResponse)
+async def get_app_install_requests(
+    status_filter: Optional[str] = Query(None),
+    app_id: Optional[int] = Query(None),
+    search: Optional[str] = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get app install requests (admin view)"""
+    query = db.query(AppStoreInstallRequest)
+
+    if status_filter:
+        query = query.filter(AppStoreInstallRequest.Status == status_filter)
+
+    if app_id:
+        query = query.filter(AppStoreInstallRequest.AppId == app_id)
+
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            or_(
+                AppStoreInstallRequest.AppName.ilike(search_term),
+                AppStoreInstallRequest.UserName.ilike(search_term),
+                AppStoreInstallRequest.ComputerName.ilike(search_term),
+            )
+        )
+
+    query = query.order_by(AppStoreInstallRequest.RequestedAt.desc())
+
+    total = query.count()
+    offset = (page - 1) * page_size
+    requests = query.offset(offset).limit(page_size).all()
+
+    return PaginatedResponse(
+        items=[AppStoreInstallRequestResponse.model_validate(r) for r in requests],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=(total + page_size - 1) // page_size
+    )
+
+
+@router.get("/appstore/requests/pending/count")
+async def get_pending_app_requests_count(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get count of pending app install requests"""
+    count = db.query(AppStoreInstallRequest).filter(
+        AppStoreInstallRequest.Status == "pending"
+    ).count()
+    return {"pending_count": count}
+
+
+@router.post("/appstore/requests/{request_id}/review")
+async def review_app_install_request(
+    request_id: int,
+    review: ReviewAppRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["admin", "analyst"]))
+):
+    """Approve or deny an app install request"""
+    request = db.query(AppStoreInstallRequest).filter(
+        AppStoreInstallRequest.RequestId == request_id
+    ).first()
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if request.Status != "pending":
+        raise HTTPException(status_code=400, detail=f"Request already {request.Status}")
+
+    request.Status = "approved" if review.action == "approve" else "denied"
+    request.ReviewedBy = current_user.UserId
+    request.ReviewedByName = current_user.Username
+    request.ReviewedAt = datetime.utcnow()
+    request.AdminComment = review.admin_comment
+
+    # Update app pending count
+    app = db.query(AppStoreApp).filter(AppStoreApp.AppId == request.AppId).first()
+    if app and app.PendingRequests > 0:
+        app.PendingRequests -= 1
+
+    db.commit()
+
+    return {
+        "request_id": request.RequestId,
+        "status": request.Status,
+        "message": f"Request {request.Status}"
+    }
+
+
+@router.get("/appstore/requests/{request_id}/status")
+async def check_app_request_status(
+    request_id: int,
+    db: Session = Depends(get_db)
+):
+    """Check status of app install request (called by agent)"""
+    request = db.query(AppStoreInstallRequest).filter(
+        AppStoreInstallRequest.RequestId == request_id
+    ).first()
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    result = {
+        "request_id": request.RequestId,
+        "status": request.Status,
+        "can_install": request.Status == "approved",
+        "admin_comment": request.AdminComment
+    }
+
+    if request.Status == "approved":
+        app = db.query(AppStoreApp).filter(AppStoreApp.AppId == request.AppId).first()
+        if app:
+            result["install_info"] = {
+                "installer_type": app.InstallerType,
+                "installer_url": app.InstallerUrl,
+                "installer_path": app.InstallerPath,
+                "silent_install_args": app.SilentInstallArgs
+            }
+
+    return result
+
+
+@router.post("/appstore/requests/{request_id}/installed")
+async def confirm_app_installed(
+    request_id: int,
+    exit_code: int = 0,
+    output: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Confirm app was installed (called by agent)"""
+    request = db.query(AppStoreInstallRequest).filter(
+        AppStoreInstallRequest.RequestId == request_id
+    ).first()
+
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    if exit_code == 0:
+        request.Status = "installed"
+        request.InstalledAt = datetime.utcnow()
+
+        # Update app install count
+        app = db.query(AppStoreApp).filter(AppStoreApp.AppId == request.AppId).first()
+        if app:
+            app.TotalInstalls = (app.TotalInstalls or 0) + 1
+    else:
+        request.Status = "failed"
+
+    request.InstallExitCode = exit_code
+    request.InstallOutput = output
+    db.commit()
+
+    return {"status": request.Status}

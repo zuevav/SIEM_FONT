@@ -19,6 +19,8 @@ import {
   DownloadOutlined,
   ApartmentOutlined,
   DesktopOutlined,
+  CodeOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -66,6 +68,8 @@ export default function Sidebar({ collapsed }: SidebarProps) {
       getItem('Пользователи и ПК', '/active-directory', <TeamOutlined />),
       getItem('Запросы на ПО', '/software-requests', <DownloadOutlined />),
       getItem('Удалённый доступ', '/remote-sessions', <DesktopOutlined />),
+      getItem('Удалённые скрипты', '/remote-scripts', <CodeOutlined />),
+      getItem('Магазин приложений', '/app-store', <AppstoreOutlined />),
     ]),
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),

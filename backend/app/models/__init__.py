@@ -18,7 +18,11 @@ from app.models.settings import SystemSettings
 from app.models.integrations import FreeScoutTicket, EmailNotification, ThreatIntelligence
 from app.models.saved_search import SavedSearch
 from app.models.playbook import Playbook, PlaybookAction, PlaybookExecution, ActionResult
-from app.models.ad import ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest, RemoteSession, PeerHelpSession
+from app.models.ad import (
+    ADUser, ADComputer, ADGroup, ADSyncLog, SoftwareInstallRequest,
+    RemoteSession, PeerHelpSession, RemoteScript, RemoteScriptExecution,
+    AppStoreApp, AppStoreInstallRequest
+)
 
 __all__ = [
     # User models
@@ -58,4 +62,10 @@ __all__ = [
     "SoftwareInstallRequest",
     "RemoteSession",
     "PeerHelpSession",
+    # Remote Scripts
+    "RemoteScript",
+    "RemoteScriptExecution",
+    # App Store
+    "AppStoreApp",
+    "AppStoreInstallRequest",
 ]
