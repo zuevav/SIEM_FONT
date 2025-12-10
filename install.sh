@@ -307,7 +307,8 @@ configure_siem() {
 
     # Generate secure passwords
     DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
-    JWT_SECRET=$(openssl rand -base64 64 | tr -dc 'a-zA-Z0-9' | head -c 64)
+    JWT_SECRET_KEY=$(openssl rand -hex 32)
+    REDIS_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
 
     # Default values
     ADMIN_USER="admin"
@@ -375,15 +376,16 @@ configure_siem() {
 # Generated: $(date)
 
 # Database
-POSTGRES_USER=siem
+POSTGRES_USER=siem_app
 POSTGRES_PASSWORD=$DB_PASSWORD
 POSTGRES_DB=siem_db
-DATABASE_URL=postgresql://siem:$DB_PASSWORD@db:5432/siem_db
 
-# Backend
-JWT_SECRET=$JWT_SECRET
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION=7200
+# Security
+JWT_SECRET_KEY=$JWT_SECRET_KEY
+JWT_EXPIRATION_MINUTES=480
+
+# Redis
+REDIS_PASSWORD=$REDIS_PASSWORD
 
 # Admin User
 DEFAULT_ADMIN_USERNAME=$ADMIN_USER
