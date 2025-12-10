@@ -21,14 +21,6 @@ class LoginRequest(BaseModel):
         }
 
 
-class TokenResponse(BaseModel):
-    """Token response schema"""
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int  # seconds
-    user: "UserInfo"
-
-
 class UserInfo(BaseModel):
     """User information in token response"""
     user_id: int
@@ -36,6 +28,14 @@ class UserInfo(BaseModel):
     email: Optional[str]
     role: str
     is_active: bool
+
+
+class TokenResponse(BaseModel):
+    """Token response schema"""
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int  # seconds
+    user: UserInfo
 
 
 class PasswordChangeRequest(BaseModel):
