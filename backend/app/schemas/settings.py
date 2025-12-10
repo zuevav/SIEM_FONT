@@ -86,7 +86,7 @@ class SettingsUpdate(BaseModel):
     smtp_use_tls: Optional[bool] = None
 
     # AI Configuration
-    ai_provider: Optional[str] = Field(None, regex="^(deepseek|yandex_gpt|none)$")
+    ai_provider: Optional[str] = Field(None, pattern="^(deepseek|yandex_gpt|none)$")
     deepseek_api_key: Optional[str] = None
     yandex_gpt_api_key: Optional[str] = None
     yandex_gpt_folder_id: Optional[str] = None

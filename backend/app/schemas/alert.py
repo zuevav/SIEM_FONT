@@ -23,7 +23,7 @@ class DetectionRuleCreate(BaseModel):
     priority: int = Field(default=50, ge=1, le=100)
 
     # Rule Type
-    rule_type: str = Field(..., regex="^(simple|threshold|correlation|sigma|ml)$")
+    rule_type: str = Field(..., pattern="^(simple|threshold|correlation|sigma|ml)$")
     rule_logic: str  # JSON or YAML
 
     # Time Parameters
@@ -143,7 +143,7 @@ class AlertCreate(BaseModel):
 
 class AlertUpdate(BaseModel):
     """Schema for updating an alert"""
-    status: Optional[str] = Field(None, regex="^(new|acknowledged|investigating|resolved|false_positive)$")
+    status: Optional[str] = Field(None, pattern="^(new|acknowledged|investigating|resolved|false_positive)$")
     assigned_to: Optional[int]
     priority: Optional[int] = Field(None, ge=1, le=4)
     incident_id: Optional[int]
@@ -252,7 +252,7 @@ class AlertAcknowledge(BaseModel):
 
 class AlertResolve(BaseModel):
     """Schema for resolving an alert"""
-    resolution: str = Field(..., regex="^(resolved|false_positive)$")
+    resolution: str = Field(..., pattern="^(resolved|false_positive)$")
     comment: Optional[str]
     lessons_learned: Optional[str]
 
