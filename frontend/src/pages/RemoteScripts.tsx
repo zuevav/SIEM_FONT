@@ -797,9 +797,9 @@ export default function RemoteScripts() {
           <Form.Item
             name="parameters"
             label="Параметры (JSON)"
-            extra="Например: {\"param1\": \"value1\"}"
+            extra={'Например: {"param1": "value1"}'}
           >
-            <TextArea rows={3} placeholder='{"param1": "value1"}' />
+            <TextArea rows={3} placeholder={'{"param1": "value1"}'} />
           </Form.Item>
 
           <Form.Item>
