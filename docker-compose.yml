@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_DB: siem_db
       POSTGRES_USER: siem_app
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - set it in .env file}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - set it in .env file}"
       # TimescaleDB
       TIMESCALEDB_TELEMETRY: 'off'
     volumes:
@@ -46,7 +46,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: siem_db
       POSTGRES_USER: siem_app
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - set it in .env file}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required - set it in .env file}"
 
       # AI Provider
       AI_PROVIDER: ${AI_PROVIDER:-deepseek}
@@ -55,7 +55,7 @@ services:
       YANDEX_GPT_FOLDER_ID: ${YANDEX_GPT_FOLDER_ID:-}
 
       # Security
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY is required - generate with: openssl rand -hex 32}
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:?JWT_SECRET_KEY is required - generate with openssl rand -hex 32}"
       JWT_EXPIRATION_MINUTES: 480
 
       # Organization (для CBR отчётов)
@@ -113,7 +113,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: siem-redis
-    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required - set it in .env file}
+    command: redis-server --requirepass "${REDIS_PASSWORD:?REDIS_PASSWORD is required - set it in .env file}"
     ports:
       - "6379:6379"
     volumes:
@@ -134,8 +134,8 @@ services:
     image: dpage/pgadmin4:latest
     container_name: siem-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:?PGADMIN_EMAIL is required}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?PGADMIN_PASSWORD is required}
+      PGADMIN_DEFAULT_EMAIL: "${PGADMIN_EMAIL:-admin@siem.local}"
+      PGADMIN_DEFAULT_PASSWORD: "${PGADMIN_PASSWORD:-admin123}"
       PGADMIN_CONFIG_SERVER_MODE: 'False'
     ports:
       - "5050:80"
