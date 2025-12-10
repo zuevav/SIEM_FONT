@@ -16,6 +16,8 @@ RUN apt-get update && apt-get install -y \
     libpangoft2-1.0-0 \
     libcairo2 \
     unixodbc-dev \
+    libldap2-dev \
+    libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment
@@ -39,6 +41,8 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libcairo2 \
+    libldap-2.5-0 \
+    libsasl2-2 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
