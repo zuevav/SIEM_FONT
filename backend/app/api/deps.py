@@ -74,12 +74,12 @@ async def get_current_user(
         raise credentials_exception
 
     # Get user from database
-    user = db.query(User).filter(User.UserId == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
     if user is None:
         raise credentials_exception
 
     # Check if user is active
-    if not user.IsActive:
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
@@ -87,9 +87,9 @@ async def get_current_user(
 
     # Return current user info
     return CurrentUser(
-        user_id=user.UserId,
-        username=user.Username,
-        role=user.Role,
+        user_id=user.user_id,
+        username=user.username,
+        role=user.role,
         is_admin=user.is_admin,
         is_analyst=user.is_analyst,
         can_write=user.can_write
