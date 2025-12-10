@@ -41,7 +41,7 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libcairo2 \
-    libldap-2.5-0 \
+    libldap-common \
     libsasl2-2 \
     curl \
     && rm -rf /var/lib/apt/lists/*
