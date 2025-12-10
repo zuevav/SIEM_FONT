@@ -312,7 +312,7 @@ configure_siem() {
 
     # Default values
     ADMIN_USER="admin"
-    ADMIN_PASS="admin123"
+    ADMIN_PASS="Admin123!"
     API_PORT="8000"
     FRONTEND_PORT="3000"
     AI_PROVIDER="deepseek"
@@ -324,9 +324,9 @@ configure_siem() {
         echo -e "${BLUE}=== Admin User ===${NC}"
         read -p "Admin username [admin]: " input
         ADMIN_USER=${input:-admin}
-        read -p "Admin password [admin123]: " -s input
+        read -p "Admin password [Admin123!]: " -s input
         echo ""
-        ADMIN_PASS=${input:-admin123}
+        ADMIN_PASS=${input:-Admin123!}
 
         echo ""
         echo -e "${BLUE}=== Network Configuration ===${NC}"
