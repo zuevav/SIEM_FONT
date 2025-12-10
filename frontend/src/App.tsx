@@ -27,6 +27,7 @@ import RemoteSessions from './pages/RemoteSessions'
 import RemoteScripts from './pages/RemoteScripts'
 import AppStore from './pages/AppStore'
 import PeerHelp from './pages/PeerHelp'
+import UserAppStore from './pages/UserAppStore'
 import './App.css'
 
 function App() {
@@ -107,6 +108,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           {/* Public route for peer help - no authentication required */}
           <Route path="/help/:token" element={<PeerHelp />} />
+          {/* Public route for user app store - no authentication required */}
+          <Route path="/store/:agentId" element={<UserAppStore />} />
           <Route
             path="/"
             element={
