@@ -49,7 +49,7 @@ CREATE TABLE config.users (
     role VARCHAR(20) NOT NULL DEFAULT 'viewer', -- admin, analyst, viewer
     is_ad_user BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP,
     settings JSONB, -- JSON с пользовательскими настройками
     CONSTRAINT ck_users_role CHECK (role IN ('admin', 'analyst', 'viewer'))
@@ -94,12 +94,12 @@ CREATE TABLE assets.agents (
     -- Статус агента
     agent_version VARCHAR(20),
     status VARCHAR(20) DEFAULT 'offline', -- online, offline, error, installing
-    last_seen TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_inventory TIMESTAMP,
     last_reboot TIMESTAMP,
 
     -- Метаданные
-    registered_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     configuration JSONB, -- JSON конфиг
     tags JSONB, -- JSON array тегов
     location VARCHAR(200), -- Физическое расположение
@@ -128,7 +128,7 @@ CREATE TABLE config.sessions (
     token VARCHAR(500) NOT NULL,
     ip_address VARCHAR(45),
     user_agent VARCHAR(500),
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     expires_at TIMESTAMP NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     CONSTRAINT ck_sessions_expires CHECK (expires_at > created_at)
@@ -148,7 +148,7 @@ CREATE TABLE config.settings (
     description VARCHAR(500),
     is_encrypted BOOLEAN DEFAULT FALSE,
     updated_by INTEGER REFERENCES config.users(user_id),
-    updated_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC'
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- =====================================================================
@@ -185,8 +185,8 @@ CREATE TABLE assets.software_registry (
     mitre_techniques JSONB, -- JSON array
 
     -- Метаданные
-    first_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
-    last_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT,
 
     CONSTRAINT ck_software_registry_risk CHECK (risk_level IN ('critical', 'high', 'medium', 'low'))
@@ -214,8 +214,8 @@ CREATE TABLE assets.installed_software (
 
     -- Статус
     is_active BOOLEAN DEFAULT TRUE, -- false если ПО было удалено
-    first_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
-    last_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     removed_at TIMESTAMP,
 
     -- Для отслеживания изменений
@@ -242,8 +242,8 @@ CREATE TABLE assets.windows_services (
     executable_path VARCHAR(1000),
 
     is_active BOOLEAN DEFAULT TRUE,
-    first_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
-    last_seen_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT ck_windows_services_status CHECK (status IN ('running', 'stopped', 'paused')),
     CONSTRAINT ck_windows_services_start_type CHECK (start_type IN ('auto', 'manual', 'disabled', 'automatic_delayed'))
@@ -261,7 +261,7 @@ CREATE TABLE assets.asset_changes (
     agent_id UUID NOT NULL REFERENCES assets.agents(agent_id),
     change_type VARCHAR(50) NOT NULL, -- software_installed, software_removed, service_added, etc
     change_details JSONB, -- JSON с деталями
-    detected_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     severity SMALLINT DEFAULT 0, -- 0-info, 1-low, 2-medium, 3-high, 4-critical
 
     CONSTRAINT ck_asset_changes_type CHECK (change_type IN (
@@ -286,7 +286,7 @@ CREATE TABLE security_events.events (
 
     -- Временные метки
     event_time TIMESTAMP NOT NULL, -- Время события на источнике
-    received_time TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC', -- Время получения сервером
+    received_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Время получения сервером
     processed_time TIMESTAMP, -- Время обработки AI
 
     -- Источник события
@@ -493,7 +493,7 @@ CREATE TABLE config.detection_rules (
 
     -- Метаданные
     created_by INTEGER REFERENCES config.users(user_id),
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_by INTEGER REFERENCES config.users(user_id),
     updated_at TIMESTAMP,
     tags JSONB, -- JSON array
@@ -553,7 +553,7 @@ CREATE TABLE incidents.alerts (
     incident_id INTEGER, -- Связь с инцидентом (может быть NULL)
 
     -- Временные метки
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     acknowledged_at TIMESTAMP,
     resolved_at TIMESTAMP,
     updated_at TIMESTAMP,
@@ -607,7 +607,7 @@ CREATE TABLE incidents.incidents (
     -- Таймлайн
     start_time TIMESTAMP, -- Время первого события
     end_time TIMESTAMP, -- Время последнего события
-    detected_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC', -- Когда инцидент был обнаружен
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Когда инцидент был обнаружен
 
     -- Статус работы
     status VARCHAR(20) DEFAULT 'open', -- open, investigating, contained, resolved, closed
@@ -640,7 +640,7 @@ CREATE TABLE incidents.incidents (
     cbr_incident_number VARCHAR(100), -- Номер инцидента из ФинЦЕРТ
 
     -- Временные метки
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
     closed_at TIMESTAMP,
 
@@ -691,7 +691,7 @@ CREATE TABLE compliance.cbr_reports (
     -- Статус
     status VARCHAR(20) DEFAULT 'draft', -- draft, ready, sent, confirmed
     generated_by INTEGER REFERENCES config.users(user_id),
-    generated_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     sent_at TIMESTAMP,
     sent_by INTEGER REFERENCES config.users(user_id),
 
@@ -741,7 +741,7 @@ CREATE TABLE compliance.audit_log (
     error_message VARCHAR(1000),
 
     -- Время
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Контрольная сумма для защиты от изменения
     log_hash VARCHAR(64) GENERATED ALWAYS AS (
@@ -789,7 +789,7 @@ CREATE TABLE config.system_settings (
     category VARCHAR(50), -- freescout, email, ai, threat_intel, system
     description TEXT,
     is_encrypted BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP
 );
 
@@ -809,8 +809,8 @@ CREATE TABLE config.saved_searches (
     filters TEXT NOT NULL, -- JSON string with filter parameters
     user_id INTEGER NOT NULL REFERENCES config.users(user_id) ON DELETE CASCADE,
     is_shared BOOLEAN DEFAULT FALSE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
-    updated_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
     CONSTRAINT ck_saved_searches_search_type
         CHECK (search_type IN ('events', 'alerts', 'incidents'))
@@ -836,7 +836,7 @@ CREATE TABLE incidents.freescout_tickets (
     ticket_url VARCHAR(500),
     ticket_status VARCHAR(20), -- active, closed, spam
     ticket_subject VARCHAR(500),
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
     last_synced_at TIMESTAMP
 );
@@ -858,7 +858,7 @@ CREATE TABLE config.email_notifications (
     body TEXT,
     alert_id INTEGER REFERENCES incidents.alerts(alert_id) ON DELETE SET NULL,
     incident_id INTEGER REFERENCES incidents.incidents(incident_id) ON DELETE SET NULL,
-    sent_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(20) DEFAULT 'pending', -- pending, sent, failed
     error_message TEXT,
     smtp_message_id VARCHAR(255)
@@ -881,7 +881,7 @@ CREATE TABLE enrichment.threat_intelligence (
     lookup_value VARCHAR(255) NOT NULL,
     source VARCHAR(50) NOT NULL, -- virustotal, abuseipdb, misp, etc.
     result JSONB NOT NULL, -- результат запроса в JSON
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC' NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expires_at TIMESTAMP NOT NULL, -- кэш истекает через 24 часа
 
     CONSTRAINT ck_threat_intel_lookup_type

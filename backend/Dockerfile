@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     libldap-common \
     libsasl2-2 \
+    unixodbc \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
