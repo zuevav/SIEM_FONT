@@ -25,6 +25,17 @@ SERVICE_NAME="siem"
 MIN_DOCKER_VERSION="20.10"
 MIN_COMPOSE_VERSION="1.29"
 
+# Detect if running interactively (stdin is terminal)
+# When running via curl | bash, stdin is not a terminal
+if [ -t 0 ]; then
+    INTERACTIVE=true
+else
+    INTERACTIVE=false
+    log_info() {
+        echo -e "${BLUE}[INFO]${NC} $1"
+    }
+fi
+
 ###############################################################################
 # Helper Functions
 ###############################################################################
@@ -166,12 +177,19 @@ check_dependencies() {
 
     if [ ${#missing_deps[@]} -gt 0 ]; then
         log_warning "Missing dependencies: ${missing_deps[*]}"
-        read -p "Do you want to install missing dependencies? (y/N) " -r
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            install_dependencies "${missing_deps[@]}"
+
+        if [ "$INTERACTIVE" = true ]; then
+            read -p "Do you want to install missing dependencies? (Y/n) " -r
+            if [[ ! $REPLY =~ ^[Nn]$ ]]; then
+                install_dependencies "${missing_deps[@]}"
+            else
+                log_error "Cannot continue without dependencies"
+                exit 1
+            fi
         else
-            log_error "Cannot continue without dependencies"
-            exit 1
+            # Non-interactive mode: auto-install dependencies
+            log_info "Non-interactive mode detected. Installing dependencies automatically..."
+            install_dependencies "${missing_deps[@]}"
         fi
     else
         log_success "All dependencies satisfied"
@@ -272,9 +290,14 @@ configure_siem() {
     # Check if .env already exists
     if [ -f ".env" ]; then
         log_warning "Configuration file (.env) already exists"
-        read -p "Do you want to reconfigure? (y/N) " -r
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            log_info "Keeping existing configuration"
+        if [ "$INTERACTIVE" = true ]; then
+            read -p "Do you want to reconfigure? (y/N) " -r
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                log_info "Keeping existing configuration"
+                return
+            fi
+        else
+            log_info "Keeping existing configuration (non-interactive mode)"
             return
         fi
     fi
@@ -286,48 +309,65 @@ configure_siem() {
     DB_PASSWORD=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 32)
     JWT_SECRET=$(openssl rand -base64 64 | tr -dc 'a-zA-Z0-9' | head -c 64)
 
-    # Get user input
-    echo ""
-    echo -e "${BLUE}=== Admin User ===${NC}"
-    read -p "Admin username [admin]: " ADMIN_USER
-    ADMIN_USER=${ADMIN_USER:-admin}
-    read -p "Admin password [admin123]: " -s ADMIN_PASS
-    echo ""
-    ADMIN_PASS=${ADMIN_PASS:-admin123}
-
-    echo ""
-    echo -e "${BLUE}=== Network Configuration ===${NC}"
-    read -p "API Port [8000]: " API_PORT
-    API_PORT=${API_PORT:-8000}
-    read -p "Frontend Port [3000]: " FRONTEND_PORT
-    FRONTEND_PORT=${FRONTEND_PORT:-3000}
-
-    echo ""
-    echo -e "${BLUE}=== AI Configuration ===${NC}"
-    echo "Choose AI provider:"
-    echo "1) DeepSeek (free, recommended)"
-    echo "2) Yandex GPT (requires API key)"
-    echo "3) None (skip AI features)"
-    read -p "Choice [1]: " AI_CHOICE
-    AI_CHOICE=${AI_CHOICE:-1}
-
-    AI_PROVIDER="none"
+    # Default values
+    ADMIN_USER="admin"
+    ADMIN_PASS="admin123"
+    API_PORT="8000"
+    FRONTEND_PORT="3000"
+    AI_PROVIDER="deepseek"
     AI_API_KEY=""
 
-    case "$AI_CHOICE" in
-        1)
-            AI_PROVIDER="deepseek"
-            read -p "DeepSeek API Key (or press Enter to skip): " AI_API_KEY
-            ;;
-        2)
-            AI_PROVIDER="yandex_gpt"
-            read -p "Yandex GPT API Key: " AI_API_KEY
-            read -p "Yandex GPT Folder ID: " YANDEX_FOLDER_ID
-            ;;
-        3)
-            AI_PROVIDER="none"
-            ;;
-    esac
+    if [ "$INTERACTIVE" = true ]; then
+        # Get user input in interactive mode
+        echo ""
+        echo -e "${BLUE}=== Admin User ===${NC}"
+        read -p "Admin username [admin]: " input
+        ADMIN_USER=${input:-admin}
+        read -p "Admin password [admin123]: " -s input
+        echo ""
+        ADMIN_PASS=${input:-admin123}
+
+        echo ""
+        echo -e "${BLUE}=== Network Configuration ===${NC}"
+        read -p "API Port [8000]: " input
+        API_PORT=${input:-8000}
+        read -p "Frontend Port [3000]: " input
+        FRONTEND_PORT=${input:-3000}
+
+        echo ""
+        echo -e "${BLUE}=== AI Configuration ===${NC}"
+        echo "Choose AI provider:"
+        echo "1) DeepSeek (free, recommended)"
+        echo "2) Yandex GPT (requires API key)"
+        echo "3) None (skip AI features)"
+        read -p "Choice [1]: " AI_CHOICE
+        AI_CHOICE=${AI_CHOICE:-1}
+
+        case "$AI_CHOICE" in
+            1)
+                AI_PROVIDER="deepseek"
+                read -p "DeepSeek API Key (or press Enter to skip): " AI_API_KEY
+                ;;
+            2)
+                AI_PROVIDER="yandex_gpt"
+                read -p "Yandex GPT API Key: " AI_API_KEY
+                read -p "Yandex GPT Folder ID: " YANDEX_FOLDER_ID
+                ;;
+            3)
+                AI_PROVIDER="none"
+                ;;
+        esac
+    else
+        # Non-interactive mode: use defaults
+        log_info "Using default configuration (non-interactive mode):"
+        log_info "  Admin username: admin"
+        log_info "  Admin password: admin123"
+        log_info "  API Port: 8000"
+        log_info "  Frontend Port: 3000"
+        log_info "  AI Provider: deepseek (without API key)"
+        echo ""
+        log_warning "IMPORTANT: Change default password after first login!"
+    fi
 
     # Create .env file
     cat > .env << EOF
