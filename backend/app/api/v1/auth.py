@@ -50,10 +50,10 @@ async def login(
     - Returns JWT token
     """
     # Get user from database
-    user = db.query(User).filter(User.Username == login_data.username).first()
+    user = db.query(User).filter(User.username == login_data.username).first()
 
     # Check if user exists and password is correct
-    if not user or not verify_password(login_data.password, user.PasswordHash or ""):
+    if not user or not verify_password(login_data.password, user.password_hash or ""):
         # Log failed attempt (TODO: implement lockout after N attempts)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -62,14 +62,14 @@ async def login(
         )
 
     # Check if user is active
-    if not user.IsActive:
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is disabled"
         )
 
     # Create JWT token
-    token = create_session_token(user.UserId, user.Username)
+    token = create_session_token(user.user_id, user.username)
 
     # Calculate expiration
     expires_at = datetime.utcnow() + timedelta(
@@ -79,18 +79,18 @@ async def login(
     # Create session in database
     session_id = str(uuid.uuid4())
     db_session = DBSession(
-        SessionId=session_id,
-        UserId=user.UserId,
-        Token=token,
-        IPAddress=get_client_ip(request),
-        UserAgent=get_user_agent(request),
-        ExpiresAt=expires_at,
-        IsActive=True
+        session_id=session_id,
+        user_id=user.user_id,
+        token=token,
+        ip_address=get_client_ip(request),
+        user_agent=get_user_agent(request),
+        expires_at=expires_at,
+        is_active=True
     )
     db.add(db_session)
 
     # Update last login time
-    user.LastLogin = datetime.utcnow()
+    user.last_login = datetime.utcnow()
 
     db.commit()
 
@@ -100,11 +100,11 @@ async def login(
         token_type="bearer",
         expires_in=settings.jwt_access_token_expire_minutes * 60,
         user=UserInfo(
-            user_id=user.UserId,
-            username=user.Username,
-            email=user.Email,
-            role=user.Role,
-            is_active=user.IsActive
+            user_id=user.user_id,
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            is_active=user.is_active
         )
     )
 
@@ -121,9 +121,9 @@ async def logout(
     """
     # Deactivate all active sessions for this user
     db.query(DBSession).filter(
-        DBSession.UserId == current_user.user_id,
-        DBSession.IsActive == True
-    ).update({"IsActive": False})
+        DBSession.user_id == current_user.user_id,
+        DBSession.is_active == True
+    ).update({"is_active": False})
 
     db.commit()
 
@@ -138,7 +138,7 @@ async def get_current_user_info(
     """
     Get current user information
     """
-    user = db.query(User).filter(User.UserId == current_user.user_id).first()
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
 
     if not user:
         raise HTTPException(
@@ -147,14 +147,14 @@ async def get_current_user_info(
         )
 
     return UserResponse(
-        user_id=user.UserId,
-        username=user.Username,
-        email=user.Email,
-        role=user.Role,
-        is_ad_user=user.IsADUser,
-        is_active=user.IsActive,
-        created_at=user.CreatedAt,
-        last_login=user.LastLogin
+        user_id=user.user_id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        is_ad_user=user.is_ad_user,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        last_login=user.last_login
     )
 
 
@@ -172,7 +172,7 @@ async def change_password(
     - Updates password hash
     """
     # Get user from database
-    user = db.query(User).filter(User.UserId == current_user.user_id).first()
+    user = db.query(User).filter(User.user_id == current_user.user_id).first()
 
     if not user:
         raise HTTPException(
@@ -181,14 +181,14 @@ async def change_password(
         )
 
     # Check if user is AD user (cannot change password)
-    if user.IsADUser:
+    if user.is_ad_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot change password for AD users"
         )
 
     # Verify old password
-    if not verify_password(password_data.old_password, user.PasswordHash or ""):
+    if not verify_password(password_data.old_password, user.password_hash or ""):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect old password"
@@ -203,14 +203,14 @@ async def change_password(
         )
 
     # Update password hash
-    user.PasswordHash = get_password_hash(password_data.new_password)
+    user.password_hash = get_password_hash(password_data.new_password)
     db.commit()
 
     # Deactivate all sessions (force re-login)
     db.query(DBSession).filter(
-        DBSession.UserId == user.UserId,
-        DBSession.IsActive == True
-    ).update({"IsActive": False})
+        DBSession.user_id == user.user_id,
+        DBSession.is_active == True
+    ).update({"is_active": False})
     db.commit()
 
     return {"message": "Password changed successfully. Please login again."}
@@ -233,7 +233,7 @@ async def create_user(
     - Creates user with hashed password
     """
     # Check if username already exists
-    existing_user = db.query(User).filter(User.Username == user_data.username).first()
+    existing_user = db.query(User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -250,12 +250,12 @@ async def create_user(
 
     # Create user
     new_user = User(
-        Username=user_data.username,
-        Email=user_data.email,
-        PasswordHash=get_password_hash(user_data.password),
-        Role=user_data.role,
-        IsADUser=user_data.is_ad_user,
-        IsActive=True
+        username=user_data.username,
+        email=user_data.email,
+        password_hash=get_password_hash(user_data.password),
+        role=user_data.role,
+        is_ad_user=user_data.is_ad_user,
+        is_active=True
     )
 
     db.add(new_user)
@@ -263,14 +263,14 @@ async def create_user(
     db.refresh(new_user)
 
     return UserResponse(
-        user_id=new_user.UserId,
-        username=new_user.Username,
-        email=new_user.Email,
-        role=new_user.Role,
-        is_ad_user=new_user.IsADUser,
-        is_active=new_user.IsActive,
-        created_at=new_user.CreatedAt,
-        last_login=new_user.LastLogin
+        user_id=new_user.user_id,
+        username=new_user.username,
+        email=new_user.email,
+        role=new_user.role,
+        is_ad_user=new_user.is_ad_user,
+        is_active=new_user.is_active,
+        created_at=new_user.created_at,
+        last_login=new_user.last_login
     )
 
 
@@ -287,14 +287,14 @@ async def list_users(
 
     return [
         UserResponse(
-            user_id=user.UserId,
-            username=user.Username,
-            email=user.Email,
-            role=user.Role,
-            is_ad_user=user.IsADUser,
-            is_active=user.IsActive,
-            created_at=user.CreatedAt,
-            last_login=user.LastLogin
+            user_id=user.user_id,
+            username=user.username,
+            email=user.email,
+            role=user.role,
+            is_ad_user=user.is_ad_user,
+            is_active=user.is_active,
+            created_at=user.created_at,
+            last_login=user.last_login
         )
         for user in users
     ]
@@ -311,7 +311,7 @@ async def update_user(
 
     - Can update email, role, active status
     """
-    user = db.query(User).filter(User.UserId == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -321,24 +321,24 @@ async def update_user(
 
     # Update fields
     if user_data.email is not None:
-        user.Email = user_data.email
+        user.email = user_data.email
     if user_data.role is not None:
-        user.Role = user_data.role
+        user.role = user_data.role
     if user_data.is_active is not None:
-        user.IsActive = user_data.is_active
+        user.is_active = user_data.is_active
 
     db.commit()
     db.refresh(user)
 
     return UserResponse(
-        user_id=user.UserId,
-        username=user.Username,
-        email=user.Email,
-        role=user.Role,
-        is_ad_user=user.IsADUser,
-        is_active=user.IsActive,
-        created_at=user.CreatedAt,
-        last_login=user.LastLogin
+        user_id=user.user_id,
+        username=user.username,
+        email=user.email,
+        role=user.role,
+        is_ad_user=user.is_ad_user,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        last_login=user.last_login
     )
 
 
@@ -359,7 +359,7 @@ async def delete_user(
             detail="Cannot delete your own account"
         )
 
-    user = db.query(User).filter(User.UserId == user_id).first()
+    user = db.query(User).filter(User.user_id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -368,7 +368,7 @@ async def delete_user(
         )
 
     # Soft delete - just deactivate
-    user.IsActive = False
+    user.is_active = False
     db.commit()
 
-    return {"message": f"User {user.Username} deactivated successfully"}
+    return {"message": f"User {user.username} deactivated successfully"}
