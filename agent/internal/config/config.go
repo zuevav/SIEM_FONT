@@ -14,6 +14,7 @@ type Config struct {
 	Sysmon          SysmonConfig          `yaml:"sysmon"`
 	Inventory       InventoryConfig       `yaml:"inventory"`
 	SoftwareControl SoftwareControlConfig `yaml:"software_control"`
+	Protection      ProtectionConfig      `yaml:"protection"`
 	Performance     PerformanceConfig     `yaml:"performance"`
 	Logging         LoggingConfig         `yaml:"logging"`
 	Agent           AgentConfig           `yaml:"agent"`
@@ -105,6 +106,19 @@ type AdvancedConfig struct {
 	Debug              bool `yaml:"debug"`
 	Profiling          bool `yaml:"profiling"`
 	ProfilingPort      int  `yaml:"profiling_port"`
+}
+
+// ProtectionConfig configures agent self-protection
+type ProtectionConfig struct {
+	Enabled              bool `yaml:"enabled"`
+	ProtectFiles         bool `yaml:"protect_files"`
+	ProtectService       bool `yaml:"protect_service"`
+	MonitorTampering     bool `yaml:"monitor_tampering"`
+	AlertOnTampering     bool `yaml:"alert_on_tampering"`
+	SelfHealEnabled      bool `yaml:"self_heal_enabled"`
+	WatchdogEnabled      bool `yaml:"watchdog_enabled"`
+	PreventDebugger      bool `yaml:"prevent_debugger"`
+	IntegrityCheckInterval int `yaml:"integrity_check_interval"`
 }
 
 // Load reads and parses the configuration file
