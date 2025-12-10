@@ -45,7 +45,7 @@ class IncidentUpdate(BaseModel):
     description: Optional[str]
     severity: Optional[int] = Field(None, ge=0, le=4)
     category: Optional[str]
-    status: Optional[str] = Field(None, regex="^(open|investigating|contained|resolved|closed)$")
+    status: Optional[str] = Field(None, pattern="^(open|investigating|contained|resolved|closed)$")
     priority: Optional[int] = Field(None, ge=1, le=4)
     assigned_to: Optional[int]
     start_time: Optional[datetime]
@@ -141,7 +141,7 @@ class IncidentFilter(BaseModel):
 class IncidentWorkLogEntry(BaseModel):
     """Schema for adding work log entry"""
     entry: str = Field(..., max_length=5000)
-    entry_type: str = Field(default="note", regex="^(note|action|milestone)$")
+    entry_type: str = Field(default="note", pattern="^(note|action|milestone)$")
 
 
 class IncidentContainmentAction(BaseModel):
@@ -204,7 +204,7 @@ class IncidentCorrelation(BaseModel):
 
 class IncidentExport(BaseModel):
     """Schema for incident export (CBR/FinCERT format)"""
-    format: str = Field(..., regex="^(json|xml|pdf|xlsx)$")
+    format: str = Field(..., pattern="^(json|xml|pdf|xlsx)$")
     include_events: bool = Field(default=False)
     include_alerts: bool = Field(default=True)
     include_timeline: bool = Field(default=True)
