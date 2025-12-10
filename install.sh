@@ -362,7 +362,7 @@ configure_siem() {
         # Non-interactive mode: use defaults
         log_info "Using default configuration (non-interactive mode):"
         log_info "  Admin username: admin"
-        log_info "  Admin password: admin123"
+        log_info "  Admin password: Admin123!"
         log_info "  API Port: 8000"
         log_info "  Frontend Port: 3000"
         log_info "  AI Provider: deepseek (without API key)"
