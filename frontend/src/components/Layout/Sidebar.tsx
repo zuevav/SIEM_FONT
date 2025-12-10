@@ -15,6 +15,13 @@ import {
   RobotOutlined,
   PlayCircleOutlined,
   FolderOutlined,
+  TeamOutlined,
+  DownloadOutlined,
+  ApartmentOutlined,
+  DesktopOutlined,
+  CodeOutlined,
+  AppstoreOutlined,
+  RocketOutlined,
 } from '@ant-design/icons'
 import type { MenuProps } from 'antd'
 
@@ -57,6 +64,14 @@ export default function Sidebar({ collapsed }: SidebarProps) {
       getItem('Playbooks', '/playbooks', <RobotOutlined />),
       getItem('Выполнения', '/playbook-executions', <PlayCircleOutlined />),
       getItem('FIM', '/fim', <FolderOutlined />),
+    ]),
+    getItem('Active Directory', 'ad', <ApartmentOutlined />, [
+      getItem('Пользователи и ПК', '/active-directory', <TeamOutlined />),
+      getItem('Запросы на ПО', '/software-requests', <DownloadOutlined />),
+      getItem('Удалённый доступ', '/remote-sessions', <DesktopOutlined />),
+      getItem('Удалённые скрипты', '/remote-scripts', <CodeOutlined />),
+      getItem('Магазин приложений', '/app-store', <AppstoreOutlined />),
+      getItem('Развертывание агента', '/agent-deployment', <RocketOutlined />),
     ]),
     getItem('Управление', 'management', <SettingOutlined />, [
       getItem('Пользователи', '/users', <UserOutlined />),

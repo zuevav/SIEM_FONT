@@ -33,6 +33,11 @@ import {
   BulbOutlined,
   GlobalOutlined,
   SecurityScanOutlined,
+  SendOutlined,
+  TeamOutlined,
+  BankOutlined,
+  DatabaseOutlined,
+  LockOutlined,
 } from '@ant-design/icons'
 import apiService from '@/services/api'
 
@@ -761,6 +766,429 @@ docker-compose up -d --build`}
                 type="warning"
                 showIcon
               />
+            </Form>
+          </TabPane>
+
+          {/* Telegram */}
+          <TabPane
+            tab={
+              <span>
+                <SendOutlined />
+                Telegram
+              </span>
+            }
+            key="telegram"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Telegram уведомления"
+                description="Мгновенные уведомления о критических событиях в Telegram-канал или чат."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Form.Item name="telegram_enabled" label="Включить Telegram уведомления" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
+                name="telegram_bot_token"
+                label="Bot Token"
+                extra="Получите токен у @BotFather в Telegram"
+              >
+                <Input.Password placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" />
+              </Form.Item>
+
+              <Form.Item
+                name="telegram_chat_id"
+                label="Chat ID"
+                extra="ID канала или чата для отправки уведомлений (используйте @getidsbot)"
+              >
+                <Input placeholder="-1001234567890" />
+              </Form.Item>
+
+              <Form.Item
+                name="telegram_min_severity"
+                label="Минимальный уровень severity"
+                extra="Только алерты с указанным и выше уровнем будут отправляться"
+              >
+                <Select>
+                  <Option value={0}>Info (0)</Option>
+                  <Option value={1}>Low (1)</Option>
+                  <Option value={2}>Medium (2)</Option>
+                  <Option value={3}>High (3) - Рекомендуется</Option>
+                  <Option value={4}>Critical (4)</Option>
+                </Select>
+              </Form.Item>
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                    Сохранить
+                  </Button>
+                  <Button icon={<CheckCircleOutlined />}>
+                    Отправить тест
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </TabPane>
+
+          {/* Active Directory */}
+          <TabPane
+            tab={
+              <span>
+                <TeamOutlined />
+                Active Directory
+              </span>
+            }
+            key="ad"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Интеграция с Active Directory"
+                description="Аутентификация пользователей через корпоративный AD/LDAP и синхронизация групп."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Form.Item name="ad_enabled" label="Включить AD аутентификацию" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
+                name="ad_server"
+                label="LDAP Server URL"
+                extra="Например: ldap://dc.company.local:389 или ldaps://dc.company.local:636"
+              >
+                <Input placeholder="ldap://dc.company.local:389" />
+              </Form.Item>
+
+              <Form.Item
+                name="ad_base_dn"
+                label="Base DN"
+                extra="Корневой DN для поиска пользователей"
+              >
+                <Input placeholder="DC=company,DC=local" />
+              </Form.Item>
+
+              <Form.Item
+                name="ad_bind_user"
+                label="Bind User DN"
+                extra="Учётная запись для подключения к AD"
+              >
+                <Input placeholder="CN=siem-service,OU=ServiceAccounts,DC=company,DC=local" />
+              </Form.Item>
+
+              <Form.Item name="ad_bind_password" label="Bind Password">
+                <Input.Password placeholder="Пароль сервисной учётной записи" />
+              </Form.Item>
+
+              <Divider>Синхронизация</Divider>
+
+              <Form.Item name="ad_sync_enabled" label="Автоматическая синхронизация пользователей" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
+                name="ad_sync_interval_hours"
+                label="Интервал синхронизации (часы)"
+              >
+                <InputNumber min={1} max={168} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                    Сохранить
+                  </Button>
+                  <Button icon={<CheckCircleOutlined />}>
+                    Тест подключения
+                  </Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </TabPane>
+
+          {/* CBR Organization Settings */}
+          <TabPane
+            tab={
+              <span>
+                <BankOutlined />
+                ЦБ РФ (Организация)
+              </span>
+            }
+            key="cbr"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Реквизиты организации для отчётности ЦБ РФ"
+                description="Информация об организации для формирования отчётов в соответствии с 683-П, 716-П, 747-П."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Divider>Реквизиты организации</Divider>
+
+              <Form.Item name="cbr_org_name" label="Наименование организации">
+                <Input placeholder="ООО «Компания»" />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_inn" label="ИНН">
+                <Input placeholder="7712345678" maxLength={12} />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_ogrn" label="ОГРН">
+                <Input placeholder="1027700000000" maxLength={15} />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_kpp" label="КПП">
+                <Input placeholder="771201001" maxLength={9} />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_address" label="Юридический адрес">
+                <TextArea rows={2} placeholder="123456, г. Москва, ул. Примерная, д. 1" />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_phone" label="Телефон">
+                <Input placeholder="+7 (495) 123-45-67" />
+              </Form.Item>
+
+              <Form.Item name="cbr_org_email" label="Email организации">
+                <Input placeholder="security@company.ru" />
+              </Form.Item>
+
+              <Divider>Контактное лицо</Divider>
+
+              <Form.Item name="cbr_contact_person" label="ФИО">
+                <Input placeholder="Иванов Иван Иванович" />
+              </Form.Item>
+
+              <Form.Item name="cbr_contact_position" label="Должность">
+                <Input placeholder="Руководитель отдела информационной безопасности" />
+              </Form.Item>
+
+              <Form.Item name="cbr_contact_email" label="Email">
+                <Input placeholder="ivanov@company.ru" />
+              </Form.Item>
+
+              <Form.Item name="cbr_contact_phone" label="Телефон">
+                <Input placeholder="+7 (495) 123-45-68" />
+              </Form.Item>
+
+              <Divider>FinCERT интеграция</Divider>
+
+              <Form.Item name="cbr_fincert_enabled" label="Включить FinCERT" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item name="cbr_fincert_api_key" label="FinCERT API Key">
+                <Input.Password placeholder="API ключ для FinCERT" />
+              </Form.Item>
+
+              <Form.Item name="cbr_fincert_org_id" label="Organization ID в FinCERT">
+                <Input placeholder="ID организации" />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                  Сохранить
+                </Button>
+              </Form.Item>
+            </Form>
+          </TabPane>
+
+          {/* Data Retention */}
+          <TabPane
+            tab={
+              <span>
+                <DatabaseOutlined />
+                Хранение данных
+              </span>
+            }
+            key="retention"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Политика хранения данных"
+                description="Настройте сроки хранения различных типов данных в соответствии с требованиями регуляторов."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Form.Item
+                name="retention_days"
+                label="Хранение событий (дней)"
+                extra="Рекомендуется: 1825 дней (5 лет) для соответствия ЦБ РФ"
+              >
+                <InputNumber min={30} max={3650} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="retention_alerts_days"
+                label="Хранение алертов (дней)"
+              >
+                <InputNumber min={30} max={3650} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="retention_incidents_days"
+                label="Хранение инцидентов (дней)"
+                extra="Рекомендуется: 2555 дней (7 лет) для критических инцидентов"
+              >
+                <InputNumber min={30} max={3650} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="retention_audit_days"
+                label="Хранение журнала аудита (дней)"
+              >
+                <InputNumber min={30} max={3650} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Divider>Автоматическая очистка</Divider>
+
+              <Form.Item name="auto_purge_enabled" label="Включить автоматическую очистку" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item
+                name="auto_purge_batch_size"
+                label="Размер пакета очистки"
+                extra="Количество записей за одну операцию очистки"
+              >
+                <InputNumber min={1000} max={100000} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                  Сохранить
+                </Button>
+              </Form.Item>
+
+              <Alert
+                message="Внимание"
+                description="Изменение сроков хранения не повлияет на уже удалённые данные. Данные, превышающие новый срок хранения, будут удалены при следующей очистке."
+                type="warning"
+                showIcon
+              />
+            </Form>
+          </TabPane>
+
+          {/* Security Settings */}
+          <TabPane
+            tab={
+              <span>
+                <LockOutlined />
+                Безопасность
+              </span>
+            }
+            key="security"
+          >
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSave}
+              initialValues={settings || {}}
+            >
+              <Alert
+                message="Настройки безопасности"
+                description="Политики паролей, блокировка учётных записей и другие параметры безопасности."
+                type="info"
+                showIcon
+                style={{ marginBottom: 24 }}
+              />
+
+              <Divider>Политика паролей</Divider>
+
+              <Form.Item
+                name="password_min_length"
+                label="Минимальная длина пароля"
+                extra="Рекомендуется: 12 символов"
+              >
+                <InputNumber min={8} max={128} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item name="password_require_uppercase" label="Требовать заглавные буквы" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item name="password_require_lowercase" label="Требовать строчные буквы" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item name="password_require_digits" label="Требовать цифры" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Form.Item name="password_require_special" label="Требовать спецсимволы (!@#$%^&*)" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+
+              <Divider>Блокировка учётных записей</Divider>
+
+              <Form.Item
+                name="failed_login_attempts"
+                label="Попыток до блокировки"
+                extra="Количество неудачных попыток входа до блокировки учётной записи"
+              >
+                <InputNumber min={3} max={10} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="account_lockout_minutes"
+                label="Время блокировки (минуты)"
+                extra="Время, на которое блокируется учётная запись"
+              >
+                <InputNumber min={5} max={1440} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Divider>Сессии</Divider>
+
+              <Form.Item
+                name="session_timeout_minutes"
+                label="Таймаут сессии (минуты)"
+                extra="Время бездействия до автоматического выхода"
+              >
+                <InputNumber min={15} max={1440} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item
+                name="jwt_access_token_expire_minutes"
+                label="Время жизни токена (минуты)"
+              >
+                <InputNumber min={15} max={1440} style={{ width: '100%' }} />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+                  Сохранить
+                </Button>
+              </Form.Item>
             </Form>
           </TabPane>
         </Tabs>

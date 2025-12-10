@@ -21,6 +21,14 @@ import NetworkMonitoring from './pages/NetworkMonitoring'
 import UserManagement from './pages/UserManagement'
 import Profile from './pages/Profile'
 import Reports from './pages/Reports'
+import ActiveDirectory from './pages/ActiveDirectory'
+import SoftwareRequests from './pages/SoftwareRequests'
+import RemoteSessions from './pages/RemoteSessions'
+import RemoteScripts from './pages/RemoteScripts'
+import AppStore from './pages/AppStore'
+import PeerHelp from './pages/PeerHelp'
+import UserAppStore from './pages/UserAppStore'
+import AgentDeployment from './pages/AgentDeployment'
 import './App.css'
 
 function App() {
@@ -37,14 +45,72 @@ function App() {
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#1890ff',
-          borderRadius: 6,
+          // Apple-like colors
+          colorPrimary: '#007AFF',
+          colorSuccess: '#34C759',
+          colorWarning: '#FF9500',
+          colorError: '#FF3B30',
+          colorInfo: '#5856D6',
+
+          // Apple-like rounded corners
+          borderRadius: 12,
+          borderRadiusLG: 16,
+          borderRadiusSM: 8,
+          borderRadiusXS: 6,
+
+          // Apple-like typography
+          fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif",
+          fontSize: 14,
+
+          // Apple-like motion
+          motionDurationFast: '0.1s',
+          motionDurationMid: '0.2s',
+          motionDurationSlow: '0.3s',
+
+          // Spacing
+          padding: 16,
+          paddingLG: 24,
+          paddingSM: 12,
+          paddingXS: 8,
+        },
+        components: {
+          Card: {
+            borderRadiusLG: 16,
+            boxShadowTertiary: '0 2px 8px rgba(0, 0, 0, 0.08)',
+          },
+          Button: {
+            borderRadius: 10,
+            controlHeight: 40,
+            controlHeightLG: 48,
+            controlHeightSM: 32,
+          },
+          Input: {
+            borderRadius: 10,
+            controlHeight: 40,
+          },
+          Select: {
+            borderRadius: 10,
+            controlHeight: 40,
+          },
+          Modal: {
+            borderRadiusLG: 20,
+          },
+          Notification: {
+            borderRadiusLG: 16,
+          },
+          Message: {
+            borderRadiusLG: 12,
+          },
         },
       }}
     >
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          {/* Public route for peer help - no authentication required */}
+          <Route path="/help/:token" element={<PeerHelp />} />
+          {/* Public route for user app store - no authentication required */}
+          <Route path="/store/:agentId" element={<UserAppStore />} />
           <Route
             path="/"
             element={
@@ -68,6 +134,12 @@ function App() {
             <Route path="playbook-executions" element={<PlaybookExecutions />} />
             <Route path="fim" element={<FileIntegrityMonitoring />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="active-directory" element={<ActiveDirectory />} />
+            <Route path="software-requests" element={<SoftwareRequests />} />
+            <Route path="remote-sessions" element={<RemoteSessions />} />
+            <Route path="remote-scripts" element={<RemoteScripts />} />
+            <Route path="app-store" element={<AppStore />} />
+            <Route path="agent-deployment" element={<AgentDeployment />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

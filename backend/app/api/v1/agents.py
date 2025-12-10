@@ -174,6 +174,77 @@ async def agent_heartbeat(
         )
 
 
+@router.post("/tampering-alert")
+async def report_tampering_alert(
+    alert_data: dict,
+    db: Session = Depends(get_db)
+):
+    """
+    Report agent tampering or protection alert
+    Called by agent/watchdog when tampering is detected
+    No authentication required (agent self-reporting)
+    """
+    try:
+        agent_id = alert_data.get("agent_id")
+        alert_type = alert_data.get("alert_type", "unknown")
+        message = alert_data.get("message", "")
+        details = alert_data.get("details", {})
+
+        # Find agent
+        agent = None
+        if agent_id:
+            agent = db.query(Agent).filter(Agent.AgentId == str(agent_id)).first()
+
+        # Log critical alert
+        logger.critical(
+            f"AGENT TAMPERING ALERT [{alert_type}]: "
+            f"Agent={agent_id or 'unknown'}, "
+            f"Hostname={agent.Hostname if agent else 'unknown'}, "
+            f"Message={message}"
+        )
+
+        # Create high-severity event
+        from app.models.event import Event
+
+        event = Event(
+            AgentId=agent_id,
+            EventTime=datetime.utcnow(),
+            SourceType="agent_protection",
+            EventCode=9999,  # Special code for tampering alerts
+            Severity="critical",
+            Computer=agent.Hostname if agent else details.get("computer", "unknown"),
+            Message=f"Agent Protection Alert: {alert_type} - {message}",
+            RawEvent=json.dumps({
+                "alert_type": alert_type,
+                "message": message,
+                "details": details,
+                "agent_id": agent_id
+            })
+        )
+        db.add(event)
+
+        # Update agent status if found
+        if agent:
+            agent.Status = "alert"
+            agent.Notes = f"Protection alert: {alert_type} at {datetime.utcnow().isoformat()}"
+
+        db.commit()
+
+        return {
+            "success": True,
+            "alert_id": event.EventId if hasattr(event, 'EventId') else None,
+            "message": "Tampering alert recorded"
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error recording tampering alert: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record alert: {str(e)}"
+        )
+
+
 # ============================================================================
 # AGENT INVENTORY
 # ============================================================================

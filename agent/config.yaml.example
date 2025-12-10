@@ -152,6 +152,36 @@ agent:
   # Owner/Responsible person
   owner: ""
 
+# Agent Self-Protection
+# Защита агента от вредоносного ПО и несанкционированной остановки
+protection:
+  # Enable protection (recommended)
+  enabled: true
+
+  # Protect agent files with restrictive ACL (SYSTEM + Admins only)
+  protect_files: true
+
+  # Protect service from being stopped by regular users
+  protect_service: true
+
+  # Monitor for file/config tampering
+  monitor_tampering: true
+
+  # Send alert to SIEM when tampering detected
+  alert_on_tampering: true
+
+  # Attempt self-heal on tampering (restore from backup)
+  self_heal_enabled: false
+
+  # Use watchdog service for extra protection
+  watchdog_enabled: true
+
+  # Detect and prevent debugging
+  prevent_debugger: true
+
+  # Integrity check interval (seconds)
+  integrity_check_interval: 30
+
 # Advanced Settings
 advanced:
   # Retry failed API calls
