@@ -38,7 +38,22 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
     # ============================================================================
-    # DATABASE (MS SQL SERVER)
+    # DATABASE TYPE SELECTION
+    # ============================================================================
+    # Options: "postgresql", "mssql"
+    database_type: str = Field(default="postgresql", env="DATABASE_TYPE")
+
+    # ============================================================================
+    # DATABASE (POSTGRESQL) - Primary supported database
+    # ============================================================================
+    postgres_host: str = Field(default="localhost", env="POSTGRES_HOST")
+    postgres_port: int = Field(default=5432, env="POSTGRES_PORT")
+    postgres_db: str = Field(default="siem_db", env="POSTGRES_DB")
+    postgres_user: str = Field(default="siem_app", env="POSTGRES_USER")
+    postgres_password: str = Field(default="", env="POSTGRES_PASSWORD")
+
+    # ============================================================================
+    # DATABASE (MS SQL SERVER) - Legacy support
     # ============================================================================
     mssql_server: str = Field(default="localhost", env="MSSQL_SERVER")
     mssql_port: int = Field(default=1433, env="MSSQL_PORT")
@@ -59,14 +74,21 @@ class Settings(BaseSettings):
     debug_sql: bool = Field(default=False, env="DEBUG_SQL")
 
     def get_database_url(self) -> str:
-        """Build SQLAlchemy connection string for MS SQL Server"""
-        driver = self.mssql_driver.replace(" ", "+")
-        return (
-            f"mssql+pyodbc://{self.mssql_user}:{self.mssql_password}"
-            f"@{self.mssql_server}:{self.mssql_port}/{self.mssql_database}"
-            f"?driver={driver}"
-            f"&TrustServerCertificate={self.mssql_trust_cert}"
-        )
+        """Build SQLAlchemy connection string based on DATABASE_TYPE"""
+        if self.database_type.lower() == "postgresql":
+            return (
+                f"postgresql://{self.postgres_user}:{self.postgres_password}"
+                f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+            )
+        else:
+            # MS SQL Server (legacy)
+            driver = self.mssql_driver.replace(" ", "+")
+            return (
+                f"mssql+pyodbc://{self.mssql_user}:{self.mssql_password}"
+                f"@{self.mssql_server}:{self.mssql_port}/{self.mssql_database}"
+                f"?driver={driver}"
+                f"&TrustServerCertificate={self.mssql_trust_cert}"
+            )
 
     # ============================================================================
     # AI PROVIDER SELECTION

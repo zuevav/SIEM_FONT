@@ -1,9 +1,10 @@
 """
-Database connection and session management for MS SQL Server
+Database connection and session management
+Supports PostgreSQL (primary) and MS SQL Server (legacy)
 """
 
 from typing import Generator
-from sqlalchemy import create_engine, event, pool
+from sqlalchemy import create_engine, event, pool, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
@@ -17,6 +18,20 @@ from app.config import settings
 # Build connection string
 DATABASE_URL = settings.get_database_url()
 
+# Build connect_args based on database type
+def _get_connect_args():
+    """Get database-specific connection arguments"""
+    if settings.database_type.lower() == "postgresql":
+        return {
+            "connect_timeout": settings.query_timeout_sec,
+        }
+    else:
+        # MS SQL Server
+        return {
+            "timeout": settings.query_timeout_sec,
+            "TrustServerCertificate": settings.mssql_trust_cert,
+        }
+
 # Create engine with connection pooling
 engine = create_engine(
     DATABASE_URL,
@@ -26,13 +41,9 @@ engine = create_engine(
     pool_recycle=settings.db_pool_recycle_sec,
     pool_pre_ping=True,  # Проверка соединения перед использованием
     echo=settings.debug_sql,  # Вывод SQL запросов в лог
-    connect_args={
-        "timeout": settings.query_timeout_sec,
-        # MS SQL specific settings
-        "TrustServerCertificate": settings.mssql_trust_cert,
-    },
+    connect_args=_get_connect_args(),
     execution_options={
-        "isolation_level": "READ_COMMITTED"
+        "isolation_level": "READ COMMITTED"
     }
 )
 
@@ -97,10 +108,12 @@ def check_db_connection() -> bool:
     """
     try:
         with engine.connect() as connection:
-            connection.execute("SELECT 1")
+            connection.execute(text("SELECT 1"))
         return True
     except Exception as e:
         print(f"Database connection failed: {e}")
+        print(f"  Connection string: {DATABASE_URL}")
+        print(f"  Database type: {settings.database_type}")
         return False
 
 
@@ -324,8 +337,7 @@ def paginate(
 # Check connection on module load (only if not testing)
 if not settings.testing:
     if check_db_connection():
-        print("✓ Database connection successful")
+        print(f"✓ Database connection successful ({settings.database_type})")
     else:
         print("✗ Database connection failed!")
-        print(f"  Connection string: {DATABASE_URL}")
-        print("  Check .env configuration and MS SQL Server availability")
+        print(f"  Check .env configuration and {settings.database_type} availability")
