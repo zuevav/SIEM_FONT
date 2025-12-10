@@ -198,3 +198,114 @@ class AssetChange(Base):
 
     def __repr__(self):
         return f"<AssetChange(id={self.ChangeId}, type='{self.ChangeType}', severity={self.Severity})>"
+
+
+# ============================================================================
+# AGENT DEPLOYMENT MANAGEMENT
+# ============================================================================
+
+class AgentPackage(Base):
+    """Agent Package model - stores uploaded agent installation packages"""
+
+    __tablename__ = "AgentPackages"
+    __table_args__ = {'schema': 'assets'}
+
+    PackageId = Column(Integer, primary_key=True, autoincrement=True)
+    Version = Column(String(20), nullable=False, index=True)
+    FileName = Column(String(255), nullable=False)
+    FileSize = Column(BigInteger)
+    FileHash = Column(String(64))  # SHA256
+
+    # Package details
+    Platform = Column(String(20), default='windows')  # windows, linux
+    Architecture = Column(String(10), default='x64')  # x64, x86
+    Description = Column(Text)
+    ReleaseNotes = Column(Text)
+
+    # File storage
+    StoragePath = Column(String(500))  # Path on server
+    DownloadUrl = Column(String(500))  # URL for download
+
+    # Status
+    IsActive = Column(Boolean, default=True)
+    IsLatest = Column(Boolean, default=False)
+    UploadedBy = Column(String(100))
+    UploadedAt = Column(DateTime, server_default=func.getutcdate())
+
+    # Relationships
+    deployments = relationship("AgentDeployment", back_populates="package")
+
+    def __repr__(self):
+        return f"<AgentPackage(id={self.PackageId}, version='{self.Version}')>"
+
+
+class AgentDeployment(Base):
+    """Agent Deployment configuration model"""
+
+    __tablename__ = "AgentDeployments"
+    __table_args__ = {'schema': 'assets'}
+
+    DeploymentId = Column(Integer, primary_key=True, autoincrement=True)
+    Name = Column(String(100), nullable=False)
+    Description = Column(Text)
+
+    # Package reference
+    PackageId = Column(Integer, ForeignKey('assets.AgentPackages.PackageId'), nullable=False)
+
+    # Deployment settings
+    DeploymentMode = Column(String(20), default='selected')  # all, selected, ou
+    TargetOU = Column(String(500))  # OU path for OU-based deployment
+    ServerUrl = Column(String(500), nullable=False)  # SIEM server URL
+    NetworkPath = Column(String(500))  # UNC path to NETLOGON folder
+
+    # Protection settings
+    EnableProtection = Column(Boolean, default=True)
+    InstallWatchdog = Column(Boolean, default=True)
+
+    # Status
+    Status = Column(String(20), default='draft')  # draft, active, paused, completed
+    CreatedBy = Column(String(100))
+    CreatedAt = Column(DateTime, server_default=func.getutcdate())
+    UpdatedAt = Column(DateTime, server_default=func.getutcdate(), onupdate=func.getutcdate())
+    ActivatedAt = Column(DateTime)
+
+    # Statistics
+    TotalTargets = Column(Integer, default=0)
+    DeployedCount = Column(Integer, default=0)
+    FailedCount = Column(Integer, default=0)
+
+    # Relationships
+    package = relationship("AgentPackage", back_populates="deployments")
+    targets = relationship("AgentDeploymentTarget", back_populates="deployment", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<AgentDeployment(id={self.DeploymentId}, name='{self.Name}', status='{self.Status}')>"
+
+
+class AgentDeploymentTarget(Base):
+    """Target computers for agent deployment"""
+
+    __tablename__ = "AgentDeploymentTargets"
+    __table_args__ = {'schema': 'assets'}
+
+    TargetId = Column(Integer, primary_key=True, autoincrement=True)
+    DeploymentId = Column(Integer, ForeignKey('assets.AgentDeployments.DeploymentId'), nullable=False)
+
+    # Target computer info
+    ComputerName = Column(String(255), nullable=False, index=True)
+    ComputerDN = Column(String(500))  # Distinguished Name from AD
+    IPAddress = Column(String(45))
+
+    # Deployment status
+    Status = Column(String(20), default='pending')  # pending, deploying, success, failed, skipped
+    DeployedAt = Column(DateTime)
+    DeployedVersion = Column(String(20))
+    ErrorMessage = Column(Text)
+    RetryCount = Column(Integer, default=0)
+
+    # Relationships
+    deployment = relationship("AgentDeployment", back_populates="targets")
+
+    def __repr__(self):
+        return f"<AgentDeploymentTarget(id={self.TargetId}, computer='{self.ComputerName}', status='{self.Status}')>"
+

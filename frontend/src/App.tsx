@@ -28,6 +28,7 @@ import RemoteScripts from './pages/RemoteScripts'
 import AppStore from './pages/AppStore'
 import PeerHelp from './pages/PeerHelp'
 import UserAppStore from './pages/UserAppStore'
+import AgentDeployment from './pages/AgentDeployment'
 import './App.css'
 
 function App() {
@@ -138,6 +139,7 @@ function App() {
             <Route path="remote-sessions" element={<RemoteSessions />} />
             <Route path="remote-scripts" element={<RemoteScripts />} />
             <Route path="app-store" element={<AppStore />} />
+            <Route path="agent-deployment" element={<AgentDeployment />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

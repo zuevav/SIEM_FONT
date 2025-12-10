@@ -274,7 +274,7 @@ async def get_info():
 # ============================================================================
 
 # Import API routers
-from app.api.v1 import auth, events, agents, alerts, incidents, settings, system, saved_searches, docs, playbooks, fim, ad
+from app.api.v1 import auth, events, agents, alerts, incidents, settings, system, saved_searches, docs, playbooks, fim, ad, deployment
 from app.api.v1.integrations import freescout
 from app.api.v1.enrichment import threat_intel
 from app.websocket import websocket_router
@@ -287,6 +287,9 @@ app.include_router(events.router, prefix="/api/v1/events", tags=["Events"])
 
 # Agents router
 app.include_router(agents.router, prefix="/api/v1/agents", tags=["Agents"])
+
+# Deployment router
+app.include_router(deployment.router, prefix="/api/v1/deployment", tags=["Agent Deployment"])
 
 # Alerts router
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["Alerts"])
