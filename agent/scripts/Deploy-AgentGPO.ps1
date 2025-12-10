@@ -11,6 +11,11 @@
     2. Создайте GPO и добавьте этот скрипт как Computer Startup Script
     3. Привяжите GPO к нужным OU с компьютерами
 
+    Защита агента применяется автоматически:
+    - Файлы доступны только SYSTEM и Администраторам
+    - Служба защищена от остановки пользователями
+    - Watchdog следит за работой агента
+
 .PARAMETER AgentPath
     Путь к папке с файлами агента (UNC путь к NETLOGON)
 
@@ -20,12 +25,15 @@
 .PARAMETER ApiKey
     API ключ для регистрации агента
 
+.PARAMETER EnableProtection
+    Включить защиту агента (по умолчанию: $true)
+
 .EXAMPLE
     Deploy-AgentGPO.ps1 -AgentPath "\\domain.local\NETLOGON\SIEMAgent" -ServerUrl "https://siem.domain.local/api/v1" -ApiKey "your-api-key"
 
 .NOTES
     Author: SIEM Team
-    Version: 1.0.0
+    Version: 2.0.0
 #>
 
 param(
@@ -45,7 +53,13 @@ param(
     [switch]$Force,
 
     [Parameter(Mandatory=$false)]
-    [switch]$Uninstall
+    [switch]$Uninstall,
+
+    [Parameter(Mandatory=$false)]
+    [bool]$EnableProtection = $true,
+
+    [Parameter(Mandatory=$false)]
+    [bool]$InstallWatchdog = $true
 )
 
 # Логирование
@@ -234,6 +248,164 @@ function Add-FirewallRule {
     Write-Log "Правила брандмауэра настроены"
 }
 
+function Protect-AgentFiles {
+    Write-Log "Применение защиты файлов агента..."
+
+    $filesToProtect = @(
+        (Join-Path $InstallDir "siem-agent.exe"),
+        (Join-Path $InstallDir "siem-watchdog.exe"),
+        (Join-Path $InstallDir "config.yaml"),
+        (Join-Path $InstallDir "config.json"),
+        (Join-Path $InstallDir "agent_id")
+    )
+
+    foreach ($file in $filesToProtect) {
+        if (Test-Path $file) {
+            try {
+                $acl = Get-Acl $file
+                $acl.SetAccessRuleProtection($true, $false)
+
+                # Очищаем все правила
+                $acl.Access | ForEach-Object { $acl.RemoveAccessRule($_) } | Out-Null
+
+                # SYSTEM - полный доступ
+                $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                    "NT AUTHORITY\SYSTEM", "FullControl", "Allow"
+                )
+                # Администраторы - полный доступ
+                $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+                    "BUILTIN\Administrators", "FullControl", "Allow"
+                )
+
+                $acl.SetAccessRule($systemRule)
+                $acl.SetAccessRule($adminRule)
+                Set-Acl -Path $file -AclObject $acl
+
+                Write-Log "  Защищён: $file"
+            } catch {
+                Write-Log "  Ошибка защиты $file : $_" "WARNING"
+            }
+        }
+    }
+
+    # Защита папки агента
+    try {
+        $acl = Get-Acl $InstallDir
+        $acl.SetAccessRuleProtection($true, $false)
+        $acl.Access | ForEach-Object { $acl.RemoveAccessRule($_) } | Out-Null
+
+        $systemRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "NT AUTHORITY\SYSTEM", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+        )
+        $adminRule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            "BUILTIN\Administrators", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+        )
+
+        $acl.SetAccessRule($systemRule)
+        $acl.SetAccessRule($adminRule)
+        Set-Acl -Path $InstallDir -AclObject $acl
+
+        Write-Log "  Папка защищена: $InstallDir"
+    } catch {
+        Write-Log "  Ошибка защиты папки: $_" "WARNING"
+    }
+
+    Write-Log "Защита файлов применена"
+}
+
+function Protect-AgentService {
+    param([string]$ServiceName)
+
+    Write-Log "Применение защиты службы $ServiceName..."
+
+    try {
+        $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+        if (-not $service) {
+            Write-Log "  Служба $ServiceName не найдена" "WARNING"
+            return
+        }
+
+        # SDDL: только SYSTEM и Администраторы могут управлять службой
+        # Обычные пользователи могут только читать статус
+        $sddl = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)"
+
+        $result = sc.exe sdset $ServiceName $sddl 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Log "  Служба $ServiceName защищена от остановки пользователями"
+        } else {
+            Write-Log "  Ошибка защиты службы: $result" "WARNING"
+        }
+
+        # Настраиваем автоперезапуск при сбое
+        sc.exe failure $ServiceName reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
+        Write-Log "  Настроен автоперезапуск при сбое"
+
+    } catch {
+        Write-Log "  Ошибка: $_" "WARNING"
+    }
+}
+
+function Install-WatchdogService {
+    Write-Log "Установка Watchdog службы..."
+
+    $WatchdogExe = Join-Path $InstallDir "siem-watchdog.exe"
+
+    if (-not (Test-Path $WatchdogExe)) {
+        Write-Log "  Watchdog не найден: $WatchdogExe" "WARNING"
+        return $false
+    }
+
+    try {
+        # Останавливаем существующую службу
+        $existingService = Get-Service -Name "SIEMWatchdog" -ErrorAction SilentlyContinue
+        if ($existingService) {
+            Stop-Service -Name "SIEMWatchdog" -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            sc.exe delete "SIEMWatchdog" | Out-Null
+            Start-Sleep -Seconds 2
+        }
+
+        # Создаём службу Watchdog
+        $ServiceParams = @{
+            Name = "SIEMWatchdog"
+            BinaryPathName = "`"$WatchdogExe`""
+            DisplayName = "SIEM Agent Watchdog"
+            Description = "Мониторит и защищает SIEM Security Agent от остановки"
+            StartupType = "Automatic"
+        }
+
+        New-Service @ServiceParams -ErrorAction Stop | Out-Null
+
+        # Настраиваем автоперезапуск
+        sc.exe failure "SIEMWatchdog" reset= 86400 actions= restart/5000/restart/10000/restart/30000 | Out-Null
+
+        # Защищаем службу
+        Protect-AgentService -ServiceName "SIEMWatchdog"
+
+        # Запускаем
+        Start-Service -Name "SIEMWatchdog"
+
+        Write-Log "  Watchdog служба установлена и запущена"
+        return $true
+
+    } catch {
+        Write-Log "  Ошибка установки Watchdog: $_" "WARNING"
+        return $false
+    }
+}
+
+function Uninstall-WatchdogService {
+    Write-Log "Удаление Watchdog службы..."
+
+    $service = Get-Service -Name "SIEMWatchdog" -ErrorAction SilentlyContinue
+    if ($service) {
+        Stop-Service -Name "SIEMWatchdog" -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        sc.exe delete "SIEMWatchdog" | Out-Null
+        Write-Log "  Watchdog служба удалена"
+    }
+}
+
 function Register-AgentWithServer {
     Write-Log "Регистрация агента на сервере..."
 
@@ -290,10 +462,17 @@ if (-not $IsAdmin) {
 if ($Uninstall) {
     Write-Log "Режим удаления агента..."
 
+    # Сначала удаляем Watchdog (он защищает агента)
+    Uninstall-WatchdogService
+
     Uninstall-AgentService
 
     if (Test-Path $InstallDir) {
-        Remove-Item -Path $InstallDir -Recurse -Force
+        # Сбрасываем ACL для удаления
+        try {
+            icacls $InstallDir /reset /T /Q 2>&1 | Out-Null
+        } catch {}
+        Remove-Item -Path $InstallDir -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Файлы агента удалены"
     }
 
@@ -347,12 +526,36 @@ if (-not $InstalledVersion) {
 # Запуск службы
 Start-AgentService
 
+# ============================================
+# ЗАЩИТА АГЕНТА (применяется автоматически)
+# ============================================
+if ($EnableProtection) {
+    Write-Log ""
+    Write-Log "Применение защиты агента..."
+
+    # Защита файлов через ACL
+    Protect-AgentFiles
+
+    # Защита службы агента
+    Protect-AgentService -ServiceName "SIEMAgent"
+
+    # Установка Watchdog
+    if ($InstallWatchdog) {
+        Install-WatchdogService
+    }
+
+    Write-Log "Защита агента применена"
+}
+
 # Регистрация на сервере (не критично)
 Register-AgentWithServer
 
+Write-Log ""
 Write-Log "=========================================="
 Write-Log "Установка завершена успешно!"
 Write-Log "Версия: $AvailableVersion"
+Write-Log "Защита: $(if ($EnableProtection) { 'Включена' } else { 'Отключена' })"
+Write-Log "Watchdog: $(if ($InstallWatchdog -and $EnableProtection) { 'Установлен' } else { 'Не установлен' })"
 Write-Log "=========================================="
 
 exit 0
