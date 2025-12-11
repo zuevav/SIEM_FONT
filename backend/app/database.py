@@ -164,7 +164,11 @@ def execute_stored_procedure(
     params: dict = None
 ) -> list:
     """
-    Execute SQL Server stored procedure
+    Execute SQL Server stored procedure (MS SQL ONLY - NOT FOR POSTGRESQL)
+
+    NOTE: This function is for MS SQL Server legacy support only.
+    PostgreSQL uses functions, not stored procedures with EXEC syntax.
+    For PostgreSQL, use execute_raw_sql() with SELECT * FROM function_name() syntax.
 
     Args:
         db: Database session
@@ -173,36 +177,11 @@ def execute_stored_procedure(
 
     Returns:
         list: Result sets from procedure
-
-    Example:
-        results = execute_stored_procedure(
-            db,
-            'security_events.GetDashboardStats',
-            {'Hours': 24}
-        )
     """
-    if params is None:
-        params = {}
-
-    # Build EXEC statement
-    param_str = ", ".join([f"@{k}=:{k}" for k in params.keys()])
-    sql = f"EXEC {procedure_name} {param_str}"
-
-    # Execute
-    result = db.execute(sql, params)
-
-    # Fetch all result sets
-    results = []
-    while True:
-        try:
-            rows = result.fetchall()
-            results.append([dict(row) for row in rows])
-            if not result.nextset():
-                break
-        except Exception:
-            break
-
-    return results
+    raise NotImplementedError(
+        "execute_stored_procedure is for MS SQL only. "
+        "For PostgreSQL, use execute_raw_sql() with 'SELECT * FROM function_name()' syntax."
+    )
 
 
 def execute_raw_sql(db: Session, sql: str, params: dict = None) -> list:

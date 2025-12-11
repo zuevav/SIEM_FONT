@@ -47,10 +47,10 @@ async def create_events_batch(
     Maximum 1000 events per batch
     """
     try:
-        # Validate all agents exist
+        # Validate all agents exist (PostgreSQL snake_case)
         agent_ids = {str(event.agent_id) for event in batch.events}
-        agents = db.query(Agent).filter(Agent.AgentId.in_(agent_ids)).all()
-        existing_agent_ids = {agent.AgentId for agent in agents}
+        agents = db.query(Agent).filter(Agent.agent_id.in_(agent_ids)).all()
+        existing_agent_ids = {str(agent.agent_id) for agent in agents}
 
         missing_agents = agent_ids - existing_agent_ids
         if missing_agents:
@@ -59,14 +59,40 @@ async def create_events_batch(
                 detail=f"Unknown agents: {', '.join(missing_agents)}"
             )
 
-        # Use stored procedure for high performance
-        events_json = json.dumps([event.dict() for event in batch.events])
-
-        # Call stored procedure
-        db.execute(
-            text("EXEC security_events.InsertEventsBatch @Events = :events"),
-            {"events": events_json}
-        )
+        # Insert events using PostgreSQL batch insert
+        for event in batch.events:
+            db.execute(
+                text("""
+                    INSERT INTO security_events.events
+                    (agent_id, event_time, event_code, provider, source_type, category,
+                     severity, message, subject_user, target_user, source_ip, destination_ip,
+                     process_name, process_id, file_path, registry_key, event_data, raw_xml)
+                    VALUES
+                    (:agent_id, :event_time, :event_code, :provider, :source_type, :category,
+                     :severity, :message, :subject_user, :target_user, :source_ip, :destination_ip,
+                     :process_name, :process_id, :file_path, :registry_key, :event_data::jsonb, :raw_xml)
+                """),
+                {
+                    "agent_id": str(event.agent_id),
+                    "event_time": event.event_time or datetime.utcnow(),
+                    "event_code": event.event_code,
+                    "provider": event.provider,
+                    "source_type": event.source_type,
+                    "category": event.category,
+                    "severity": event.severity or 0,
+                    "message": event.message,
+                    "subject_user": event.subject_user,
+                    "target_user": event.target_user,
+                    "source_ip": event.source_ip,
+                    "destination_ip": event.destination_ip,
+                    "process_name": event.process_name,
+                    "process_id": event.process_id,
+                    "file_path": event.file_path,
+                    "registry_key": event.registry_key,
+                    "event_data": json.dumps(event.event_data) if event.event_data else None,
+                    "raw_xml": event.raw_xml
+                }
+            )
         db.commit()
 
         logger.info(f"Inserted {len(batch.events)} events from {len(agent_ids)} agents")
