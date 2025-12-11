@@ -120,10 +120,19 @@ class APIService {
   // ============================================================================
 
   async getEvents(filter: EventFilter = {}): Promise<PaginatedResponse<Event>> {
-    const response = await this.client.get<PaginatedResponse<Event>>('/events', {
+    const response = await this.client.get<any>('/events', {
       params: filter,
     })
-    return response.data
+    // Backend returns { events: [], total, limit, offset }
+    // Transform to PaginatedResponse format { items: [], total, page, page_size, total_pages }
+    const data = response.data
+    return {
+      items: data.events || [],
+      total: data.total || 0,
+      page: Math.floor((data.offset || 0) / (data.limit || 100)) + 1,
+      page_size: data.limit || 100,
+      total_pages: Math.ceil((data.total || 0) / (data.limit || 100)),
+    }
   }
 
   async getEvent(eventId: number): Promise<Event> {
@@ -237,10 +246,19 @@ class APIService {
   // ============================================================================
 
   async getIncidents(filter: IncidentFilter = {}): Promise<PaginatedResponse<Incident>> {
-    const response = await this.client.get<PaginatedResponse<Incident>>('/incidents', {
+    const response = await this.client.get<any>('/incidents', {
       params: filter,
     })
-    return response.data
+    // Backend returns { incidents: [], total, limit, offset }
+    // Transform to PaginatedResponse format { items: [], total, page, page_size, total_pages }
+    const data = response.data
+    return {
+      items: data.incidents || [],
+      total: data.total || 0,
+      page: Math.floor((data.offset || 0) / (data.limit || 100)) + 1,
+      page_size: data.limit || 100,
+      total_pages: Math.ceil((data.total || 0) / (data.limit || 100)),
+    }
   }
 
   async getIncident(incidentId: number): Promise<Incident> {
@@ -312,10 +330,19 @@ class APIService {
   // ============================================================================
 
   async getAgents(params?: { status?: string; limit?: number; offset?: number }): Promise<PaginatedResponse<Agent>> {
-    const response = await this.client.get<PaginatedResponse<Agent>>('/agents', {
+    const response = await this.client.get<any>('/agents', {
       params,
     })
-    return response.data
+    // Backend returns { agents: [], total, limit, offset }
+    // Transform to PaginatedResponse format { items: [], total, page, page_size, total_pages }
+    const data = response.data
+    return {
+      items: data.agents || [],
+      total: data.total || 0,
+      page: Math.floor((data.offset || 0) / (data.limit || 100)) + 1,
+      page_size: data.limit || 100,
+      total_pages: Math.ceil((data.total || 0) / (data.limit || 100)),
+    }
   }
 
   async getAgent(agentId: string): Promise<Agent> {
@@ -385,7 +412,7 @@ class APIService {
   }
 
   async testFreeScoutConnection(url: string, apiKey: string): Promise<{ success: boolean; mailbox_name?: string; error?: string }> {
-    const response = await this.client.post('/integrations/freescout/test', { url, api_key: apiKey })
+    const response = await this.client.post('/settings/test-freescout', { url, api_key: apiKey })
     return response.data
   }
 

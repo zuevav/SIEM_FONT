@@ -166,9 +166,11 @@ class TestADRequest(BaseModel):
 
     @validator('server')
     def validate_server(cls, v):
-        """Validate LDAP server URL format"""
+        """Validate and normalize LDAP server URL format"""
+        v = v.strip()
+        # Auto-prepend ldap:// if no protocol specified
         if not v.startswith(('ldap://', 'ldaps://')):
-            raise ValueError('Server must start with ldap:// or ldaps://')
+            v = f'ldap://{v}'
         return v
 
 
