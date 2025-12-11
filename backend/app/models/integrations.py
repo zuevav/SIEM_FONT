@@ -17,13 +17,13 @@ class FreeScoutTicket(Base):
     TicketId = Column(Integer, primary_key=True, index=True, autoincrement=True)
     FreeScoutConversationId = Column(Integer, nullable=False, unique=True, index=True)
     FreeScoutConversationNumber = Column(Integer, nullable=False)
-    AlertId = Column(Integer, ForeignKey('incidents.Alerts.AlertId'), nullable=True, index=True)
-    IncidentId = Column(Integer, ForeignKey('incidents.Incidents.IncidentId'), nullable=True, index=True)
+    AlertId = Column(Integer, ForeignKey('incidents.alerts.alert_id'), nullable=True, index=True)
+    IncidentId = Column(Integer, ForeignKey('incidents.incidents.incident_id'), nullable=True, index=True)
     TicketUrl = Column(String(500))
     TicketStatus = Column(String(20))  # active, closed, spam
     TicketSubject = Column(String(500))
-    CreatedAt = Column(DateTime, server_default=func.getutcdate())
-    UpdatedAt = Column(DateTime, onupdate=func.getutcdate())
+    CreatedAt = Column(DateTime, server_default=func.now())
+    UpdatedAt = Column(DateTime, onupdate=func.now())
     LastSyncedAt = Column(DateTime)
 
     def __repr__(self):
@@ -40,13 +40,13 @@ class EmailNotification(Base):
     RecipientEmail = Column(String(255), nullable=False)
     Subject = Column(String(500))
     Body = Column(Text)
-    AlertId = Column(Integer, ForeignKey('incidents.Alerts.AlertId'), nullable=True, index=True)
-    IncidentId = Column(Integer, ForeignKey('incidents.Incidents.IncidentId'), nullable=True, index=True)
+    AlertId = Column(Integer, ForeignKey('incidents.alerts.alert_id'), nullable=True, index=True)
+    IncidentId = Column(Integer, ForeignKey('incidents.incidents.incident_id'), nullable=True, index=True)
     NotificationType = Column(String(50))  # alert, incident, system, test
     Status = Column(String(20), index=True)  # sent, failed, pending
     ErrorMessage = Column(Text)
     SentAt = Column(DateTime)
-    CreatedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    CreatedAt = Column(DateTime, server_default=func.now(), index=True)
 
     def __repr__(self):
         return f"<EmailNotification(id={self.NotificationId}, to='{self.RecipientEmail}', status='{self.Status}')>"
