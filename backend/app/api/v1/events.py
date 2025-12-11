@@ -243,82 +243,112 @@ async def get_event_statistics(
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """
-    Get event statistics for dashboard
+    Get event statistics for dashboard (PostgreSQL version)
     """
     try:
-        # Use stored procedure for performance
-        result = db.execute(
-            text("EXEC security_events.GetDashboardStats @Hours = :hours"),
-            {"hours": hours}
-        )
+        start_time = datetime.utcnow() - timedelta(hours=hours)
 
-        # Parse result sets
-        stats_data = {}
+        # Total counts by severity
+        total_query = text("""
+            SELECT
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE severity = 4) as critical,
+                COUNT(*) FILTER (WHERE severity = 3) as high,
+                COUNT(*) FILTER (WHERE severity = 2) as medium,
+                COUNT(*) FILTER (WHERE severity <= 1) as low
+            FROM security_events.events
+            WHERE event_time >= :start_time
+        """)
+        total_result = db.execute(total_query, {"start_time": start_time}).fetchone()
 
-        # First result set - Total counts
-        total_row = result.fetchone()
-        if total_row:
-            stats_data['total_events'] = total_row[0]
-            stats_data['critical_events'] = total_row[1]
-            stats_data['high_events'] = total_row[2]
-            stats_data['medium_events'] = total_row[3]
-            stats_data['low_events'] = total_row[4]
+        total_events = total_result[0] if total_result else 0
+        critical_events = total_result[1] if total_result else 0
+        high_events = total_result[2] if total_result else 0
+        medium_events = total_result[3] if total_result else 0
+        low_events = total_result[4] if total_result else 0
 
-        # Next result set - Events by severity
-        result.nextset()
+        # Events by severity
+        severity_query = text("""
+            SELECT severity, COUNT(*) as count
+            FROM security_events.events
+            WHERE event_time >= :start_time
+            GROUP BY severity
+            ORDER BY severity
+        """)
+        severity_result = db.execute(severity_query, {"start_time": start_time})
         events_by_severity = {}
-        for row in result:
-            severity_name = ['Info', 'Low', 'Medium', 'High', 'Critical'][row[0]]
-            events_by_severity[severity_name] = row[1]
+        severity_names = ['Info', 'Low', 'Medium', 'High', 'Critical']
+        for row in severity_result:
+            sev_idx = min(row[0], 4) if row[0] is not None else 0
+            events_by_severity[severity_names[sev_idx]] = row[1]
 
-        # Next result set - Events by category
-        result.nextset()
-        events_by_category = {}
-        for row in result:
-            events_by_category[row[0] or 'Unknown'] = row[1]
+        # Events by category
+        category_query = text("""
+            SELECT COALESCE(category, 'Unknown') as cat, COUNT(*) as count
+            FROM security_events.events
+            WHERE event_time >= :start_time
+            GROUP BY category
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        category_result = db.execute(category_query, {"start_time": start_time})
+        events_by_category = {row[0]: row[1] for row in category_result}
 
-        # Next result set - Events by source
-        result.nextset()
-        events_by_source = {}
-        for row in result:
-            events_by_source[row[0]] = row[1]
+        # Events by source type
+        source_query = text("""
+            SELECT COALESCE(source_type, 'Unknown') as src, COUNT(*) as count
+            FROM security_events.events
+            WHERE event_time >= :start_time
+            GROUP BY source_type
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        source_result = db.execute(source_query, {"start_time": start_time})
+        events_by_source = {row[0]: row[1] for row in source_result}
 
-        # Next result set - Top agents
-        result.nextset()
-        top_agents = []
-        for row in result:
-            top_agents.append({
-                'agent_id': row[0],
-                'hostname': row[1],
-                'event_count': row[2]
-            })
+        # Top agents
+        agents_query = text("""
+            SELECT e.agent_id::text, COALESCE(a.hostname, 'Unknown') as hostname, COUNT(*) as count
+            FROM security_events.events e
+            LEFT JOIN assets.agents a ON e.agent_id = a.agent_id
+            WHERE e.event_time >= :start_time AND e.agent_id IS NOT NULL
+            GROUP BY e.agent_id, a.hostname
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        agents_result = db.execute(agents_query, {"start_time": start_time})
+        top_agents = [{"agent_id": row[0], "hostname": row[1], "event_count": row[2]} for row in agents_result]
 
-        # Next result set - Top users
-        result.nextset()
-        top_users = []
-        for row in result:
-            if row[0]:  # Skip null users
-                top_users.append({
-                    'username': row[0],
-                    'event_count': row[1]
-                })
+        # Top users
+        users_query = text("""
+            SELECT subject_user, COUNT(*) as count
+            FROM security_events.events
+            WHERE event_time >= :start_time AND subject_user IS NOT NULL AND subject_user != ''
+            GROUP BY subject_user
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        users_result = db.execute(users_query, {"start_time": start_time})
+        top_users = [{"username": row[0], "event_count": row[1]} for row in users_result]
 
-        # Next result set - Top processes
-        result.nextset()
-        top_processes = []
-        for row in result:
-            if row[0]:  # Skip null processes
-                top_processes.append({
-                    'process_name': row[0],
-                    'event_count': row[1]
-                })
+        # Top processes
+        processes_query = text("""
+            SELECT process_name, COUNT(*) as count
+            FROM security_events.events
+            WHERE event_time >= :start_time AND process_name IS NOT NULL AND process_name != ''
+            GROUP BY process_name
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        processes_result = db.execute(processes_query, {"start_time": start_time})
+        top_processes = [{"process_name": row[0], "event_count": row[1]} for row in processes_result]
 
         return EventStatistics(
-            total_events=stats_data.get('total_events', 0),
-            critical_events=stats_data.get('critical_events', 0),
-            high_events=stats_data.get('high_events', 0),
-            medium_events=stats_data.get('medium_events', 0),
-            low_events=stats_data.get('low_events', 0),
+            total_events=total_events,
+            critical_events=critical_events,
+            high_events=high_events,
+            medium_events=medium_events,
+            low_events=low_events,
             events_by_severity=events_by_severity,
             events_by_category=events_by_category,
             events_by_source=events_by_source,
@@ -343,32 +373,30 @@ async def get_events_timeline(
     current_user: CurrentUser = Depends(get_current_user)
 ):
     """
-    Get events timeline for charts
+    Get events timeline for charts (PostgreSQL version)
     Returns time-series data grouped by interval
     """
     try:
         start_time = datetime.utcnow() - timedelta(hours=hours)
         end_time = datetime.utcnow()
 
-        # Build time grouping SQL based on interval
-        if interval == "hour":
-            time_group = "DATEADD(HOUR, DATEDIFF(HOUR, 0, EventTime), 0)"
-        else:  # day
-            time_group = "DATEADD(DAY, DATEDIFF(DAY, 0, EventTime), 0)"
+        # PostgreSQL date_trunc for time grouping
+        time_trunc = 'hour' if interval == 'hour' else 'day'
 
         # Query timeline data
         query = text(f"""
             SELECT
-                {time_group} as TimeSlot,
-                Severity,
-                COUNT(*) as EventCount
-            FROM security_events.Events
-            WHERE EventTime >= :start_time AND EventTime <= :end_time
-            GROUP BY {time_group}, Severity
-            ORDER BY TimeSlot, Severity
+                date_trunc(:time_trunc, event_time) as time_slot,
+                severity,
+                COUNT(*) as event_count
+            FROM security_events.events
+            WHERE event_time >= :start_time AND event_time <= :end_time
+            GROUP BY date_trunc(:time_trunc, event_time), severity
+            ORDER BY time_slot, severity
         """)
 
         result = db.execute(query, {
+            "time_trunc": time_trunc,
             "start_time": start_time,
             "end_time": end_time
         })
