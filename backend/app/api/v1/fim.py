@@ -63,22 +63,22 @@ async def get_fim_events(
         # Build query - filter for Sysmon events only
         query = db.query(Event).filter(
             or_(
-                Event.SourceType == "Sysmon",
-                Event.Provider.ilike("%Sysmon%")
+                Event.source_type == "Sysmon",
+                Event.provider.ilike("%Sysmon%")
             )
         )
 
         # Filter by FIM event codes
-        query = query.filter(Event.EventCode.in_(list(FIM_EVENT_CODES.keys())))
+        query = query.filter(Event.event_code.in_(list(FIM_EVENT_CODES.keys())))
 
         # Time filters
         if last_hours:
             start_time = datetime.utcnow() - timedelta(hours=last_hours)
 
         if start_time:
-            query = query.filter(Event.EventTime >= start_time)
+            query = query.filter(Event.event_time >= start_time)
         if end_time:
-            query = query.filter(Event.EventTime <= end_time)
+            query = query.filter(Event.event_time <= end_time)
 
         # Event type filter
         if event_type:
@@ -92,35 +92,35 @@ async def get_fim_events(
             if event_type in event_code_map:
                 codes = event_code_map[event_type]
                 if isinstance(codes, list):
-                    query = query.filter(Event.EventCode.in_(codes))
+                    query = query.filter(Event.event_code.in_(codes))
                 else:
-                    query = query.filter(Event.EventCode == codes)
+                    query = query.filter(Event.event_code == codes)
 
         # FIM-specific filters
         if file_path:
-            query = query.filter(Event.FilePath.ilike(f"%{file_path}%"))
+            query = query.filter(Event.file_path.ilike(f"%{file_path}%"))
 
         if registry_key:
             # Registry key is stored in EventData JSONB field
             query = query.filter(
-                Event.EventData['RegistryKey'].astext.ilike(f"%{registry_key}%")
+                Event.event_data['RegistryKey'].astext.ilike(f"%{registry_key}%")
             )
 
         if process_name:
-            query = query.filter(Event.ProcessName.ilike(f"%{process_name}%"))
+            query = query.filter(Event.process_name.ilike(f"%{process_name}%"))
 
         # General filters
         if agent_id:
-            query = query.filter(Event.AgentId == agent_id)
+            query = query.filter(Event.agent_id == agent_id)
 
         if hostname:
-            query = query.filter(Event.Hostname.ilike(f"%{hostname}%"))
+            query = query.filter(Event.computer.ilike(f"%{hostname}%"))
 
         # Get total count
         total = query.count()
 
         # Apply pagination and ordering
-        events = query.order_by(Event.EventTime.desc()).offset(offset).limit(limit).all()
+        events = query.order_by(Event.event_time.desc()).offset(offset).limit(limit).all()
 
         # Convert to dict with FIM-specific fields
         fim_events = []
@@ -174,12 +174,12 @@ async def get_fim_event_detail(
     Get detailed FIM event information by ID
     """
     event = db.query(Event).filter(
-        Event.EventId == event_id,
+        Event.event_id == event_id,
         or_(
-            Event.SourceType == "Sysmon",
-            Event.Provider.ilike("%Sysmon%")
+            Event.source_type == "Sysmon",
+            Event.provider.ilike("%Sysmon%")
         ),
-        Event.EventCode.in_(list(FIM_EVENT_CODES.keys()))
+        Event.event_code.in_(list(FIM_EVENT_CODES.keys()))
     ).first()
 
     if not event:
@@ -243,11 +243,11 @@ async def get_fim_statistics(
         # Base query for FIM events
         base_query = db.query(Event).filter(
             or_(
-                Event.SourceType == "Sysmon",
-                Event.Provider.ilike("%Sysmon%")
+                Event.source_type == "Sysmon",
+                Event.provider.ilike("%Sysmon%")
             ),
-            Event.EventCode.in_(list(FIM_EVENT_CODES.keys())),
-            Event.EventTime >= start_time
+            Event.event_code.in_(list(FIM_EVENT_CODES.keys())),
+            Event.event_time >= start_time
         )
 
         # Total FIM events
@@ -256,34 +256,34 @@ async def get_fim_statistics(
         # Events by type
         events_by_type = {}
         for event_code, event_name in FIM_EVENT_CODES.items():
-            count = base_query.filter(Event.EventCode == event_code).count()
+            count = base_query.filter(Event.event_code == event_code).count()
             events_by_type[event_name] = count
 
         # Top modified paths (files and registry)
         top_file_paths = db.query(
-            Event.FilePath,
-            func.count(Event.EventId).label('count')
+            Event.file_path,
+            func.count(Event.event_id).label('count')
         ).filter(
-            Event.EventId.in_(base_query.with_entities(Event.EventId).subquery()),
-            Event.FilePath.isnot(None)
-        ).group_by(Event.FilePath).order_by(func.count(Event.EventId).desc()).limit(10).all()
+            Event.event_id.in_(base_query.with_entities(Event.event_id).subquery()),
+            Event.file_path.isnot(None)
+        ).group_by(Event.file_path).order_by(func.count(Event.event_id).desc()).limit(10).all()
 
         # Top processes making changes
         top_processes = db.query(
-            Event.ProcessName,
-            func.count(Event.EventId).label('count')
+            Event.process_name,
+            func.count(Event.event_id).label('count')
         ).filter(
-            Event.EventId.in_(base_query.with_entities(Event.EventId).subquery()),
-            Event.ProcessName.isnot(None)
-        ).group_by(Event.ProcessName).order_by(func.count(Event.EventId).desc()).limit(10).all()
+            Event.event_id.in_(base_query.with_entities(Event.event_id).subquery()),
+            Event.process_name.isnot(None)
+        ).group_by(Event.process_name).order_by(func.count(Event.event_id).desc()).limit(10).all()
 
         # Events by severity
         events_by_severity = db.query(
-            Event.Severity,
-            func.count(Event.EventId).label('count')
+            Event.severity,
+            func.count(Event.event_id).label('count')
         ).filter(
-            Event.EventId.in_(base_query.with_entities(Event.EventId).subquery())
-        ).group_by(Event.Severity).all()
+            Event.event_id.in_(base_query.with_entities(Event.event_id).subquery())
+        ).group_by(Event.severity).all()
 
         severity_map = {0: 'Info', 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Critical'}
         events_by_severity_dict = {
@@ -292,7 +292,7 @@ async def get_fim_statistics(
         }
 
         # Critical file changes (high severity)
-        critical_changes = base_query.filter(Event.Severity >= 3).count()
+        critical_changes = base_query.filter(Event.severity >= 3).count()
 
         return {
             "time_window_hours": hours,

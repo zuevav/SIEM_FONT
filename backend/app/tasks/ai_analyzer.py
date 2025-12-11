@@ -92,10 +92,10 @@ class AIAnalyzerTask:
             # Get unanalyzed events (oldest first, limit batch size)
             unanalyzed_events = db.query(Event).filter(
                 or_(
-                    Event.AIProcessed == False,
-                    Event.AIProcessed == None
+                    Event.ai_processed == False,
+                    Event.ai_processed == None
                 )
-            ).order_by(Event.EventTime.asc()).limit(settings.ai_batch_size).all()
+            ).order_by(Event.event_time.asc()).limit(settings.ai_batch_size).all()
 
             if not unanalyzed_events:
                 return  # No events to process
@@ -131,14 +131,15 @@ class AIAnalyzerTask:
                     # Analyze with AI
                     analysis = await ai_service.analyze_event(event_data)
 
-                    # Update event with AI analysis
-                    event.AIProcessed = analysis.get("ai_processed", True)
-                    event.AIIsAttack = analysis.get("ai_is_attack")
-                    event.AIScore = analysis.get("ai_score")
-                    event.AICategory = analysis.get("ai_category")
-                    event.AIDescription = analysis.get("ai_description")
-                    event.AIConfidence = analysis.get("ai_confidence")
-                    event.AIProcessedAt = datetime.utcnow()
+                    # Update event with AI analysis (use snake_case for writes)
+                    event.ai_processed = analysis.get("ai_processed", True)
+                    event.ai_is_attack = analysis.get("ai_is_attack")
+                    event.ai_score = analysis.get("ai_score")
+                    event.ai_category = analysis.get("ai_category")
+                    event.ai_description = analysis.get("ai_description")
+                    event.ai_confidence = analysis.get("ai_confidence")
+                    # Note: ai_processed_at column may not exist, using processed_time instead
+                    event.processed_time = datetime.utcnow()
 
                     processed_count += 1
 
@@ -156,8 +157,8 @@ class AIAnalyzerTask:
                 except Exception as e:
                     logger.error(f"Error analyzing event {event.EventId}: {e}", exc_info=True)
                     # Mark as processed with error
-                    event.AIProcessed = False
-                    event.AIDescription = f"Ошибка AI-анализа: {str(e)}"
+                    event.ai_processed = False
+                    event.ai_description = f"Ошибка AI-анализа: {str(e)}"
 
             # Commit all changes
             db.commit()
