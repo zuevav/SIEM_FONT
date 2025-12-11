@@ -27,50 +27,87 @@ class SavedSearch(Base):
     __table_args__ = {'schema': 'config'}
 
     # Primary Key
-    SavedSearchId = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    saved_search_id = Column('saved_search_id', Integer, primary_key=True, index=True, autoincrement=True)
 
     # Basic Info
-    Name = Column(String(255), nullable=False, index=True)
-    Description = Column(Text, nullable=True)
-    SearchType = Column(Enum(SearchType), nullable=False, index=True)
+    name = Column('name', String(255), nullable=False, index=True)
+    description = Column('description', Text, nullable=True)
+    search_type = Column('search_type', Enum(SearchType), nullable=False, index=True)
 
     # Filter Configuration (stored as JSON)
-    Filters = Column(Text, nullable=False)  # JSON string with filter parameters
+    filters = Column('filters', Text, nullable=False)  # JSON string with filter parameters
 
     # Ownership & Sharing
-    UserId = Column(Integer, ForeignKey('users.UserId'), nullable=False, index=True)
-    IsShared = Column(Boolean, default=False, nullable=False, index=True)
-    # If IsShared=True, all users can see this search
+    user_id = Column('user_id', Integer, ForeignKey('config.users.user_id'), nullable=False, index=True)
+    is_shared = Column('is_shared', Boolean, default=False, nullable=False, index=True)
+    # If is_shared=True, all users can see this search
 
     # Metadata
-    CreatedAt = Column(DateTime, default=datetime.utcnow, nullable=False)
-    UpdatedAt = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column('created_at', DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column('updated_at', DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
     user = relationship("User", back_populates="saved_searches")
 
+    # Backward compatibility properties
+    @property
+    def SavedSearchId(self):
+        return self.saved_search_id
+
+    @property
+    def Name(self):
+        return self.name
+
+    @property
+    def Description(self):
+        return self.description
+
+    @property
+    def SearchType(self):
+        return self.search_type
+
+    @property
+    def Filters(self):
+        return self.filters
+
+    @property
+    def UserId(self):
+        return self.user_id
+
+    @property
+    def IsShared(self):
+        return self.is_shared
+
+    @property
+    def CreatedAt(self):
+        return self.created_at
+
+    @property
+    def UpdatedAt(self):
+        return self.updated_at
+
     def __repr__(self):
-        return f"<SavedSearch(id={self.SavedSearchId}, name='{self.Name}', type={self.SearchType}, user_id={self.UserId})>"
+        return f"<SavedSearch(id={self.saved_search_id}, name='{self.name}', type={self.search_type}, user_id={self.user_id})>"
 
     def to_dict(self):
         """Convert to dictionary for API responses"""
         import json
 
-        filters = {}
-        if self.Filters:
+        filters_dict = {}
+        if self.filters:
             try:
-                filters = json.loads(self.Filters)
+                filters_dict = json.loads(self.filters)
             except:
                 pass
 
         return {
-            "id": self.SavedSearchId,
-            "name": self.Name,
-            "description": self.Description,
-            "search_type": self.SearchType.value if self.SearchType else None,
-            "filters": filters,
-            "user_id": self.UserId,
-            "is_shared": self.IsShared,
-            "created_at": self.CreatedAt.isoformat() if self.CreatedAt else None,
-            "updated_at": self.UpdatedAt.isoformat() if self.UpdatedAt else None,
+            "id": self.saved_search_id,
+            "name": self.name,
+            "description": self.description,
+            "search_type": self.search_type.value if self.search_type else None,
+            "filters": filters_dict,
+            "user_id": self.user_id,
+            "is_shared": self.is_shared,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
