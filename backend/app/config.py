@@ -141,6 +141,13 @@ class Settings(BaseSettings):
         return f"gpt://{self.yandex_gpt_folder_id}/{self.yandex_gpt_model}"
 
     # ============================================================================
+    # DEFAULT ADMIN USER
+    # ============================================================================
+    default_admin_username: str = Field(default="admin", env="DEFAULT_ADMIN_USERNAME")
+    default_admin_password: str = Field(default="Admin123!", env="DEFAULT_ADMIN_PASSWORD")
+    default_admin_email: str = Field(default="admin@company.local", env="DEFAULT_ADMIN_EMAIL")
+
+    # ============================================================================
     # SECURITY & AUTHENTICATION
     # ============================================================================
     jwt_secret_key: str = Field(

@@ -16,6 +16,8 @@ from app.config import settings
 from app.database import engine, check_db_connection, close_db_connection, get_db
 from app.tasks import get_ai_analyzer_task, get_dashboard_updater_task
 from app.migrations_runner import run_migrations_on_startup
+from app.core.security import get_password_hash
+from app.models.user import User
 
 # Setup logging
 logging.basicConfig(
@@ -24,6 +26,48 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_default_admin_user(db):
+    """
+    Create default admin user if it doesn't exist.
+    Uses settings from environment variables.
+    """
+    try:
+        # Check if any user exists
+        existing_user = db.query(User).filter(User.username == settings.default_admin_username).first()
+
+        if existing_user:
+            logger.info(f"✓ Admin user '{settings.default_admin_username}' already exists")
+            return
+
+        # Check if any admin exists
+        any_admin = db.query(User).filter(User.role == 'admin').first()
+        if any_admin:
+            logger.info(f"✓ Admin user already exists: {any_admin.username}")
+            return
+
+        # Create default admin user
+        logger.info(f"Creating default admin user: {settings.default_admin_username}")
+
+        admin_user = User(
+            username=settings.default_admin_username,
+            email=settings.default_admin_email,
+            password_hash=get_password_hash(settings.default_admin_password),
+            role='admin',
+            is_active=True,
+            is_ad_user=False
+        )
+
+        db.add(admin_user)
+        db.commit()
+
+        logger.info(f"✓ Default admin user created: {settings.default_admin_username}")
+        logger.warning(f"⚠️  IMPORTANT: Change default password after first login!")
+
+    except Exception as e:
+        logger.error(f"Failed to create default admin user: {e}")
+        db.rollback()
 
 
 # ============================================================================
@@ -54,6 +98,14 @@ async def lifespan(app: FastAPI):
             db.close()
         except Exception as e:
             logger.warning(f"Migration runner skipped: {e}")
+
+        # Ensure default admin user exists
+        try:
+            db = next(get_db())
+            ensure_default_admin_user(db)
+            db.close()
+        except Exception as e:
+            logger.warning(f"Default admin user check skipped: {e}")
 
     else:
         logger.error("✗ Database connection failed!")

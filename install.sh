@@ -483,8 +483,8 @@ run_health_check() {
     # Check containers
     local failed=0
 
-    for service in db backend frontend; do
-        if $COMPOSE_CMD ps | grep "$service" | grep -q "Up"; then
+    for service in postgres backend frontend; do
+        if $COMPOSE_CMD ps | grep "$service" | grep -q "Up\|running"; then
             log_success "$service is running"
         else
             log_error "$service is not running"
