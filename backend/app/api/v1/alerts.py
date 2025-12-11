@@ -641,7 +641,7 @@ async def assign_alert(
     Assign alert to user (analyst or admin)
     """
     # Verify user exists
-    user = db.query(User).filter(User.UserId == assign.user_id).first()
+    user = db.query(User).filter(User.user_id == assign.user_id).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -650,7 +650,7 @@ async def assign_alert(
 
     update = AlertUpdate(
         assigned_to=assign.user_id,
-        comment=assign.comment or f"Alert assigned to {user.Username} by {current_user.username}"
+        comment=assign.comment or f"Alert assigned to {user.username} by {current_user.username}"
     )
     return await update_alert(alert_id, update, db, current_user)
 

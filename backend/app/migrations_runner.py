@@ -28,7 +28,7 @@ class MigrationRunner:
                 CREATE TABLE IF NOT EXISTS config.schema_migrations (
                     migration_id SERIAL PRIMARY KEY,
                     migration_name VARCHAR(255) NOT NULL UNIQUE,
-                    applied_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     success BOOLEAN DEFAULT TRUE,
                     error_message TEXT
                 );
@@ -98,7 +98,7 @@ class MigrationRunner:
             # Record successful migration
             self.db.execute(text("""
                 INSERT INTO config.schema_migrations (migration_name, applied_at, success)
-                VALUES (:name, NOW() AT TIME ZONE 'UTC', TRUE)
+                VALUES (:name, CURRENT_TIMESTAMP, TRUE)
             """), {"name": migration_name})
 
             self.db.commit()
@@ -112,9 +112,9 @@ class MigrationRunner:
             try:
                 self.db.execute(text("""
                     INSERT INTO config.schema_migrations (migration_name, applied_at, success, error_message)
-                    VALUES (:name, NOW() AT TIME ZONE 'UTC', FALSE, :error)
+                    VALUES (:name, CURRENT_TIMESTAMP, FALSE, :error)
                     ON CONFLICT (migration_name) DO UPDATE
-                    SET success = FALSE, error_message = :error, applied_at = NOW() AT TIME ZONE 'UTC'
+                    SET success = FALSE, error_message = :error, applied_at = CURRENT_TIMESTAMP
                 """), {"name": migration_name, "error": str(e)})
                 self.db.commit()
             except:
