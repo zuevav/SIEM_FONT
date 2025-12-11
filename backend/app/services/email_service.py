@@ -516,3 +516,31 @@ def get_email_service(
     )
 
     return _email_service
+
+
+async def send_email(
+    to_emails: List[str],
+    subject: str,
+    html_body: str,
+    text_body: Optional[str] = None
+) -> tuple:
+    """
+    Convenience function to send email using settings from config
+    Returns (success, error_message)
+    """
+    from app.config import settings
+
+    if not settings.email_enabled:
+        logger.warning("Email is disabled in settings")
+        return False, "Email is disabled"
+
+    service = get_email_service(
+        smtp_host=settings.smtp_server,
+        smtp_port=settings.smtp_port,
+        smtp_username=settings.smtp_username,
+        smtp_password=settings.smtp_password,
+        smtp_from_email=settings.smtp_from_email,
+        smtp_use_tls=settings.smtp_use_tls
+    )
+
+    return service.send_email(to_emails, subject, html_body, text_body)
