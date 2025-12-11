@@ -45,6 +45,15 @@ class SettingsResponse(BaseModel):
     abuseipdb_api_key: Optional[str] = None
     threat_intel_enabled: bool = False
 
+    # Active Directory
+    ad_enabled: bool = False
+    ad_server: Optional[str] = None
+    ad_base_dn: Optional[str] = None
+    ad_bind_user: Optional[str] = None
+    ad_bind_password: Optional[str] = None
+    ad_sync_enabled: bool = False
+    ad_sync_interval_hours: int = 24
+
     # System
     system_version: Optional[str] = None
     system_git_branch: Optional[str] = None
@@ -98,6 +107,15 @@ class SettingsUpdate(BaseModel):
     abuseipdb_api_key: Optional[str] = None
     threat_intel_enabled: Optional[bool] = None
 
+    # Active Directory
+    ad_enabled: Optional[bool] = None
+    ad_server: Optional[str] = None
+    ad_base_dn: Optional[str] = None
+    ad_bind_user: Optional[str] = None
+    ad_bind_password: Optional[str] = None
+    ad_sync_enabled: Optional[bool] = None
+    ad_sync_interval_hours: Optional[int] = Field(None, ge=1, le=168)
+
 
 class TestEmailRequest(BaseModel):
     """Test email configuration"""
@@ -136,6 +154,31 @@ class TestFreeScoutResponse(BaseModel):
     message: str
     mailbox_name: Optional[str] = None
     mailbox_id: Optional[int] = None
+    error: Optional[str] = None
+
+
+class TestADRequest(BaseModel):
+    """Test Active Directory connection"""
+    server: str
+    base_dn: str
+    bind_user: str
+    bind_password: str
+
+    @validator('server')
+    def validate_server(cls, v):
+        """Validate LDAP server URL format"""
+        if not v.startswith(('ldap://', 'ldaps://')):
+            raise ValueError('Server must start with ldap:// or ldaps://')
+        return v
+
+
+class TestADResponse(BaseModel):
+    """Test Active Directory connection result"""
+    success: bool
+    message: str
+    server_type: Optional[str] = None
+    domain_info: Optional[str] = None
+    user_count: Optional[int] = None
     error: Optional[str] = None
 
 

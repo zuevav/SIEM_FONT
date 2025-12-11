@@ -30,7 +30,8 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1  # 4.0.1 compatible with passlib 1.7.4 (4.1+ has breaking changes)
 python-ldap==3.4.4
-# AD integration
+ldap3==2.9.1
+# AD integration (ldap3 - pure Python, python-ldap - requires libldap)
 
 # Environment & Configuration
 python-dotenv==1.0.0
