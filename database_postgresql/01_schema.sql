@@ -377,18 +377,9 @@ CREATE TABLE security_events.events (
     geo_country CHAR(2), -- ISO код
     geo_city VARCHAR(100),
 
-    -- Контрольная сумма для защиты от изменения (требование ЦБ)
-    event_hash VARCHAR(64) GENERATED ALWAYS AS (
-        encode(digest(
-            event_id::text || event_time::text || agent_id::text || COALESCE(raw_event::text, ''),
-            'sha256'
-        ), 'hex')
-    ) STORED,
-
     -- Ограничения
     CONSTRAINT ck_events_severity CHECK (severity BETWEEN 0 AND 4),
-    CONSTRAINT ck_events_outcome CHECK (outcome IN ('success', 'failure', 'unknown')),
-    CONSTRAINT fk_events_agent FOREIGN KEY (agent_id) REFERENCES assets.agents(agent_id)
+    CONSTRAINT ck_events_outcome CHECK (outcome IN ('success', 'failure', 'unknown'))
 );
 
 -- Создаём первичный ключ (будет автоматически создан индекс)
@@ -743,14 +734,6 @@ CREATE TABLE compliance.audit_log (
     -- Время
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- Контрольная сумма для защиты от изменения
-    log_hash VARCHAR(64) GENERATED ALWAYS AS (
-        encode(digest(
-            log_id::text || created_at::text || action || COALESCE(object_type, '') || COALESCE(details::text, ''),
-            'sha256'
-        ), 'hex')
-    ) STORED,
-
     CONSTRAINT ck_audit_log_action CHECK (action IN (
         'login', 'logout', 'login_failed',
         'create', 'update', 'delete', 'view',
@@ -769,7 +752,7 @@ CREATE INDEX idx_audit_log_object_type ON compliance.audit_log(object_type, obje
 CREATE INDEX idx_audit_log_created_at ON compliance.audit_log(created_at DESC);
 CREATE UNIQUE INDEX idx_audit_log_log_guid ON compliance.audit_log(log_guid);
 
-COMMENT ON TABLE compliance.audit_log IS 'Журнал аудита всех действий пользователей системы. Защищён контрольной суммой от изменений (ГОСТ Р 57580).';
+COMMENT ON TABLE compliance.audit_log IS 'Журнал аудита всех действий пользователей системы (ГОСТ Р 57580).';
 
 -- =====================================================================
 -- PHASE 1: PRODUCTION MVP FEATURES
