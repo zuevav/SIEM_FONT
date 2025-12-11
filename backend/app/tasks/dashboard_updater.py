@@ -85,27 +85,27 @@ class DashboardUpdaterTask:
             # Time range for statistics (last 24 hours)
             time_24h_ago = datetime.utcnow() - timedelta(hours=24)
 
-            # Events statistics
-            events_24h = db.query(func.count(Event.EventId)).filter(
-                Event.EventTime >= time_24h_ago
+            # Events statistics (Event model uses snake_case)
+            events_24h = db.query(func.count(Event.event_id)).filter(
+                Event.event_time >= time_24h_ago
             ).scalar() or 0
 
-            events_last_hour = db.query(func.count(Event.EventId)).filter(
-                Event.EventTime >= datetime.utcnow() - timedelta(hours=1)
+            events_last_hour = db.query(func.count(Event.event_id)).filter(
+                Event.event_time >= datetime.utcnow() - timedelta(hours=1)
             ).scalar() or 0
 
-            high_severity_events = db.query(func.count(Event.EventId)).filter(
+            high_severity_events = db.query(func.count(Event.event_id)).filter(
                 and_(
-                    Event.EventTime >= time_24h_ago,
-                    Event.Severity >= 3
+                    Event.event_time >= time_24h_ago,
+                    Event.severity >= 3
                 )
             ).scalar() or 0
 
             # AI-detected attacks
-            ai_attacks = db.query(func.count(Event.EventId)).filter(
+            ai_attacks = db.query(func.count(Event.event_id)).filter(
                 and_(
-                    Event.EventTime >= time_24h_ago,
-                    Event.AIIsAttack == True
+                    Event.event_time >= time_24h_ago,
+                    Event.ai_is_attack == True
                 )
             ).scalar() or 0
 
@@ -129,12 +129,12 @@ class DashboardUpdaterTask:
                 Incident.Status.in_(['open', 'investigating', 'contained'])
             ).scalar() or 0
 
-            # Agents statistics
-            online_agents = db.query(func.count(Agent.AgentId)).filter(
-                Agent.Status == 'online'
+            # Agents statistics (Agent model uses snake_case)
+            online_agents = db.query(func.count(Agent.agent_id)).filter(
+                Agent.status == 'online'
             ).scalar() or 0
 
-            total_agents = db.query(func.count(Agent.AgentId)).scalar() or 0
+            total_agents = db.query(func.count(Agent.agent_id)).scalar() or 0
 
             offline_agents = total_agents - online_agents
 
