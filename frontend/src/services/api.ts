@@ -185,10 +185,19 @@ class APIService {
   // ============================================================================
 
   async getAlerts(filter: AlertFilter = {}): Promise<PaginatedResponse<Alert>> {
-    const response = await this.client.get<PaginatedResponse<Alert>>('/alerts', {
+    const response = await this.client.get<any>('/alerts', {
       params: filter,
     })
-    return response.data
+    // Backend returns { alerts: [], total, limit, offset }
+    // Transform to PaginatedResponse format { items: [], total, page, page_size, total_pages }
+    const data = response.data
+    return {
+      items: data.alerts || [],
+      total: data.total || 0,
+      page: Math.floor((data.offset || 0) / (data.limit || 100)) + 1,
+      page_size: data.limit || 100,
+      total_pages: Math.ceil((data.total || 0) / (data.limit || 100)),
+    }
   }
 
   async getAlert(alertId: number): Promise<Alert> {
@@ -328,7 +337,7 @@ class APIService {
   // ============================================================================
 
   async getDashboardStats(): Promise<DashboardStats> {
-    const response = await this.client.get<DashboardStats>('/events/stats/dashboard')
+    const response = await this.client.get<DashboardStats>('/dashboard/stats')
     return response.data
   }
 

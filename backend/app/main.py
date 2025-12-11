@@ -338,7 +338,7 @@ async def get_info():
 # ============================================================================
 
 # Import API routers
-from app.api.v1 import auth, events, agents, alerts, incidents, system, saved_searches, docs, playbooks, fim, ad, deployment
+from app.api.v1 import auth, events, agents, alerts, incidents, system, saved_searches, docs, playbooks, fim, ad, deployment, dashboard
 from app.api.v1 import settings as settings_router
 from app.api.v1.integrations import freescout
 from app.api.v1.enrichment import threat_intel
@@ -388,6 +388,9 @@ app.include_router(fim.router, prefix="/api/v1/fim", tags=["FIM - File Integrity
 
 # Active Directory router
 app.include_router(ad.router, prefix="/api/v1/ad", tags=["Active Directory"])
+
+# Dashboard router
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 # WebSocket router
 app.include_router(websocket_router, prefix="/ws", tags=["WebSocket"])

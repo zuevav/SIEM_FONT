@@ -72,11 +72,11 @@ export function useSiemWebSocket(options: UseWebSocketOptions = {}) {
               onAlert(alert)
             }
             // Show notification for new alerts
-            if (alert.Severity >= 3) {
+            if (alert.severity >= 3) {
               addNotification({
                 type: 'error',
-                title: `Новый алерт: ${alert.Title}`,
-                message: alert.Description || 'Требуется внимание',
+                title: `Новый алерт: ${alert.title}`,
+                message: alert.description || 'Требуется внимание',
               })
             }
           }
