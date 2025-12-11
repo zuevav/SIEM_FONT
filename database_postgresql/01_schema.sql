@@ -434,7 +434,8 @@ CREATE INDEX IF NOT EXISTS idx_events_dest_ip ON security_events.events(destinat
 CREATE INDEX IF NOT EXISTS idx_events_process_name ON security_events.events(process_name, event_time DESC) WHERE process_name IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_events_ai_processed ON security_events.events(ai_processed, event_time) WHERE ai_processed = FALSE;
 CREATE INDEX IF NOT EXISTS idx_events_mitre ON security_events.events(mitre_attack_tactic, mitre_attack_technique, event_time DESC) WHERE mitre_attack_tactic IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_events_event_guid ON security_events.events(event_guid);
+-- UNIQUE индекс для event_guid требует event_time для TimescaleDB hypertable
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_event_guid ON security_events.events(event_guid, event_time);
 
 -- GIN index для JSONB полей (поиск по JSON)
 CREATE INDEX IF NOT EXISTS idx_events_raw_event_gin ON security_events.events USING GIN (raw_event);
