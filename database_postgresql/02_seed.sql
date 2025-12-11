@@ -128,12 +128,12 @@ ON CONFLICT (setting_key) DO NOTHING;
 -- Создаём администратора по умолчанию
 -- Username: admin
 -- Password: Admin123!@#$ (ОБЯЗАТЕЛЬНО ИЗМЕНИТЬ ПОСЛЕ ПЕРВОГО ВХОДА!)
--- Bcrypt hash: $2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW
+-- Bcrypt hash generated with: python3 -c "import bcrypt; print(bcrypt.hashpw(b'Admin123!@#$', bcrypt.gensalt(12)).decode())"
 
 INSERT INTO config.users (user_id, username, email, password_hash, role, is_ad_user, is_active) VALUES
-(1, 'admin', 'admin@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'admin', FALSE, TRUE),
-(2, 'analyst', 'analyst@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'analyst', FALSE, TRUE),
-(3, 'viewer', 'viewer@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'viewer', FALSE, TRUE)
+(1, 'admin', 'admin@company.local', '$2b$12$V3UW9yQOVCMTfrRCgBhrdOA6XiwARtYO2k7ov743PbNWFUoHk2G.e', 'admin', FALSE, TRUE),
+(2, 'analyst', 'analyst@company.local', '$2b$12$V3UW9yQOVCMTfrRCgBhrdOA6XiwARtYO2k7ov743PbNWFUoHk2G.e', 'analyst', FALSE, TRUE),
+(3, 'viewer', 'viewer@company.local', '$2b$12$V3UW9yQOVCMTfrRCgBhrdOA6XiwARtYO2k7ov743PbNWFUoHk2G.e', 'viewer', FALSE, TRUE)
 ON CONFLICT (username) DO NOTHING;
 
 -- Обновляем sequence
@@ -557,7 +557,7 @@ ON CONFLICT DO NOTHING;
 \echo 'База данных готова к работе.'
 \echo ''
 \echo 'Следующие шаги:'
-\echo '  1. Измените пароль администратора (admin / Admin123!)'
+\echo '  1. Измените пароль администратора (admin / Admin123!@#$)'
 \echo '  2. Настройте AI provider в таблице config.settings'
 \echo '  3. Настройте SMTP для email уведомлений'
 \echo '  4. Запустите backend сервер'
