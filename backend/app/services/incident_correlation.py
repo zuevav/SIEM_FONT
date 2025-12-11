@@ -14,8 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 import json
 
-from app.models.incident import Alert, Incident
-from app.models.detection import DetectionRule
+from app.models.incident import Alert, Incident, DetectionRule
 from app.services.ai_service import get_ai_service
 
 logger = logging.getLogger(__name__)
