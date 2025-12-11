@@ -107,7 +107,8 @@ class Playbook(Base):
     # Metadata
     created_by = Column(Integer, ForeignKey('config.users.user_id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, nullable=True)
+    # FIX BUG-013: Add onupdate to automatically set updated_at on changes
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
     last_executed_at = Column(DateTime, nullable=True)
 
     # Statistics
@@ -187,7 +188,8 @@ class PlaybookAction(Base):
     # Metadata
     created_by = Column(Integer, ForeignKey('config.users.user_id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, nullable=True)
+    # FIX BUG-013: Add onupdate to automatically set updated_at on changes
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=True)
 
     # Relationships
     creator = relationship("User", foreign_keys=[created_by])

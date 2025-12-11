@@ -9,6 +9,7 @@ from sqlalchemy import func, and_, or_
 from typing import List, Optional
 from datetime import datetime, timedelta
 import logging
+import json
 
 from app.api.deps import get_db, get_current_user
 from app.schemas.auth import CurrentUser
@@ -16,6 +17,16 @@ from app.models.event import Event
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def parse_event_data(raw_event: str) -> dict:
+    """Parse raw_event JSON string to dict, return empty dict on failure"""
+    if not raw_event:
+        return {}
+    try:
+        return json.loads(raw_event)
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
 router = APIRouter()
 
@@ -101,10 +112,9 @@ async def get_fim_events(
             query = query.filter(Event.file_path.ilike(f"%{file_path}%"))
 
         if registry_key:
-            # Registry key is stored in EventData JSONB field
-            query = query.filter(
-                Event.event_data['RegistryKey'].astext.ilike(f"%{registry_key}%")
-            )
+            # FIX BUG-005: Use snake_case field registry_key instead of JSONB access
+            # Event model has registry_key column directly
+            query = query.filter(Event.registry_key.ilike(f"%{registry_key}%"))
 
         if process_name:
             query = query.filter(Event.process_name.ilike(f"%{process_name}%"))
@@ -123,28 +133,32 @@ async def get_fim_events(
         events = query.order_by(Event.event_time.desc()).offset(offset).limit(limit).all()
 
         # Convert to dict with FIM-specific fields
+        # FIX BUG-005, BUG-011: Use snake_case attributes and parse raw_event JSON
         fim_events = []
         for event in events:
+            # Parse raw_event JSON for additional FIM data
+            event_data = parse_event_data(event.raw_event)
+
             event_dict = {
-                "event_id": event.EventId,
-                "event_time": event.EventTime.isoformat() if event.EventTime else None,
-                "event_code": event.EventCode,
-                "event_type": FIM_EVENT_CODES.get(event.EventCode, "Unknown"),
-                "hostname": event.Hostname,
-                "agent_id": event.AgentId,
-                "file_path": event.FilePath,
-                "process_name": event.ProcessName,
-                "target_user": event.TargetUser,
-                "message": event.Message,
-                "severity": event.Severity,
-                "category": event.Category,
-                # Extract FIM-specific data from EventData JSONB
-                "file_hash": event.EventData.get("FileHash") or event.EventData.get("Hashes"),
-                "registry_key": event.EventData.get("RegistryKey"),
-                "registry_value": event.EventData.get("RegistryValue"),
-                "event_type_detail": event.EventData.get("EventType"),  # CreateKey, SetValue, etc.
-                "details": event.EventData.get("Details"),  # Registry value details
-                "new_name": event.EventData.get("NewName"),  # For rename operations
+                "event_id": event.event_id,
+                "event_time": event.event_time.isoformat() if event.event_time else None,
+                "event_code": event.event_code,
+                "event_type": FIM_EVENT_CODES.get(event.event_code, "Unknown"),
+                "hostname": event.computer,  # Event model uses 'computer', not 'hostname'
+                "agent_id": str(event.agent_id) if event.agent_id else None,
+                "file_path": event.file_path,
+                "process_name": event.process_name,
+                "target_user": event.target_user,
+                "message": event.message,
+                "severity": event.severity,
+                "category": event.category,
+                # Use model fields or parse from raw_event JSON
+                "file_hash": event.file_hash or event_data.get("FileHash") or event_data.get("Hashes"),
+                "registry_key": event.registry_key or event_data.get("RegistryKey"),
+                "registry_value": event.registry_value or event_data.get("RegistryValue"),
+                "event_type_detail": event_data.get("EventType"),  # CreateKey, SetValue, etc.
+                "details": event_data.get("Details"),  # Registry value details
+                "new_name": event_data.get("NewName"),  # For rename operations
             }
             fim_events.append(event_dict)
 
@@ -188,43 +202,46 @@ async def get_fim_event_detail(
             detail=f"FIM event with ID {event_id} not found"
         )
 
+    # FIX BUG-005, BUG-011: Use snake_case attributes and parse raw_event JSON
+    event_data = parse_event_data(event.raw_event)
+
     return {
-        "event_id": event.EventId,
-        "event_time": event.EventTime.isoformat() if event.EventTime else None,
-        "event_code": event.EventCode,
-        "event_type": FIM_EVENT_CODES.get(event.EventCode, "Unknown"),
-        "hostname": event.Hostname,
-        "agent_id": event.AgentId,
-        "source_type": event.SourceType,
-        "provider": event.Provider,
-        "severity": event.Severity,
-        "category": event.Category,
-        "message": event.Message,
+        "event_id": event.event_id,
+        "event_time": event.event_time.isoformat() if event.event_time else None,
+        "event_code": event.event_code,
+        "event_type": FIM_EVENT_CODES.get(event.event_code, "Unknown"),
+        "hostname": event.computer,
+        "agent_id": str(event.agent_id) if event.agent_id else None,
+        "source_type": event.source_type,
+        "provider": event.provider,
+        "severity": event.severity,
+        "category": event.category,
+        "message": event.message,
 
         # File details
-        "file_path": event.FilePath,
-        "file_hash": event.EventData.get("FileHash") or event.EventData.get("Hashes"),
+        "file_path": event.file_path,
+        "file_hash": event.file_hash or event_data.get("FileHash") or event_data.get("Hashes"),
 
-        # Registry details
-        "registry_key": event.EventData.get("RegistryKey"),
-        "registry_value": event.EventData.get("RegistryValue"),
-        "registry_details": event.EventData.get("Details"),
-        "event_type_detail": event.EventData.get("EventType"),
-        "target_object": event.EventData.get("TargetObject"),
-        "new_name": event.EventData.get("NewName"),
+        # Registry details (use model fields first, then parsed event_data)
+        "registry_key": event.registry_key or event_data.get("RegistryKey"),
+        "registry_value": event.registry_value or event_data.get("RegistryValue"),
+        "registry_details": event_data.get("Details"),
+        "event_type_detail": event_data.get("EventType"),
+        "target_object": event_data.get("TargetObject"),
+        "new_name": event_data.get("NewName"),
 
         # Process details
-        "process_name": event.ProcessName,
-        "process_id": event.ProcessID,
-        "process_command_line": event.ProcessCommandLine,
+        "process_name": event.process_name,
+        "process_id": event.process_id,
+        "process_command_line": event.process_command_line,
 
         # User details
-        "target_user": event.TargetUser,
-        "subject_user": event.SubjectUser,
+        "target_user": event.target_user,
+        "subject_user": event.subject_user,
 
         # Full event data
-        "event_data": event.EventData,
-        "raw_xml": event.RawData
+        "event_data": event_data,
+        "raw_xml": event.raw_event
     }
 
 

@@ -246,9 +246,10 @@ export default function Incidents() {
       render: (user) => user || '-',
     },
     {
+      // FIX BUG-007: Use IncidentCategory instead of Category
       title: 'Категория',
-      dataIndex: 'Category',
-      key: 'Category',
+      dataIndex: 'IncidentCategory',
+      key: 'IncidentCategory',
       width: 120,
       ellipsis: true,
       render: (category) => category || '-',
@@ -461,7 +462,8 @@ export default function Incidents() {
                     <Tag>{getPriorityText(selectedIncident.Priority)}</Tag>
                   </Descriptions.Item>
                   <Descriptions.Item label="Категория">
-                    {selectedIncident.Category || '-'}
+                    {/* FIX BUG-007: Use IncidentCategory */}
+                    {selectedIncident.IncidentCategory || '-'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Назначен">
                     {selectedIncident.AssignedToUser || '-'}
@@ -470,7 +472,8 @@ export default function Incidents() {
                     {formatDateTime(selectedIncident.DetectedAt)}
                   </Descriptions.Item>
                   <Descriptions.Item label="Начало атаки">
-                    {selectedIncident.StartTime ? formatDateTime(selectedIncident.StartTime) : '-'}
+                    {/* FIX BUG-007: Use StartedAt instead of StartTime */}
+                    {selectedIncident.StartedAt ? formatDateTime(selectedIncident.StartedAt) : '-'}
                   </Descriptions.Item>
                 </Descriptions>
 
@@ -494,48 +497,35 @@ export default function Incidents() {
                 </Row>
 
                 {/* MITRE ATT&CK */}
-                {selectedIncident.MitreAttackTactics && (
+                {/* FIX BUG-007: Use MitreAttackChain instead of MitreAttackTactics/MitreAttackTechniques */}
+                {selectedIncident.MitreAttackChain && (
                   <Card title="MITRE ATT&CK" size="small">
                     <Space direction="vertical" style={{ width: '100%' }}>
                       <div>
-                        <Text strong>Тактики:</Text>
+                        <Text strong>Kill Chain:</Text>
                         <div style={{ marginTop: 8 }}>
-                          <Space wrap>
-                            {JSON.parse(selectedIncident.MitreAttackTactics).map((tactic: string) => (
-                              <Tag key={tactic} color="blue">
-                                {getMitreTacticName(tactic)}
-                              </Tag>
-                            ))}
-                          </Space>
+                          <Text>{selectedIncident.MitreAttackChain}</Text>
                         </div>
                       </div>
-                      {selectedIncident.MitreAttackTechniques && (
-                        <div>
-                          <Text strong>Техники:</Text>
-                          <div style={{ marginTop: 8 }}>
-                            <Space wrap>
-                              {JSON.parse(selectedIncident.MitreAttackTechniques).map((tech: string) => (
-                                <Tag key={tech} color="orange">
-                                  {tech}
-                                </Tag>
-                              ))}
-                            </Space>
-                          </div>
-                        </div>
-                      )}
                     </Space>
                   </Card>
                 )}
 
                 {/* AI Analysis */}
-                {selectedIncident.AISummary && (
+                {/* FIX BUG-007: Use existing AI fields instead of non-existent AISummary */}
+                {(selectedIncident.AIRootCause || selectedIncident.AIImpactAssessment || selectedIncident.AIRecommendations) && (
                   <Card title="AI Анализ" size="small">
                     <Space direction="vertical" style={{ width: '100%' }}>
-                      <Paragraph>{selectedIncident.AISummary}</Paragraph>
                       {selectedIncident.AIRootCause && (
                         <div>
                           <Text strong>Причина:</Text>
                           <Paragraph>{selectedIncident.AIRootCause}</Paragraph>
+                        </div>
+                      )}
+                      {selectedIncident.AIImpactAssessment && (
+                        <div>
+                          <Text strong>Оценка воздействия:</Text>
+                          <Paragraph>{selectedIncident.AIImpactAssessment}</Paragraph>
                         </div>
                       )}
                       {selectedIncident.AIRecommendations && (

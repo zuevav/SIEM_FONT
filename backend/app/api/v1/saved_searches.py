@@ -47,22 +47,24 @@ async def list_saved_searches(
         query = db.query(SavedSearch)
 
         # Filter by search type if specified
+        # FIX BUG-008: Use snake_case column name (search_type), not @property (SearchType)
         if search_type:
-            query = query.filter(SavedSearch.SearchType == search_type)
+            query = query.filter(SavedSearch.search_type == search_type)
 
         # Filter: user's own searches OR shared searches
+        # FIX BUG-008: Use snake_case column names for SQLAlchemy queries
         if include_shared:
             query = query.filter(
                 or_(
-                    SavedSearch.UserId == current_user.user_id,
-                    SavedSearch.IsShared == True
+                    SavedSearch.user_id == current_user.user_id,
+                    SavedSearch.is_shared == True
                 )
             )
         else:
-            query = query.filter(SavedSearch.UserId == current_user.user_id)
+            query = query.filter(SavedSearch.user_id == current_user.user_id)
 
         # Order by created date descending
-        query = query.order_by(SavedSearch.CreatedAt.desc())
+        query = query.order_by(SavedSearch.created_at.desc())
 
         searches = query.all()
 
@@ -90,7 +92,8 @@ async def get_saved_search(
     User must own the search or it must be shared
     """
     try:
-        search = db.query(SavedSearch).filter(SavedSearch.SavedSearchId == search_id).first()
+        # FIX BUG-008: Use snake_case column names for SQLAlchemy queries
+        search = db.query(SavedSearch).filter(SavedSearch.saved_search_id == search_id).first()
 
         if not search:
             raise HTTPException(
@@ -99,14 +102,14 @@ async def get_saved_search(
             )
 
         # Check permissions: must be owner or search must be shared
-        if search.UserId != current_user.user_id and not search.IsShared:
+        if search.user_id != current_user.user_id and not search.is_shared:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You don't have permission to access this saved search"
             )
 
-        # Get owner username
-        owner = db.query(User).filter(User.UserId == search.UserId).first()
+        # Get owner username (User model uses PascalCase - it has @property aliases)
+        owner = db.query(User).filter(User.UserId == search.user_id).first()
         username = owner.Username if owner else None
 
         search_dict = search.to_dict()
@@ -135,10 +138,11 @@ async def create_saved_search(
     """
     try:
         # Check if search with same name already exists for this user
+        # FIX BUG-008: Use snake_case column names for SQLAlchemy queries
         existing = db.query(SavedSearch).filter(
             and_(
-                SavedSearch.Name == search.name,
-                SavedSearch.UserId == current_user.user_id
+                SavedSearch.name == search.name,
+                SavedSearch.user_id == current_user.user_id
             )
         ).first()
 
@@ -151,21 +155,21 @@ async def create_saved_search(
         # Convert filters dict to JSON string
         filters_json = json.dumps(search.filters)
 
-        # Create new saved search
+        # Create new saved search using snake_case attributes
         new_search = SavedSearch(
-            Name=search.name,
-            Description=search.description,
-            SearchType=search.search_type,
-            Filters=filters_json,
-            UserId=current_user.user_id,
-            IsShared=search.is_shared
+            name=search.name,
+            description=search.description,
+            search_type=search.search_type,
+            filters=filters_json,
+            user_id=current_user.user_id,
+            is_shared=search.is_shared
         )
 
         db.add(new_search)
         db.commit()
         db.refresh(new_search)
 
-        logger.info(f"Saved search '{new_search.Name}' created by user {current_user.username}")
+        logger.info(f"Saved search '{new_search.name}' created by user {current_user.username}")
 
         return SavedSearchResponse.from_orm(new_search)
 
@@ -192,7 +196,8 @@ async def update_saved_search(
     Only the owner can update the search
     """
     try:
-        search = db.query(SavedSearch).filter(SavedSearch.SavedSearchId == search_id).first()
+        # FIX BUG-008: Use snake_case column names for SQLAlchemy queries
+        search = db.query(SavedSearch).filter(SavedSearch.saved_search_id == search_id).first()
 
         if not search:
             raise HTTPException(
@@ -201,20 +206,20 @@ async def update_saved_search(
             )
 
         # Check permissions: must be owner
-        if search.UserId != current_user.user_id:
+        if search.user_id != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only update your own saved searches"
             )
 
-        # Update fields
+        # Update fields using snake_case attributes
         if search_update.name is not None:
             # Check for name conflict (excluding current search)
             existing = db.query(SavedSearch).filter(
                 and_(
-                    SavedSearch.Name == search_update.name,
-                    SavedSearch.UserId == current_user.user_id,
-                    SavedSearch.SavedSearchId != search_id
+                    SavedSearch.name == search_update.name,
+                    SavedSearch.user_id == current_user.user_id,
+                    SavedSearch.saved_search_id != search_id
                 )
             ).first()
 
@@ -224,24 +229,24 @@ async def update_saved_search(
                     detail=f"You already have a saved search named '{search_update.name}'"
                 )
 
-            search.Name = search_update.name
+            search.name = search_update.name
 
         if search_update.description is not None:
-            search.Description = search_update.description
+            search.description = search_update.description
 
         if search_update.search_type is not None:
-            search.SearchType = search_update.search_type
+            search.search_type = search_update.search_type
 
         if search_update.filters is not None:
-            search.Filters = json.dumps(search_update.filters)
+            search.filters = json.dumps(search_update.filters)
 
         if search_update.is_shared is not None:
-            search.IsShared = search_update.is_shared
+            search.is_shared = search_update.is_shared
 
         db.commit()
         db.refresh(search)
 
-        logger.info(f"Saved search '{search.Name}' (ID: {search_id}) updated by user {current_user.username}")
+        logger.info(f"Saved search '{search.name}' (ID: {search_id}) updated by user {current_user.username}")
 
         return SavedSearchResponse.from_orm(search)
 
@@ -267,7 +272,8 @@ async def delete_saved_search(
     Only the owner can delete the search
     """
     try:
-        search = db.query(SavedSearch).filter(SavedSearch.SavedSearchId == search_id).first()
+        # FIX BUG-008: Use snake_case column names for SQLAlchemy queries
+        search = db.query(SavedSearch).filter(SavedSearch.saved_search_id == search_id).first()
 
         if not search:
             raise HTTPException(
@@ -276,13 +282,13 @@ async def delete_saved_search(
             )
 
         # Check permissions: must be owner
-        if search.UserId != current_user.user_id:
+        if search.user_id != current_user.user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You can only delete your own saved searches"
             )
 
-        search_name = search.Name
+        search_name = search.name
         db.delete(search)
         db.commit()
 
