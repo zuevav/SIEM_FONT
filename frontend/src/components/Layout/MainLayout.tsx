@@ -42,7 +42,7 @@ export default function MainLayout() {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sidebar collapsed={collapsed} />
-      <Layout>
+      <Layout style={{ marginLeft: collapsed ? 80 : 250, transition: 'margin-left 0.2s' }}>
         <Header collapsed={collapsed} setCollapsed={setCollapsed} wsStatus={connectionStatus} />
         <Content
           style={{
