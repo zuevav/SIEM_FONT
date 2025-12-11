@@ -197,49 +197,58 @@ export interface DetectionRuleUpdate {
 // ============================================================================
 
 export interface Alert {
-  AlertId: number
-  AlertGuid: string
-  RuleId?: number
-  RuleName?: string
-  Title: string
-  Description?: string
-  Severity: number
-  Status: 'new' | 'acknowledged' | 'in_progress' | 'resolved' | 'false_positive'
-  Priority: number
+  alert_id: number
+  alert_guid: string
+  rule_id?: number
+  rule_name?: string
+  title: string
+  description?: string
+  severity: number
+  status: 'new' | 'acknowledged' | 'in_progress' | 'resolved' | 'false_positive'
+  priority: number
 
   // Assignment
-  AssignedToUserId?: number
-  AssignedToUser?: string
-  AssignedAt?: string
+  assigned_to?: number
+  assigned_to_user?: string
+  assigned_at?: string
 
   // Timing
-  FirstSeenAt: string
-  LastSeenAt: string
-  AcknowledgedAt?: string
-  ResolvedAt?: string
+  first_event_time?: string
+  last_event_time?: string
+  acknowledged_at?: string
+  resolved_at?: string
 
   // Details
-  SourceIP?: string
-  DestinationIP?: string
-  Computer?: string
-  ProcessName?: string
+  source_ip?: string
+  target_ip?: string
+  hostname?: string
+  username?: string
+  process_name?: string
 
   // Counts
-  EventCount?: number
-  AffectedAssets?: number
+  event_count?: number
+  incident_id?: number
 
   // MITRE ATT&CK
-  MitreAttackTactics?: string
-  MitreAttackTechniques?: string
+  mitre_attack_tactic?: string
+  mitre_attack_technique?: string
 
   // AI Analysis
-  AIAnalysis?: string
-  AIRecommendations?: string
+  ai_analysis?: string
+  ai_recommendations?: string
 
-  // Comments
-  Comments?: string
+  // Category
+  category?: string
 
-  CreatedAt: string
+  created_at: string
+
+  // Legacy PascalCase aliases for backwards compatibility
+  AlertId?: number
+  Title?: string
+  Severity?: number
+  Status?: string
+  Computer?: string
+  CreatedAt?: string
 }
 
 export interface AlertFilter {

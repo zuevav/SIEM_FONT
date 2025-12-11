@@ -230,22 +230,22 @@ export default function Dashboard() {
         ) : (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             {recentAlerts.map((alert) => (
-              <Card key={alert.AlertId} size="small" hoverable>
+              <Card key={alert.alert_id} size="small" hoverable>
                 <Row justify="space-between" align="middle">
                   <Col span={16}>
                     <Space direction="vertical" size={4}>
-                      <Text strong>{alert.Title}</Text>
+                      <Text strong>{alert.title}</Text>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {alert.Computer} • {formatRelativeTime(alert.CreatedAt)}
+                        {alert.hostname || 'N/A'} • {formatRelativeTime(alert.created_at)}
                       </Text>
                     </Space>
                   </Col>
                   <Col>
                     <Space>
-                      <Tag color={alert.Severity >= 3 ? 'red' : alert.Severity === 2 ? 'orange' : 'blue'}>
-                        Severity {alert.Severity}
+                      <Tag color={alert.severity >= 3 ? 'red' : alert.severity === 2 ? 'orange' : 'blue'}>
+                        Severity {alert.severity}
                       </Tag>
-                      <Tag color={alert.Status === 'new' ? 'red' : 'blue'}>{alert.Status}</Tag>
+                      <Tag color={alert.status === 'new' ? 'red' : 'blue'}>{alert.status}</Tag>
                     </Space>
                   </Col>
                 </Row>
