@@ -36,7 +36,7 @@ CREATE TABLE automation.playbooks (
 
     -- Metadata
     created_by INTEGER REFERENCES config.users(user_id),
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
     last_executed_at TIMESTAMP,
     execution_count INTEGER DEFAULT 0,
@@ -91,7 +91,7 @@ CREATE TABLE automation.playbook_actions (
 
     -- Metadata
     created_by INTEGER REFERENCES config.users(user_id),
-    created_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP,
 
     CONSTRAINT ck_playbook_actions_type CHECK (action_type IN (
@@ -126,7 +126,7 @@ CREATE TABLE automation.playbook_executions (
     status VARCHAR(20) NOT NULL DEFAULT 'pending', -- pending, running, success, failed, cancelled, awaiting_approval
 
     -- Timeline
-    started_at TIMESTAMP DEFAULT NOW() AT TIME ZONE 'UTC',
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP,
     duration_seconds INTEGER,
 
