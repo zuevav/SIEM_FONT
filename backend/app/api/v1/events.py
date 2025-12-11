@@ -169,55 +169,55 @@ async def get_events(
             start_time = datetime.utcnow() - timedelta(hours=last_hours)
 
         if start_time:
-            query = query.filter(Event.EventTime >= start_time)
+            query = query.filter(Event.event_time >= start_time)
         if end_time:
-            query = query.filter(Event.EventTime <= end_time)
+            query = query.filter(Event.event_time <= end_time)
 
         # Entity filters
         if agent_id:
-            query = query.filter(Event.AgentId == agent_id)
+            query = query.filter(Event.agent_id == agent_id)
         if min_severity is not None:
-            query = query.filter(Event.Severity >= min_severity)
+            query = query.filter(Event.severity >= min_severity)
 
         if categories:
             cat_list = [c.strip() for c in categories.split(',')]
-            query = query.filter(Event.Category.in_(cat_list))
+            query = query.filter(Event.category.in_(cat_list))
 
         if source_types:
             type_list = [t.strip() for t in source_types.split(',')]
-            query = query.filter(Event.SourceType.in_(type_list))
+            query = query.filter(Event.source_type.in_(type_list))
 
         # User/Network filters
         if subject_user:
-            query = query.filter(Event.SubjectUser.ilike(f"%{subject_user}%"))
+            query = query.filter(Event.subject_user.ilike(f"%{subject_user}%"))
         if source_ip:
-            query = query.filter(Event.SourceIP == source_ip)
+            query = query.filter(Event.source_ip == source_ip)
         if destination_ip:
-            query = query.filter(Event.DestinationIP == destination_ip)
+            query = query.filter(Event.destination_ip == destination_ip)
         if process_name:
-            query = query.filter(Event.ProcessName.ilike(f"%{process_name}%"))
+            query = query.filter(Event.process_name.ilike(f"%{process_name}%"))
 
         # Search
         if search_text:
-            query = query.filter(Event.Message.ilike(f"%{search_text}%"))
+            query = query.filter(Event.message.ilike(f"%{search_text}%"))
 
         # MITRE ATT&CK
         if mitre_tactic:
-            query = query.filter(Event.MitreAttackTactic == mitre_tactic)
+            query = query.filter(Event.mitre_attack_tactic == mitre_tactic)
         if mitre_technique:
-            query = query.filter(Event.MitreAttackTechnique == mitre_technique)
+            query = query.filter(Event.mitre_attack_technique == mitre_technique)
 
         # AI Analysis
         if ai_processed is not None:
-            query = query.filter(Event.AIProcessed == ai_processed)
+            query = query.filter(Event.ai_processed == ai_processed)
         if ai_is_attack is not None:
-            query = query.filter(Event.AIIsAttack == ai_is_attack)
+            query = query.filter(Event.ai_is_attack == ai_is_attack)
 
         # Get total count
         total = query.count()
 
         # Apply pagination and ordering
-        events = query.order_by(Event.EventTime.desc()).offset(offset).limit(limit).all()
+        events = query.order_by(Event.event_time.desc()).offset(offset).limit(limit).all()
 
         # Convert to response model
         events_response = [EventResponse.from_orm(event) for event in events]
@@ -247,7 +247,7 @@ async def get_event_by_id(
     """
     Get detailed event information by ID
     """
-    event = db.query(Event).filter(Event.EventId == event_id).first()
+    event = db.query(Event).filter(Event.event_id == event_id).first()
 
     if not event:
         raise HTTPException(
@@ -467,7 +467,7 @@ async def get_similar_events(
     Requires analyst role
     """
     # Get the reference event
-    reference = db.query(Event).filter(Event.EventId == event_id).first()
+    reference = db.query(Event).filter(Event.event_id == event_id).first()
 
     if not reference:
         raise HTTPException(
@@ -476,35 +476,35 @@ async def get_similar_events(
         )
 
     # Build similarity query
-    start_time = reference.EventTime - timedelta(hours=hours)
-    end_time = reference.EventTime + timedelta(hours=hours)
+    start_time = reference.event_time - timedelta(hours=hours)
+    end_time = reference.event_time + timedelta(hours=hours)
 
     query = db.query(Event).filter(
         and_(
-            Event.EventId != event_id,
-            Event.EventTime >= start_time,
-            Event.EventTime <= end_time
+            Event.event_id != event_id,
+            Event.event_time >= start_time,
+            Event.event_time <= end_time
         )
     )
 
     # Match on similar attributes
     conditions = []
 
-    if reference.AgentId:
-        conditions.append(Event.AgentId == reference.AgentId)
-    if reference.SubjectUser:
-        conditions.append(Event.SubjectUser == reference.SubjectUser)
-    if reference.SourceIP:
-        conditions.append(Event.SourceIP == reference.SourceIP)
-    if reference.ProcessName:
-        conditions.append(Event.ProcessName == reference.ProcessName)
-    if reference.Category:
-        conditions.append(Event.Category == reference.Category)
+    if reference.agent_id:
+        conditions.append(Event.agent_id == reference.agent_id)
+    if reference.subject_user:
+        conditions.append(Event.subject_user == reference.subject_user)
+    if reference.source_ip:
+        conditions.append(Event.source_ip == reference.source_ip)
+    if reference.process_name:
+        conditions.append(Event.process_name == reference.process_name)
+    if reference.category:
+        conditions.append(Event.category == reference.category)
 
     if conditions:
         query = query.filter(or_(*conditions))
 
-    similar_events = query.order_by(Event.EventTime.desc()).limit(limit).all()
+    similar_events = query.order_by(Event.event_time.desc()).limit(limit).all()
 
     return {
         "reference_event_id": event_id,
@@ -533,17 +533,17 @@ async def export_events(
         query = db.query(Event)
 
         if filters.start_time:
-            query = query.filter(Event.EventTime >= filters.start_time)
+            query = query.filter(Event.event_time >= filters.start_time)
         if filters.end_time:
-            query = query.filter(Event.EventTime <= filters.end_time)
+            query = query.filter(Event.event_time <= filters.end_time)
         if filters.agent_id:
-            query = query.filter(Event.AgentId == str(filters.agent_id))
+            query = query.filter(Event.agent_id == str(filters.agent_id))
         if filters.min_severity is not None:
-            query = query.filter(Event.Severity >= filters.min_severity)
+            query = query.filter(Event.severity >= filters.min_severity)
 
         # Limit export size
         max_export = min(filters.limit, 10000)
-        events = query.order_by(Event.EventTime.desc()).limit(max_export).all()
+        events = query.order_by(Event.event_time.desc()).limit(max_export).all()
 
         # Convert to dict
         export_data = {

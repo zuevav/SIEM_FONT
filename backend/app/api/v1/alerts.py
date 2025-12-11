@@ -296,7 +296,7 @@ async def create_alert(
     try:
         # Validate event IDs exist
         if alert.event_ids:
-            event_count = db.query(Event).filter(Event.EventId.in_(alert.event_ids)).count()
+            event_count = db.query(Event).filter(Event.event_id.in_(alert.event_ids)).count()
             if event_count != len(alert.event_ids):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

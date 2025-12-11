@@ -22,7 +22,9 @@ from app.schemas.settings import (
     TestEmailRequest,
     TestEmailResponse,
     TestFreeScoutRequest,
-    TestFreeScoutResponse
+    TestFreeScoutResponse,
+    TestADRequest,
+    TestADResponse
 )
 from app.schemas.auth import CurrentUser
 from app.models.settings import SystemSettings
@@ -161,6 +163,15 @@ async def get_settings(
             abuseipdb_api_key=get_setting(db, 'abuseipdb_api_key') if current_user.role == 'admin' else None,
             threat_intel_enabled=get_setting(db, 'threat_intel_enabled', False),
 
+            # Active Directory
+            ad_enabled=get_setting(db, 'ad_enabled', False),
+            ad_server=get_setting(db, 'ad_server'),
+            ad_base_dn=get_setting(db, 'ad_base_dn'),
+            ad_bind_user=get_setting(db, 'ad_bind_user'),
+            ad_bind_password=get_setting(db, 'ad_bind_password') if current_user.role == 'admin' else None,
+            ad_sync_enabled=get_setting(db, 'ad_sync_enabled', False),
+            ad_sync_interval_hours=get_setting(db, 'ad_sync_interval_hours', 24),
+
             # System
             system_version=get_setting(db, 'system_version'),
             system_git_branch=get_setting(db, 'system_git_branch'),
@@ -240,6 +251,22 @@ async def update_settings(
             set_setting(db, 'abuseipdb_api_key', updates.abuseipdb_api_key, 'threat_intel', encrypt=True)
         if updates.threat_intel_enabled is not None:
             set_setting(db, 'threat_intel_enabled', updates.threat_intel_enabled, 'threat_intel', 'boolean')
+
+        # Update Active Directory settings
+        if updates.ad_enabled is not None:
+            set_setting(db, 'ad_enabled', updates.ad_enabled, 'ad', 'boolean')
+        if updates.ad_server is not None:
+            set_setting(db, 'ad_server', updates.ad_server, 'ad')
+        if updates.ad_base_dn is not None:
+            set_setting(db, 'ad_base_dn', updates.ad_base_dn, 'ad')
+        if updates.ad_bind_user is not None:
+            set_setting(db, 'ad_bind_user', updates.ad_bind_user, 'ad')
+        if updates.ad_bind_password is not None:
+            set_setting(db, 'ad_bind_password', updates.ad_bind_password, 'ad', encrypt=True)
+        if updates.ad_sync_enabled is not None:
+            set_setting(db, 'ad_sync_enabled', updates.ad_sync_enabled, 'ad', 'boolean')
+        if updates.ad_sync_interval_hours is not None:
+            set_setting(db, 'ad_sync_interval_hours', updates.ad_sync_interval_hours, 'ad', 'integer')
 
         logger.info(f"Settings updated by {current_user.username}")
 
@@ -406,4 +433,109 @@ async def test_freescout_connection(
             success=False,
             message="Test failed",
             error=str(e)
+        )
+
+
+@router.post("/test-ad", response_model=TestADResponse)
+async def test_ad_connection(
+    test_data: TestADRequest,
+    current_user: CurrentUser = Depends(require_admin)
+):
+    """
+    Test Active Directory / LDAP connection
+    """
+    try:
+        # Try to import ldap3
+        try:
+            from ldap3 import Server, Connection, ALL, SUBTREE
+        except ImportError:
+            return TestADResponse(
+                success=False,
+                message="LDAP library not installed",
+                error="Please install ldap3: pip install ldap3"
+            )
+
+        # Parse server URL
+        use_ssl = test_data.server.startswith('ldaps://')
+        server_url = test_data.server.replace('ldaps://', '').replace('ldap://', '')
+
+        # Remove port if present
+        if ':' in server_url:
+            host, port_str = server_url.rsplit(':', 1)
+            port = int(port_str)
+        else:
+            host = server_url
+            port = 636 if use_ssl else 389
+
+        logger.info(f"Testing AD connection to {host}:{port} (SSL: {use_ssl})")
+
+        # Create server and connection
+        server = Server(host, port=port, use_ssl=use_ssl, get_info=ALL, connect_timeout=10)
+
+        conn = Connection(
+            server,
+            user=test_data.bind_user,
+            password=test_data.bind_password,
+            auto_bind=True,
+            raise_exceptions=True
+        )
+
+        # Get server info
+        server_type = "Unknown"
+        domain_info = None
+
+        if server.info:
+            # Check if it's Active Directory
+            if server.info.vendor_name and 'Microsoft' in str(server.info.vendor_name):
+                server_type = "Microsoft Active Directory"
+            elif server.info.vendor_name:
+                server_type = str(server.info.vendor_name)
+
+            # Get naming contexts (domain info)
+            if server.info.naming_contexts:
+                domain_info = ', '.join([str(nc) for nc in server.info.naming_contexts[:3]])
+
+        # Try to count users in base DN
+        user_count = None
+        try:
+            conn.search(
+                search_base=test_data.base_dn,
+                search_filter='(objectClass=user)',
+                search_scope=SUBTREE,
+                attributes=['cn'],
+                size_limit=1000
+            )
+            user_count = len(conn.entries)
+        except Exception as search_error:
+            logger.warning(f"Could not count users: {search_error}")
+
+        # Close connection
+        conn.unbind()
+
+        logger.info(f"AD connection test successful to {test_data.server}")
+
+        return TestADResponse(
+            success=True,
+            message=f"Successfully connected to {host}",
+            server_type=server_type,
+            domain_info=domain_info,
+            user_count=user_count
+        )
+
+    except Exception as e:
+        error_msg = str(e)
+
+        # Translate common LDAP errors
+        if 'invalidCredentials' in error_msg or '49' in error_msg:
+            error_msg = "Неверные учётные данные (пользователь или пароль)"
+        elif 'serverDown' in error_msg or 'connect' in error_msg.lower():
+            error_msg = f"Не удалось подключиться к серверу {test_data.server}"
+        elif 'timeout' in error_msg.lower():
+            error_msg = "Таймаут подключения"
+
+        logger.error(f"Error testing AD connection: {e}", exc_info=True)
+        return TestADResponse(
+            success=False,
+            message="Ошибка подключения к AD",
+            error=error_msg
         )

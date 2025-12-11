@@ -73,6 +73,15 @@ interface Settings {
   threat_intel_enabled: boolean
   virustotal_api_key?: string
   abuseipdb_api_key?: string
+
+  // Active Directory
+  ad_enabled: boolean
+  ad_server: string
+  ad_base_dn: string
+  ad_bind_user: string
+  ad_bind_password: string
+  ad_sync_enabled: boolean
+  ad_sync_interval_hours: number
 }
 
 interface SystemInfo {
@@ -88,6 +97,7 @@ export default function Settings() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [testingConnection, setTestingConnection] = useState(false)
+  const [testingAD, setTestingAD] = useState(false)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null)
   const [updateModalVisible, setUpdateModalVisible] = useState(false)
@@ -235,6 +245,40 @@ export default function Settings() {
       message.success('Тестовое письмо отправлено! Проверьте почту.')
     } catch (error) {
       message.error('Ошибка отправки тестового письма')
+    }
+  }
+
+  const handleTestAD = async () => {
+    setTestingAD(true)
+    try {
+      const values = form.getFieldsValue(['ad_server', 'ad_base_dn', 'ad_bind_user', 'ad_bind_password'])
+
+      if (!values.ad_server || !values.ad_base_dn || !values.ad_bind_user || !values.ad_bind_password) {
+        message.error('Заполните все поля для подключения к AD')
+        setTestingAD(false)
+        return
+      }
+
+      const result = await apiService.testADConnection(
+        values.ad_server,
+        values.ad_base_dn,
+        values.ad_bind_user,
+        values.ad_bind_password
+      )
+
+      if (result.success) {
+        let successMsg = `Подключение успешно! Сервер: ${result.server_type || 'LDAP'}`
+        if (result.user_count !== undefined) {
+          successMsg += `, найдено пользователей: ${result.user_count}`
+        }
+        message.success(successMsg)
+      } else {
+        message.error(`Ошибка подключения: ${result.error || result.message}`)
+      }
+    } catch (error: any) {
+      message.error(`Не удалось подключиться к AD: ${error.response?.data?.detail || error.message}`)
+    } finally {
+      setTestingAD(false)
     }
   }
 
@@ -914,7 +958,7 @@ docker-compose up -d --build`}
                   <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
                     Сохранить
                   </Button>
-                  <Button icon={<CheckCircleOutlined />}>
+                  <Button onClick={handleTestAD} loading={testingAD} icon={<CheckCircleOutlined />}>
                     Тест подключения
                   </Button>
                 </Space>

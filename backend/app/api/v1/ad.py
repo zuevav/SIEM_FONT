@@ -6,7 +6,7 @@ Endpoints for AD users, computers, groups and software installation requests
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
-from typing import List, Optional
+from typing import List, Optional, Any
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 
@@ -145,7 +145,7 @@ class ReviewRequestInput(BaseModel):
 
 
 class PaginatedResponse(BaseModel):
-    items: List
+    items: List[Any]
     total: int
     page: int
     page_size: int
@@ -782,7 +782,7 @@ async def create_remote_session(
             )
 
     if request.target_agent_id:
-        agent = db.query(Agent).filter(Agent.AgentId == request.target_agent_id).first()
+        agent = db.query(Agent).filter(Agent.agent_id == request.target_agent_id).first()
         if not agent:
             raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -1628,7 +1628,7 @@ async def execute_remote_script(
         raise HTTPException(status_code=404, detail="Script not found or inactive")
 
     # Verify agents exist
-    agents = db.query(Agent).filter(Agent.AgentId.in_(request.agent_ids)).all()
+    agents = db.query(Agent).filter(Agent.agent_id.in_(request.agent_ids)).all()
     if len(agents) != len(request.agent_ids):
         raise HTTPException(status_code=400, detail="One or more agents not found")
 

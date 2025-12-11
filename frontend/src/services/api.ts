@@ -394,6 +394,23 @@ class APIService {
     return response.data
   }
 
+  async testADConnection(server: string, baseDn: string, bindUser: string, bindPassword: string): Promise<{
+    success: boolean
+    message: string
+    server_type?: string
+    domain_info?: string
+    user_count?: number
+    error?: string
+  }> {
+    const response = await this.client.post('/settings/test-ad', {
+      server,
+      base_dn: baseDn,
+      bind_user: bindUser,
+      bind_password: bindPassword
+    })
+    return response.data
+  }
+
   // ============================================================================
   // System Update API
   // ============================================================================

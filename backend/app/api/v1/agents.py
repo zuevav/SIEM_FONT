@@ -46,71 +46,71 @@ async def register_agent(
     This endpoint doesn't require authentication (agent registration only)
     """
     try:
-        # Check if agent already exists by hostname
-        existing_agent = db.query(Agent).filter(Agent.Hostname == agent_data.hostname).first()
+        # Check if agent already exists by hostname (Agent model uses snake_case)
+        existing_agent = db.query(Agent).filter(Agent.hostname == agent_data.hostname).first()
 
         if existing_agent:
-            # Update existing agent
-            existing_agent.FQDN = agent_data.fqdn
-            existing_agent.IPAddress = agent_data.ip_address
-            existing_agent.MACAddress = agent_data.mac_address
-            existing_agent.OSVersion = agent_data.os_version
-            existing_agent.OSBuild = agent_data.os_build
-            existing_agent.OSArchitecture = agent_data.os_architecture
-            existing_agent.Domain = agent_data.domain
-            existing_agent.OrganizationalUnit = agent_data.organizational_unit
-            existing_agent.Manufacturer = agent_data.manufacturer
-            existing_agent.Model = agent_data.model
-            existing_agent.SerialNumber = agent_data.serial_number
-            existing_agent.CPUModel = agent_data.cpu_model
-            existing_agent.CPUCores = agent_data.cpu_cores
-            existing_agent.TotalRAM_MB = agent_data.total_ram_mb
-            existing_agent.TotalDisk_GB = agent_data.total_disk_gb
-            existing_agent.AgentVersion = agent_data.agent_version
-            existing_agent.Status = 'online'
-            existing_agent.LastSeen = datetime.utcnow()
+            # Update existing agent (use snake_case attributes)
+            existing_agent.fqdn = agent_data.fqdn
+            existing_agent.ip_address = agent_data.ip_address
+            existing_agent.mac_address = agent_data.mac_address
+            existing_agent.os_version = agent_data.os_version
+            existing_agent.os_build = agent_data.os_build
+            existing_agent.os_architecture = agent_data.os_architecture
+            existing_agent.domain = agent_data.domain
+            existing_agent.organizational_unit = agent_data.organizational_unit
+            existing_agent.manufacturer = agent_data.manufacturer
+            existing_agent.model = agent_data.model
+            existing_agent.serial_number = agent_data.serial_number
+            existing_agent.cpu_model = agent_data.cpu_model
+            existing_agent.cpu_cores = agent_data.cpu_cores
+            existing_agent.total_ram_mb = agent_data.total_ram_mb
+            existing_agent.total_disk_gb = agent_data.total_disk_gb
+            existing_agent.agent_version = agent_data.agent_version
+            existing_agent.status = 'online'
+            existing_agent.last_seen = datetime.utcnow()
 
             db.commit()
             db.refresh(existing_agent)
 
-            logger.info(f"Agent re-registered: {existing_agent.Hostname} ({existing_agent.AgentId})")
+            logger.info(f"Agent re-registered: {existing_agent.hostname} ({existing_agent.agent_id})")
 
             return AgentResponse.from_orm(existing_agent)
 
-        # Create new agent
+        # Create new agent (use snake_case for model attributes)
         new_agent = Agent(
-            AgentId=str(uuid4()),
-            Hostname=agent_data.hostname,
-            FQDN=agent_data.fqdn,
-            IPAddress=agent_data.ip_address,
-            MACAddress=agent_data.mac_address,
-            OSVersion=agent_data.os_version,
-            OSBuild=agent_data.os_build,
-            OSArchitecture=agent_data.os_architecture,
-            Domain=agent_data.domain,
-            OrganizationalUnit=agent_data.organizational_unit,
-            Manufacturer=agent_data.manufacturer,
-            Model=agent_data.model,
-            SerialNumber=agent_data.serial_number,
-            CPUModel=agent_data.cpu_model,
-            CPUCores=agent_data.cpu_cores,
-            TotalRAM_MB=agent_data.total_ram_mb,
-            TotalDisk_GB=agent_data.total_disk_gb,
-            AgentVersion=agent_data.agent_version,
-            Status='online',
-            LastSeen=datetime.utcnow(),
-            RegisteredAt=datetime.utcnow(),
-            CriticalityLevel=agent_data.criticality_level or 'medium',
-            Location=agent_data.location,
-            Owner=agent_data.owner,
-            Tags=json.dumps(agent_data.tags) if agent_data.tags else None
+            agent_id=str(uuid4()),
+            hostname=agent_data.hostname,
+            fqdn=agent_data.fqdn,
+            ip_address=agent_data.ip_address,
+            mac_address=agent_data.mac_address,
+            os_version=agent_data.os_version,
+            os_build=agent_data.os_build,
+            os_architecture=agent_data.os_architecture,
+            domain=agent_data.domain,
+            organizational_unit=agent_data.organizational_unit,
+            manufacturer=agent_data.manufacturer,
+            model=agent_data.model,
+            serial_number=agent_data.serial_number,
+            cpu_model=agent_data.cpu_model,
+            cpu_cores=agent_data.cpu_cores,
+            total_ram_mb=agent_data.total_ram_mb,
+            total_disk_gb=agent_data.total_disk_gb,
+            agent_version=agent_data.agent_version,
+            status='online',
+            last_seen=datetime.utcnow(),
+            registered_at=datetime.utcnow(),
+            criticality_level=agent_data.criticality_level or 'medium',
+            location=agent_data.location,
+            owner=agent_data.owner,
+            tags=json.dumps(agent_data.tags) if agent_data.tags else None
         )
 
         db.add(new_agent)
         db.commit()
         db.refresh(new_agent)
 
-        logger.info(f"New agent registered: {new_agent.Hostname} ({new_agent.AgentId})")
+        logger.info(f"New agent registered: {new_agent.hostname} ({new_agent.agent_id})")
 
         return AgentResponse.from_orm(new_agent)
 
@@ -133,7 +133,7 @@ async def agent_heartbeat(
     No authentication required (agent heartbeat only)
     """
     try:
-        agent = db.query(Agent).filter(Agent.AgentId == str(heartbeat.agent_id)).first()
+        agent = db.query(Agent).filter(Agent.agent_id == str(heartbeat.agent_id)).first()
 
         if not agent:
             raise HTTPException(
@@ -141,25 +141,25 @@ async def agent_heartbeat(
                 detail=f"Agent {heartbeat.agent_id} not found"
             )
 
-        # Update agent status
-        agent.Status = heartbeat.status
-        agent.LastSeen = datetime.utcnow()
+        # Update agent status (use snake_case)
+        agent.status = heartbeat.status
+        agent.last_seen = datetime.utcnow()
 
         if heartbeat.ip_address:
-            agent.IPAddress = heartbeat.ip_address
+            agent.ip_address = heartbeat.ip_address
 
         if heartbeat.agent_version:
-            agent.AgentVersion = heartbeat.agent_version
+            agent.agent_version = heartbeat.agent_version
 
         if heartbeat.last_reboot:
-            agent.LastReboot = heartbeat.last_reboot
+            agent.last_reboot = heartbeat.last_reboot
 
         db.commit()
 
         return {
             "success": True,
-            "agent_id": str(agent.AgentId),
-            "status": agent.Status,
+            "agent_id": str(agent.agent_id),
+            "status": agent.status,
             "message": "Heartbeat received"
         }
 
@@ -193,28 +193,28 @@ async def report_tampering_alert(
         # Find agent
         agent = None
         if agent_id:
-            agent = db.query(Agent).filter(Agent.AgentId == str(agent_id)).first()
+            agent = db.query(Agent).filter(Agent.agent_id == str(agent_id)).first()
 
         # Log critical alert
         logger.critical(
             f"AGENT TAMPERING ALERT [{alert_type}]: "
             f"Agent={agent_id or 'unknown'}, "
-            f"Hostname={agent.Hostname if agent else 'unknown'}, "
+            f"Hostname={agent.hostname if agent else 'unknown'}, "
             f"Message={message}"
         )
 
-        # Create high-severity event
+        # Create high-severity event (Event model uses snake_case)
         from app.models.event import Event
 
         event = Event(
-            AgentId=agent_id,
-            EventTime=datetime.utcnow(),
-            SourceType="agent_protection",
-            EventCode=9999,  # Special code for tampering alerts
-            Severity="critical",
-            Computer=agent.Hostname if agent else details.get("computer", "unknown"),
-            Message=f"Agent Protection Alert: {alert_type} - {message}",
-            RawEvent=json.dumps({
+            agent_id=agent_id,
+            event_time=datetime.utcnow(),
+            source_type="agent_protection",
+            event_code=9999,  # Special code for tampering alerts
+            severity=4,  # critical = 4
+            computer=agent.hostname if agent else details.get("computer", "unknown"),
+            message=f"Agent Protection Alert: {alert_type} - {message}",
+            raw_event=json.dumps({
                 "alert_type": alert_type,
                 "message": message,
                 "details": details,
@@ -225,14 +225,14 @@ async def report_tampering_alert(
 
         # Update agent status if found
         if agent:
-            agent.Status = "alert"
-            agent.Notes = f"Protection alert: {alert_type} at {datetime.utcnow().isoformat()}"
+            agent.status = "alert"
+            # Note: 'notes' field might not exist in Agent model, check if needed
 
         db.commit()
 
         return {
             "success": True,
-            "alert_id": event.EventId if hasattr(event, 'EventId') else None,
+            "alert_id": event.event_id if hasattr(event, 'event_id') else None,
             "message": "Tampering alert recorded"
         }
 
@@ -261,7 +261,7 @@ async def update_software_inventory(
     """
     try:
         # Verify agent exists
-        agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -360,7 +360,7 @@ async def update_services_inventory(
     """
     try:
         # Verify agent exists
-        agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
         if not agent:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -462,18 +462,18 @@ async def get_agents(
 
         # Filters
         if agent_status:
-            query = query.filter(Agent.Status == agent_status)
+            query = query.filter(Agent.status == agent_status)
         if domain:
-            query = query.filter(Agent.Domain == domain)
+            query = query.filter(Agent.domain == domain)
         if criticality:
-            query = query.filter(Agent.CriticalityLevel == criticality)
+            query = query.filter(Agent.criticality_level == criticality)
 
         if search:
             query = query.filter(
                 or_(
-                    Agent.Hostname.ilike(f"%{search}%"),
-                    Agent.FQDN.ilike(f"%{search}%"),
-                    Agent.IPAddress.ilike(f"%{search}%")
+                    Agent.hostname.ilike(f"%{search}%"),
+                    Agent.fqdn.ilike(f"%{search}%"),
+                    Agent.ip_address.ilike(f"%{search}%")
                 )
             )
 
@@ -481,7 +481,7 @@ async def get_agents(
         total = query.count()
 
         # Apply pagination
-        agents = query.order_by(Agent.LastSeen.desc()).offset(offset).limit(limit).all()
+        agents = query.order_by(Agent.last_seen.desc()).offset(offset).limit(limit).all()
 
         return {
             "agents": [AgentResponse.from_orm(agent) for agent in agents],
@@ -508,7 +508,7 @@ async def get_agent_detail(
     """
     Get detailed agent information
     """
-    agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
 
     if not agent:
         raise HTTPException(
@@ -531,7 +531,7 @@ async def update_agent(
     Requires analyst role
     """
     try:
-        agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
 
         if not agent:
             raise HTTPException(
@@ -578,7 +578,7 @@ async def delete_agent(
     NOTE: This will also cascade delete all related events, software, services
     """
     try:
-        agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+        agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
 
         if not agent:
             raise HTTPException(
@@ -624,22 +624,22 @@ async def get_agent_statistics(
     """
     try:
         # Total agents
-        total_agents = db.query(func.count(Agent.AgentId)).scalar()
+        total_agents = db.query(func.count(Agent.agent_id)).scalar()
 
         # Agents by status
-        online_agents = db.query(func.count(Agent.AgentId)).filter(Agent.Status == 'online').scalar()
-        offline_agents = db.query(func.count(Agent.AgentId)).filter(Agent.Status == 'offline').scalar()
-        error_agents = db.query(func.count(Agent.AgentId)).filter(Agent.Status == 'error').scalar()
+        online_agents = db.query(func.count(Agent.agent_id)).filter(Agent.status == 'online').scalar()
+        offline_agents = db.query(func.count(Agent.agent_id)).filter(Agent.status == 'offline').scalar()
+        error_agents = db.query(func.count(Agent.agent_id)).filter(Agent.status == 'error').scalar()
 
         # Agents by criticality
-        critical_agents = db.query(func.count(Agent.AgentId)).filter(Agent.CriticalityLevel == 'critical').scalar()
+        critical_agents = db.query(func.count(Agent.agent_id)).filter(Agent.criticality_level == 'critical').scalar()
 
         # Agents by domain (top 10)
         agents_by_domain = {}
         domain_stats = db.query(
-            Agent.Domain,
-            func.count(Agent.AgentId).label('count')
-        ).group_by(Agent.Domain).order_by(func.count(Agent.AgentId).desc()).limit(10).all()
+            Agent.domain,
+            func.count(Agent.agent_id).label('count')
+        ).group_by(Agent.domain).order_by(func.count(Agent.agent_id).desc()).limit(10).all()
 
         for domain, count in domain_stats:
             agents_by_domain[domain or 'No Domain'] = count
@@ -647,17 +647,17 @@ async def get_agent_statistics(
         # Agents by OS version (top 10)
         agents_by_os = {}
         os_stats = db.query(
-            Agent.OSVersion,
-            func.count(Agent.AgentId).label('count')
-        ).group_by(Agent.OSVersion).order_by(func.count(Agent.AgentId).desc()).limit(10).all()
+            Agent.os_version,
+            func.count(Agent.agent_id).label('count')
+        ).group_by(Agent.os_version).order_by(func.count(Agent.agent_id).desc()).limit(10).all()
 
         for os_version, count in os_stats:
             agents_by_os[os_version or 'Unknown'] = count
 
         # Recently registered (last 7 days)
         week_ago = datetime.utcnow() - timedelta(days=7)
-        recent_agents = db.query(func.count(Agent.AgentId)).filter(
-            Agent.RegisteredAt >= week_ago
+        recent_agents = db.query(func.count(Agent.agent_id)).filter(
+            Agent.registered_at >= week_ago
         ).scalar()
 
         return AgentStatistics(
@@ -694,7 +694,7 @@ async def get_agent_software(
     Get software inventory for specific agent
     """
     # Verify agent exists
-    agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -735,7 +735,7 @@ async def get_agent_services(
     Get Windows services for specific agent
     """
     # Verify agent exists
-    agent = db.query(Agent).filter(Agent.AgentId == agent_id).first()
+    agent = db.query(Agent).filter(Agent.agent_id == agent_id).first()
     if not agent:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
