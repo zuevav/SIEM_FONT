@@ -898,6 +898,119 @@ CREATE INDEX idx_threat_intel_expires_at ON enrichment.threat_intelligence(expir
 COMMENT ON TABLE enrichment.threat_intelligence IS 'Кэш результатов threat intelligence (VirusTotal, AbuseIPDB) с TTL 24 часа';
 
 -- =====================================================================
+-- SOAR AUTOMATION SCHEMA
+-- =====================================================================
+
+CREATE SCHEMA IF NOT EXISTS automation;
+
+-- Playbook Actions - Individual steps that can be executed
+CREATE TABLE automation.playbook_actions (
+    action_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    action_type VARCHAR(50) NOT NULL,
+    config JSONB NOT NULL,
+    timeout_seconds INTEGER DEFAULT 300 NOT NULL,
+    retry_count INTEGER DEFAULT 0 NOT NULL,
+    retry_delay_seconds INTEGER DEFAULT 60 NOT NULL,
+    continue_on_failure BOOLEAN DEFAULT FALSE NOT NULL,
+    rollback_action_id INTEGER REFERENCES automation.playbook_actions(action_id),
+    is_enabled BOOLEAN DEFAULT TRUE NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    created_by INTEGER REFERENCES config.users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP
+);
+
+CREATE INDEX idx_playbook_actions_type ON automation.playbook_actions(action_type);
+CREATE INDEX idx_playbook_actions_enabled ON automation.playbook_actions(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
+
+COMMENT ON TABLE automation.playbook_actions IS 'SOAR playbook actions - individual executable steps';
+
+-- Playbooks - Automated response workflows
+CREATE TABLE automation.playbooks (
+    playbook_id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    trigger_on_severity INTEGER[],
+    trigger_on_mitre_tactic VARCHAR(100)[],
+    trigger_on_rule_name VARCHAR(255)[],
+    trigger_conditions JSONB,
+    action_ids INTEGER[],
+    requires_approval BOOLEAN DEFAULT FALSE NOT NULL,
+    auto_approve_for_severity INTEGER[],
+    is_enabled BOOLEAN DEFAULT TRUE NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE NOT NULL,
+    created_by INTEGER REFERENCES config.users(user_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP,
+    last_executed_at TIMESTAMP,
+    execution_count INTEGER DEFAULT 0 NOT NULL,
+    success_count INTEGER DEFAULT 0 NOT NULL,
+    failure_count INTEGER DEFAULT 0 NOT NULL,
+    tags VARCHAR(50)[]
+);
+
+CREATE INDEX idx_playbooks_enabled ON automation.playbooks(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
+CREATE INDEX idx_playbooks_severity ON automation.playbooks USING GIN (trigger_on_severity);
+
+COMMENT ON TABLE automation.playbooks IS 'SOAR playbooks - automated response workflows';
+
+-- Playbook Executions - History of playbook runs
+CREATE TABLE automation.playbook_executions (
+    execution_id SERIAL PRIMARY KEY,
+    playbook_id INTEGER NOT NULL REFERENCES automation.playbooks(playbook_id),
+    alert_id BIGINT REFERENCES incidents.alerts(alert_id),
+    incident_id INTEGER REFERENCES incidents.incidents(incident_id),
+    triggered_by_user_id INTEGER REFERENCES config.users(user_id),
+    status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+    started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP,
+    duration_seconds INTEGER,
+    requires_approval BOOLEAN DEFAULT FALSE NOT NULL,
+    approved_by_user_id INTEGER REFERENCES config.users(user_id),
+    approved_at TIMESTAMP,
+    approval_comment TEXT,
+    success BOOLEAN,
+    error_message TEXT,
+    execution_log JSONB,
+    rolled_back BOOLEAN DEFAULT FALSE NOT NULL,
+    rollback_execution_id INTEGER REFERENCES automation.playbook_executions(execution_id),
+    rollback_reason TEXT,
+
+    CONSTRAINT ck_playbook_executions_status CHECK (status IN ('pending', 'running', 'success', 'failed', 'cancelled', 'awaiting_approval', 'approved', 'rejected', 'rolled_back'))
+);
+
+CREATE INDEX idx_playbook_executions_playbook ON automation.playbook_executions(playbook_id, started_at DESC);
+CREATE INDEX idx_playbook_executions_status ON automation.playbook_executions(status, started_at DESC);
+CREATE INDEX idx_playbook_executions_alert ON automation.playbook_executions(alert_id) WHERE alert_id IS NOT NULL;
+
+COMMENT ON TABLE automation.playbook_executions IS 'SOAR playbook execution history';
+
+-- Action Results - Results of individual action executions
+CREATE TABLE automation.action_results (
+    result_id SERIAL PRIMARY KEY,
+    execution_id INTEGER NOT NULL REFERENCES automation.playbook_executions(execution_id),
+    action_id INTEGER NOT NULL REFERENCES automation.playbook_actions(action_id),
+    sequence_number INTEGER NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    started_at TIMESTAMP,
+    completed_at TIMESTAMP,
+    duration_seconds INTEGER,
+    result JSONB,
+    error_message TEXT,
+    retry_count INTEGER DEFAULT 0 NOT NULL,
+    output_variables JSONB,
+
+    CONSTRAINT ck_action_results_status CHECK (status IN ('pending', 'running', 'success', 'failed', 'skipped', 'timeout'))
+);
+
+CREATE INDEX idx_action_results_execution ON automation.action_results(execution_id, sequence_number);
+CREATE INDEX idx_action_results_action ON automation.action_results(action_id);
+
+COMMENT ON TABLE automation.action_results IS 'SOAR action execution results';
+
+-- =====================================================================
 -- ЗАВЕРШЕНИЕ
 -- =====================================================================
 
@@ -908,14 +1021,14 @@ DECLARE
     index_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO table_count FROM information_schema.tables
-    WHERE table_schema IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment');
+    WHERE table_schema IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment', 'automation');
 
     SELECT COUNT(*) INTO index_count FROM pg_indexes
-    WHERE schemaname IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment');
+    WHERE schemaname IN ('security_events', 'config', 'incidents', 'assets', 'compliance', 'enrichment', 'automation');
 
     RAISE NOTICE 'Схема базы данных SIEM_DB успешно создана!';
     RAISE NOTICE 'Создано:';
-    RAISE NOTICE '  - 6 схем (security_events, config, incidents, assets, compliance, enrichment)';
+    RAISE NOTICE '  - 7 схем (security_events, config, incidents, assets, compliance, enrichment, automation)';
     RAISE NOTICE '  - % таблиц с индексами и ограничениями', table_count;
     RAISE NOTICE '  - % индексов', index_count;
     RAISE NOTICE '  - TimescaleDB hypertable для событий с автоматическим партиционированием';

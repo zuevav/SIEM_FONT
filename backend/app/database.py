@@ -211,7 +211,7 @@ def execute_raw_sql(db: Session, sql: str, params: dict = None) -> list:
 
 def bulk_insert_events(db: Session, events: list) -> dict:
     """
-    Bulk insert events using stored procedure
+    Bulk insert events using PostgreSQL batch insert
 
     Args:
         db: Database session
@@ -220,22 +220,52 @@ def bulk_insert_events(db: Session, events: list) -> dict:
     Returns:
         dict: {inserted_count: int, status: str}
     """
-    import json
+    if not events:
+        return {'InsertedCount': 0, 'Status': 'success'}
 
-    # Convert events to JSON
-    events_json = json.dumps(events)
+    try:
+        # Use PostgreSQL batch insert
+        inserted_count = 0
+        for event in events:
+            db.execute(
+                text("""
+                    INSERT INTO security_events.events
+                    (agent_id, event_time, event_code, provider, source_type, category,
+                     severity, message, subject_user, target_user, source_ip, destination_ip,
+                     process_name, process_id, file_path, registry_key, raw_event)
+                    VALUES
+                    (:agent_id, :event_time, :event_code, :provider, :source_type, :category,
+                     :severity, :message, :subject_user, :target_user, :source_ip, :destination_ip,
+                     :process_name, :process_id, :file_path, :registry_key, :raw_event::jsonb)
+                """),
+                {
+                    "agent_id": event.get("agent_id"),
+                    "event_time": event.get("event_time"),
+                    "event_code": event.get("event_code"),
+                    "provider": event.get("provider"),
+                    "source_type": event.get("source_type"),
+                    "category": event.get("category"),
+                    "severity": event.get("severity", 0),
+                    "message": event.get("message"),
+                    "subject_user": event.get("subject_user"),
+                    "target_user": event.get("target_user"),
+                    "source_ip": event.get("source_ip"),
+                    "destination_ip": event.get("destination_ip"),
+                    "process_name": event.get("process_name"),
+                    "process_id": event.get("process_id"),
+                    "file_path": event.get("file_path"),
+                    "registry_key": event.get("registry_key"),
+                    "raw_event": event.get("raw_event") if isinstance(event.get("raw_event"), str) else None
+                }
+            )
+            inserted_count += 1
 
-    # Call stored procedure
-    results = execute_stored_procedure(
-        db,
-        'security_events.InsertEventsBatch',
-        {'Events': events_json}
-    )
+        db.commit()
+        return {'InsertedCount': inserted_count, 'Status': 'success'}
 
-    if results and len(results) > 0:
-        return results[0][0] if results[0] else {'InsertedCount': 0, 'Status': 'error'}
-
-    return {'InsertedCount': 0, 'Status': 'error'}
+    except Exception as e:
+        db.rollback()
+        return {'InsertedCount': 0, 'Status': 'error', 'Error': str(e)}
 
 
 # ============================================================================

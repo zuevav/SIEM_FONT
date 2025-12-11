@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
-from app.core.database import Base
+from app.database import Base
 
 
 class SearchType(str, enum.Enum):

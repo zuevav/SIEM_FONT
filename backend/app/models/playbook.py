@@ -10,7 +10,7 @@ from datetime import datetime
 import enum
 import json
 
-from app.core.database import Base
+from app.database import Base
 
 
 class PlaybookStatus(str, enum.Enum):
