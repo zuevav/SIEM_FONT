@@ -374,7 +374,7 @@ async def list_executions(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
     playbook_id: Optional[int] = Query(None),
-    status: Optional[PlaybookStatus] = Query(None),
+    execution_status: Optional[PlaybookStatus] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -387,8 +387,8 @@ async def list_executions(
         if playbook_id:
             query = query.filter(PlaybookExecution.playbook_id == playbook_id)
 
-        if status:
-            query = query.filter(PlaybookExecution.status == status)
+        if execution_status:
+            query = query.filter(PlaybookExecution.status == execution_status)
 
         total = query.count()
 

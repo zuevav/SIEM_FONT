@@ -134,7 +134,7 @@ async def get_incidents(
     last_days: Optional[int] = Query(None, description="Get incidents from last N days"),
 
     # Status filters
-    status: Optional[str] = Query(None, description="Filter by status"),
+    incident_status: Optional[str] = Query(None, description="Filter by status"),
     min_severity: Optional[int] = Query(None, ge=0, le=4, description="Minimum severity"),
     category: Optional[str] = Query(None, description="Filter by category"),
 
@@ -172,8 +172,8 @@ async def get_incidents(
             query = query.filter(Incident.DetectedAt <= end_time)
 
         # Status filters
-        if status:
-            query = query.filter(Incident.Status == status)
+        if incident_status:
+            query = query.filter(Incident.Status == incident_status)
         if min_severity is not None:
             query = query.filter(Incident.Severity >= min_severity)
         if category:
