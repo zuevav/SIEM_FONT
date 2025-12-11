@@ -65,8 +65,8 @@ class ADUser(Base):
     Notes = Column(Text)
     Tags = Column(String(500))  # JSON
 
-    # Relationships
-    software_requests = relationship("SoftwareInstallRequest", back_populates="ad_user")
+    # Relationships disabled - tables may not exist in PostgreSQL schema yet
+    # software_requests = relationship("SoftwareInstallRequest", back_populates="ad_user")
 
     def __repr__(self):
         return f"<ADUser(id={self.ADUserId}, sam='{self.SamAccountName}', name='{self.DisplayName}')>"
@@ -112,7 +112,7 @@ class ADComputer(Base):
     MemberOf = Column(Text)  # JSON array
 
     # Agent link
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=True)
+    AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=True)
 
     # Sync metadata
     SyncedAt = Column(DateTime, server_default=func.getutcdate())
@@ -144,11 +144,11 @@ class SoftwareInstallRequest(Base):
     RequestId = Column(BigInteger, primary_key=True, autoincrement=True)
 
     # Request source
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
     ComputerName = Column(String(256), index=True)
 
     # User info
-    ADUserId = Column(BigInteger, ForeignKey('ad.Users.ADUserId'), nullable=True)
+    ADUserId = Column(BigInteger, nullable=True)  # Reference to ad.Users - table may not exist yet
     UserName = Column(String(256), nullable=False, index=True)  # DOMAIN\user
     UserDisplayName = Column(String(256))
     UserDepartment = Column(String(256))
@@ -177,7 +177,7 @@ class SoftwareInstallRequest(Base):
     # pending, approved, denied, expired, cancelled
 
     # Admin decision
-    ReviewedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=True)
+    ReviewedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=True)
     ReviewedAt = Column(DateTime)
     AdminComment = Column(Text)  # Admin's reason for decision
 
@@ -190,8 +190,7 @@ class SoftwareInstallRequest(Base):
     NotificationSent = Column(Boolean, default=False)
     NotificationSentAt = Column(DateTime)
 
-    # Relationships
-    ad_user = relationship("ADUser", back_populates="software_requests")
+    # Relationships - reviewer only (ad_user relationship disabled - table may not exist)
     reviewer = relationship("User", foreign_keys=[ReviewedBy])
 
     def __repr__(self):
@@ -290,17 +289,17 @@ class RemoteSession(Base):
     SessionGUID = Column(String(36), unique=True, index=True, nullable=False)
 
     # Target (where to connect)
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
     ComputerName = Column(String(256), index=True)
     ComputerIP = Column(String(45))
 
     # Target user
     TargetUserName = Column(String(256), index=True)
     TargetUserDisplayName = Column(String(256))
-    ADUserId = Column(BigInteger, ForeignKey('ad.Users.ADUserId'), nullable=True)
+    ADUserId = Column(BigInteger, nullable=True)  # Reference to ad.Users - table may not exist yet
 
     # Admin (who connects)
-    InitiatedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    InitiatedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=False)
     InitiatedByName = Column(String(256))
 
     # Session type
@@ -352,7 +351,7 @@ class RemoteSession(Base):
 
     # Relationships
     initiator = relationship("User", foreign_keys=[InitiatedBy])
-    ad_user = relationship("ADUser", foreign_keys=[ADUserId])
+    # ad_user relationship disabled - table may not exist
 
     def __repr__(self):
         return f"<RemoteSession(id={self.SessionId}, target='{self.ComputerName}', status='{self.Status}')>"
@@ -379,7 +378,7 @@ class PeerHelpSession(Base):
     SessionToken = Column(String(64), unique=True, index=True, nullable=False)  # Short token for URL
 
     # Requester (who needs help)
-    RequesterAgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    RequesterAgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
     RequesterComputerName = Column(String(256))
     RequesterIP = Column(String(45))
     RequesterUserName = Column(String(256))
@@ -453,9 +452,9 @@ class RemoteScript(Base):
     AllowedTargets = Column(String(500))  # JSON: ["all", "domain:IT", "ou:Servers"]
 
     # Audit
-    CreatedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    CreatedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=False)
     CreatedByName = Column(String(256))
-    CreatedAt = Column(DateTime, server_default=func.getutcdate())
+    CreatedAt = Column(DateTime, server_default=func.now())
     UpdatedAt = Column(DateTime)
 
     # Status
@@ -463,7 +462,7 @@ class RemoteScript(Base):
 
     # Relationships
     creator = relationship("User", foreign_keys=[CreatedBy])
-    executions = relationship("RemoteScriptExecution", back_populates="script")
+    # executions relationship disabled - FK constraint removed
 
     def __repr__(self):
         return f"<RemoteScript(id={self.ScriptId}, name='{self.Name}', type='{self.ScriptType}')>"
@@ -482,15 +481,15 @@ class RemoteScriptExecution(Base):
     ExecutionGUID = Column(String(36), unique=True, index=True, nullable=False)
 
     # Script reference
-    ScriptId = Column(BigInteger, ForeignKey('assets.RemoteScripts.ScriptId'), nullable=False)
+    ScriptId = Column(BigInteger, nullable=False)  # Reference to RemoteScripts - no FK constraint
     ScriptName = Column(String(256))
 
     # Target
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
     ComputerName = Column(String(256))
 
     # Execution
-    ExecutedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    ExecutedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=False)
     ExecutedByName = Column(String(256))
     ExecutedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
 
@@ -510,7 +509,7 @@ class RemoteScriptExecution(Base):
     DurationMs = Column(Integer)
 
     # Relationships
-    script = relationship("RemoteScript", back_populates="executions")
+    # script relationship disabled - table may not exist with FK constraint
     executor = relationship("User", foreign_keys=[ExecutedBy])
 
     def __repr__(self):
@@ -564,9 +563,9 @@ class AppStoreApp(Base):
     IconBase64 = Column(Text)
 
     # Audit
-    AddedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=False)
+    AddedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=False)
     AddedByName = Column(String(256))
-    AddedAt = Column(DateTime, server_default=func.getutcdate())
+    AddedAt = Column(DateTime, server_default=func.now())
     UpdatedAt = Column(DateTime)
 
     # Status
@@ -579,7 +578,7 @@ class AppStoreApp(Base):
 
     # Relationships
     adder = relationship("User", foreign_keys=[AddedBy])
-    install_requests = relationship("AppStoreInstallRequest", back_populates="app")
+    # install_requests relationship disabled - FK constraint removed
 
     def __repr__(self):
         return f"<AppStoreApp(id={self.AppId}, name='{self.Name}', type='{self.AppType}')>"
@@ -598,11 +597,11 @@ class AppStoreInstallRequest(Base):
     RequestGUID = Column(String(36), unique=True, index=True, nullable=False)
 
     # App reference
-    AppId = Column(BigInteger, ForeignKey('assets.AppStoreApps.AppId'), nullable=False, index=True)
+    AppId = Column(BigInteger, nullable=False, index=True)  # No FK - table may not exist
     AppName = Column(String(256))
 
     # Requester
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
     ComputerName = Column(String(256))
     UserName = Column(String(256), nullable=False, index=True)
     UserDisplayName = Column(String(256))
@@ -617,7 +616,7 @@ class AppStoreInstallRequest(Base):
     # pending, approved, denied, installing, installed, failed, cancelled
 
     # Admin review
-    ReviewedBy = Column(Integer, ForeignKey('security.Users.UserId'), nullable=True)
+    ReviewedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=True)
     ReviewedByName = Column(String(256))
     ReviewedAt = Column(DateTime)
     AdminComment = Column(Text)
@@ -628,7 +627,7 @@ class AppStoreInstallRequest(Base):
     InstallOutput = Column(Text)
 
     # Relationships
-    app = relationship("AppStoreApp", back_populates="install_requests")
+    # app relationship disabled - FK constraint removed
     reviewer = relationship("User", foreign_keys=[ReviewedBy])
 
     def __repr__(self):
