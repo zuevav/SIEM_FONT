@@ -445,7 +445,7 @@ async def update_services_inventory(
 
 @router.get("", response_model=dict)
 async def get_agents(
-    status: Optional[str] = Query(None, description="Filter by status (online, offline, error)"),
+    agent_status: Optional[str] = Query(None, description="Filter by status (online, offline, error)"),
     domain: Optional[str] = Query(None, description="Filter by domain"),
     criticality: Optional[str] = Query(None, description="Filter by criticality level"),
     search: Optional[str] = Query(None, description="Search in hostname, FQDN, IP"),
@@ -461,8 +461,8 @@ async def get_agents(
         query = db.query(Agent)
 
         # Filters
-        if status:
-            query = query.filter(Agent.Status == status)
+        if agent_status:
+            query = query.filter(Agent.Status == agent_status)
         if domain:
             query = query.filter(Agent.Domain == domain)
         if criticality:
