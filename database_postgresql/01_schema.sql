@@ -41,7 +41,7 @@ CREATE SCHEMA IF NOT EXISTS compliance;
 -- =====================================================================
 
 -- Таблица пользователей системы
-CREATE TABLE config.users (
+CREATE TABLE IF NOT EXISTS config.users (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
     email VARCHAR(255),
@@ -56,8 +56,8 @@ CREATE TABLE config.users (
 );
 
 -- Индексы для пользователей
-CREATE INDEX idx_users_username ON config.users(username) WHERE is_active = TRUE;
-CREATE INDEX idx_users_role ON config.users(role);
+CREATE INDEX IF NOT EXISTS idx_users_username ON config.users(username) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_users_role ON config.users(role);
 
 COMMENT ON TABLE config.users IS 'Пользователи SIEM-системы с RBAC';
 
@@ -66,7 +66,7 @@ COMMENT ON TABLE config.users IS 'Пользователи SIEM-системы �
 -- =====================================================================
 
 -- Таблица агентов (хостов)
-CREATE TABLE assets.agents (
+CREATE TABLE IF NOT EXISTS assets.agents (
     agent_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hostname VARCHAR(255) NOT NULL,
     fqdn VARCHAR(500),
@@ -111,10 +111,10 @@ CREATE TABLE assets.agents (
 );
 
 -- Индексы для агентов
-CREATE UNIQUE INDEX idx_agents_hostname ON assets.agents(hostname);
-CREATE INDEX idx_agents_status ON assets.agents(status, last_seen DESC);
-CREATE INDEX idx_agents_last_seen ON assets.agents(last_seen DESC);
-CREATE INDEX idx_agents_domain ON assets.agents(domain) WHERE domain IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_agents_hostname ON assets.agents(hostname);
+CREATE INDEX IF NOT EXISTS idx_agents_status ON assets.agents(status, last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_agents_last_seen ON assets.agents(last_seen DESC);
+CREATE INDEX IF NOT EXISTS idx_agents_domain ON assets.agents(domain) WHERE domain IS NOT NULL;
 
 COMMENT ON TABLE assets.agents IS 'Windows агенты и хосты под мониторингом';
 
@@ -122,7 +122,7 @@ COMMENT ON TABLE assets.agents IS 'Windows агенты и хосты под м�
 -- ТАБЛИЦА СЕССИЙ API
 -- =====================================================================
 
-CREATE TABLE config.sessions (
+CREATE TABLE IF NOT EXISTS config.sessions (
     session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL REFERENCES config.users(user_id),
     token VARCHAR(500) NOT NULL,
@@ -134,15 +134,15 @@ CREATE TABLE config.sessions (
     CONSTRAINT ck_sessions_expires CHECK (expires_at > created_at)
 );
 
-CREATE UNIQUE INDEX idx_sessions_token ON config.sessions(token) WHERE is_active = TRUE;
-CREATE INDEX idx_sessions_user_id ON config.sessions(user_id, created_at DESC);
-CREATE INDEX idx_sessions_expires ON config.sessions(expires_at) WHERE is_active = TRUE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON config.sessions(token) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON config.sessions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON config.sessions(expires_at) WHERE is_active = TRUE;
 
 -- =====================================================================
 -- ТАБЛИЦА НАСТРОЕК СИСТЕМЫ
 -- =====================================================================
 
-CREATE TABLE config.settings (
+CREATE TABLE IF NOT EXISTS config.settings (
     setting_key VARCHAR(100) PRIMARY KEY,
     setting_value JSONB,
     description VARCHAR(500),
@@ -156,7 +156,7 @@ CREATE TABLE config.settings (
 -- =====================================================================
 
 -- Таблица категорий программного обеспечения
-CREATE TABLE assets.software_categories (
+CREATE TABLE IF NOT EXISTS assets.software_categories (
     category_id SERIAL PRIMARY KEY,
     category_name VARCHAR(50) NOT NULL UNIQUE,
     description VARCHAR(500),
@@ -167,7 +167,7 @@ CREATE TABLE assets.software_categories (
 );
 
 -- Справочник установленного ПО (уникальные продукты)
-CREATE TABLE assets.software_registry (
+CREATE TABLE IF NOT EXISTS assets.software_registry (
     software_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     normalized_name VARCHAR(255), -- Очищенное название для группировки
@@ -192,13 +192,13 @@ CREATE TABLE assets.software_registry (
     CONSTRAINT ck_software_registry_risk CHECK (risk_level IN ('critical', 'high', 'medium', 'low'))
 );
 
-CREATE INDEX idx_software_registry_name ON assets.software_registry(name);
-CREATE INDEX idx_software_registry_normalized ON assets.software_registry(normalized_name);
-CREATE INDEX idx_software_registry_category ON assets.software_registry(category_id);
-CREATE INDEX idx_software_registry_forbidden ON assets.software_registry(is_forbidden) WHERE is_forbidden = TRUE;
+CREATE INDEX IF NOT EXISTS idx_software_registry_name ON assets.software_registry(name);
+CREATE INDEX IF NOT EXISTS idx_software_registry_normalized ON assets.software_registry(normalized_name);
+CREATE INDEX IF NOT EXISTS idx_software_registry_category ON assets.software_registry(category_id);
+CREATE INDEX IF NOT EXISTS idx_software_registry_forbidden ON assets.software_registry(is_forbidden) WHERE is_forbidden = TRUE;
 
 -- Таблица установленного ПО на хостах
-CREATE TABLE assets.installed_software (
+CREATE TABLE IF NOT EXISTS assets.installed_software (
     install_id BIGSERIAL PRIMARY KEY,
     agent_id UUID NOT NULL REFERENCES assets.agents(agent_id),
     software_id INTEGER REFERENCES assets.software_registry(software_id),
@@ -222,15 +222,15 @@ CREATE TABLE assets.installed_software (
     CONSTRAINT uq_installed_software_agent_name_version UNIQUE (agent_id, name, version)
 );
 
-CREATE INDEX idx_installed_software_agent ON assets.installed_software(agent_id, is_active);
-CREATE INDEX idx_installed_software_software ON assets.installed_software(software_id);
-CREATE INDEX idx_installed_software_active ON assets.installed_software(is_active, last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_installed_software_agent ON assets.installed_software(agent_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_installed_software_software ON assets.installed_software(software_id);
+CREATE INDEX IF NOT EXISTS idx_installed_software_active ON assets.installed_software(is_active, last_seen_at DESC);
 
 -- =====================================================================
 -- СЛУЖБЫ WINDOWS
 -- =====================================================================
 
-CREATE TABLE assets.windows_services (
+CREATE TABLE IF NOT EXISTS assets.windows_services (
     service_id BIGSERIAL PRIMARY KEY,
     agent_id UUID NOT NULL REFERENCES assets.agents(agent_id),
 
@@ -249,14 +249,14 @@ CREATE TABLE assets.windows_services (
     CONSTRAINT ck_windows_services_start_type CHECK (start_type IN ('auto', 'manual', 'disabled', 'automatic_delayed'))
 );
 
-CREATE INDEX idx_windows_services_agent ON assets.windows_services(agent_id, is_active);
-CREATE INDEX idx_windows_services_running ON assets.windows_services(status) WHERE status = 'running';
+CREATE INDEX IF NOT EXISTS idx_windows_services_agent ON assets.windows_services(agent_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_windows_services_running ON assets.windows_services(status) WHERE status = 'running';
 
 -- =====================================================================
 -- ИСТОРИЯ ИЗМЕНЕНИЙ В АКТИВАХ (ДЛЯ АУДИТА ЦБ)
 -- =====================================================================
 
-CREATE TABLE assets.asset_changes (
+CREATE TABLE IF NOT EXISTS assets.asset_changes (
     change_id BIGSERIAL PRIMARY KEY,
     agent_id UUID NOT NULL REFERENCES assets.agents(agent_id),
     change_type VARCHAR(50) NOT NULL, -- software_installed, software_removed, service_added, etc
@@ -271,15 +271,15 @@ CREATE TABLE assets.asset_changes (
     ))
 );
 
-CREATE INDEX idx_asset_changes_agent ON assets.asset_changes(agent_id, detected_at DESC);
-CREATE INDEX idx_asset_changes_type ON assets.asset_changes(change_type, detected_at DESC);
-CREATE INDEX idx_asset_changes_critical ON assets.asset_changes(severity, detected_at DESC) WHERE severity >= 3;
+CREATE INDEX IF NOT EXISTS idx_asset_changes_agent ON assets.asset_changes(agent_id, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_asset_changes_type ON assets.asset_changes(change_type, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_asset_changes_critical ON assets.asset_changes(severity, detected_at DESC) WHERE severity >= 3;
 
 -- =====================================================================
 -- ОСНОВНАЯ ТАБЛИЦА СОБЫТИЙ БЕЗОПАСНОСТИ (С TIMESCALEDB)
 -- =====================================================================
 
-CREATE TABLE security_events.events (
+CREATE TABLE IF NOT EXISTS security_events.events (
     event_id BIGSERIAL,
     event_guid UUID DEFAULT gen_random_uuid(), -- Для гарантированной уникальности
     agent_id UUID NOT NULL,
@@ -384,7 +384,7 @@ CREATE TABLE security_events.events (
 
 -- Создаём первичный ключ (будет автоматически создан индекс)
 -- В TimescaleDB нельзя использовать составной PK с временем, так что используем event_id
-CREATE UNIQUE INDEX idx_events_pkey ON security_events.events(event_time, event_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_pkey ON security_events.events(event_time, event_id);
 
 -- =====================================================================
 -- TIMESCALEDB: КОНВЕРТАЦИЯ В HYPERTABLE
@@ -400,13 +400,18 @@ SELECT create_hypertable(
 );
 
 -- Добавляем compression policy (сжатие старых данных через 7 дней)
-ALTER TABLE security_events.events SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'computer, event_code',
-    timescaledb.compress_orderby = 'event_time DESC'
-);
-
-SELECT add_compression_policy('security_events.events', INTERVAL '7 days');
+-- Обёрнуто в DO блок для обработки ошибок
+DO $$
+BEGIN
+    ALTER TABLE security_events.events SET (
+        timescaledb.compress,
+        timescaledb.compress_segmentby = 'computer, event_code',
+        timescaledb.compress_orderby = 'event_time DESC'
+    );
+    PERFORM add_compression_policy('security_events.events', INTERVAL '7 days');
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Compression policy setup skipped: %', SQLERRM;
+END $$;
 
 -- Retention policy: удаление данных старше 5 лет (требование ЦБ - хранение 5 лет)
 -- ВАЖНО: для production установите INTERVAL '5 years'
@@ -417,23 +422,23 @@ SELECT add_compression_policy('security_events.events', INTERVAL '7 days');
 -- =====================================================================
 
 -- BRIN индексы для time-range queries (очень быстрые и компактные)
-CREATE INDEX idx_events_time_brin ON security_events.events USING BRIN (event_time) WITH (pages_per_range = 128);
+CREATE INDEX IF NOT EXISTS idx_events_time_brin ON security_events.events USING BRIN (event_time) WITH (pages_per_range = 128);
 
 -- B-tree индексы для точных поисков и фильтрации
-CREATE INDEX idx_events_agent_id ON security_events.events(agent_id, event_time DESC);
-CREATE INDEX idx_events_severity ON security_events.events(severity, event_time DESC) WHERE severity >= 3;
-CREATE INDEX idx_events_category ON security_events.events(category, event_time DESC) WHERE category IS NOT NULL;
-CREATE INDEX idx_events_subject_user ON security_events.events(subject_user, event_time DESC) WHERE subject_user IS NOT NULL;
-CREATE INDEX idx_events_source_ip ON security_events.events(source_ip, event_time DESC) WHERE source_ip IS NOT NULL;
-CREATE INDEX idx_events_dest_ip ON security_events.events(destination_ip, event_time DESC) WHERE destination_ip IS NOT NULL;
-CREATE INDEX idx_events_process_name ON security_events.events(process_name, event_time DESC) WHERE process_name IS NOT NULL;
-CREATE INDEX idx_events_ai_processed ON security_events.events(ai_processed, event_time) WHERE ai_processed = FALSE;
-CREATE INDEX idx_events_mitre ON security_events.events(mitre_attack_tactic, mitre_attack_technique, event_time DESC) WHERE mitre_attack_tactic IS NOT NULL;
-CREATE UNIQUE INDEX idx_events_event_guid ON security_events.events(event_guid);
+CREATE INDEX IF NOT EXISTS idx_events_agent_id ON security_events.events(agent_id, event_time DESC);
+CREATE INDEX IF NOT EXISTS idx_events_severity ON security_events.events(severity, event_time DESC) WHERE severity >= 3;
+CREATE INDEX IF NOT EXISTS idx_events_category ON security_events.events(category, event_time DESC) WHERE category IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_subject_user ON security_events.events(subject_user, event_time DESC) WHERE subject_user IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_source_ip ON security_events.events(source_ip, event_time DESC) WHERE source_ip IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_dest_ip ON security_events.events(destination_ip, event_time DESC) WHERE destination_ip IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_process_name ON security_events.events(process_name, event_time DESC) WHERE process_name IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_events_ai_processed ON security_events.events(ai_processed, event_time) WHERE ai_processed = FALSE;
+CREATE INDEX IF NOT EXISTS idx_events_mitre ON security_events.events(mitre_attack_tactic, mitre_attack_technique, event_time DESC) WHERE mitre_attack_tactic IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_events_event_guid ON security_events.events(event_guid);
 
 -- GIN index для JSONB полей (поиск по JSON)
-CREATE INDEX idx_events_raw_event_gin ON security_events.events USING GIN (raw_event);
-CREATE INDEX idx_events_tags_gin ON security_events.events USING GIN (tags);
+CREATE INDEX IF NOT EXISTS idx_events_raw_event_gin ON security_events.events USING GIN (raw_event);
+CREATE INDEX IF NOT EXISTS idx_events_tags_gin ON security_events.events USING GIN (tags);
 
 COMMENT ON TABLE security_events.events IS 'Основная таблица событий безопасности. TimescaleDB hypertable с автоматическим партиционированием по дням. Хранение: минимум 5 лет (требование ЦБ 683-П).';
 
@@ -441,7 +446,7 @@ COMMENT ON TABLE security_events.events IS 'Основная таблица со
 -- ПРАВИЛА ДЕТЕКЦИИ
 -- =====================================================================
 
-CREATE TABLE config.detection_rules (
+CREATE TABLE IF NOT EXISTS config.detection_rules (
     rule_id SERIAL PRIMARY KEY,
     rule_name VARCHAR(200) NOT NULL UNIQUE,
     description VARCHAR(1000),
@@ -493,14 +498,14 @@ CREATE TABLE config.detection_rules (
     CONSTRAINT ck_detection_rules_severity CHECK (severity BETWEEN 0 AND 4)
 );
 
-CREATE INDEX idx_detection_rules_enabled ON config.detection_rules(is_enabled, priority) WHERE is_enabled = TRUE;
-CREATE INDEX idx_detection_rules_mitre ON config.detection_rules(mitre_attack_tactic, mitre_attack_technique);
+CREATE INDEX IF NOT EXISTS idx_detection_rules_enabled ON config.detection_rules(is_enabled, priority) WHERE is_enabled = TRUE;
+CREATE INDEX IF NOT EXISTS idx_detection_rules_mitre ON config.detection_rules(mitre_attack_tactic, mitre_attack_technique);
 
 -- =====================================================================
 -- АЛЕРТЫ (СРАБОТАВШИЕ ПРАВИЛА)
 -- =====================================================================
 
-CREATE TABLE incidents.alerts (
+CREATE TABLE IF NOT EXISTS incidents.alerts (
     alert_id BIGSERIAL PRIMARY KEY,
     alert_guid UUID DEFAULT gen_random_uuid(),
     rule_id INTEGER REFERENCES config.detection_rules(rule_id),
@@ -564,19 +569,19 @@ CREATE TABLE incidents.alerts (
 );
 
 -- Индексы для алертов
-CREATE INDEX idx_alerts_status ON incidents.alerts(status, created_at DESC);
-CREATE INDEX idx_alerts_severity ON incidents.alerts(severity DESC, created_at DESC);
-CREATE INDEX idx_alerts_agent_id ON incidents.alerts(agent_id, created_at DESC);
-CREATE INDEX idx_alerts_assigned_to ON incidents.alerts(assigned_to, status);
-CREATE INDEX idx_alerts_incident ON incidents.alerts(incident_id) WHERE incident_id IS NOT NULL;
-CREATE INDEX idx_alerts_unresolved ON incidents.alerts(created_at DESC) WHERE status NOT IN ('resolved', 'false_positive');
-CREATE UNIQUE INDEX idx_alerts_alert_guid ON incidents.alerts(alert_guid);
+CREATE INDEX IF NOT EXISTS idx_alerts_status ON incidents.alerts(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_severity ON incidents.alerts(severity DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_agent_id ON incidents.alerts(agent_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alerts_assigned_to ON incidents.alerts(assigned_to, status);
+CREATE INDEX IF NOT EXISTS idx_alerts_incident ON incidents.alerts(incident_id) WHERE incident_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_alerts_unresolved ON incidents.alerts(created_at DESC) WHERE status NOT IN ('resolved', 'false_positive');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_alert_guid ON incidents.alerts(alert_guid);
 
 -- =====================================================================
 -- ИНЦИДЕНТЫ (ГРУППЫ СВЯЗАННЫХ АЛЕРТОВ)
 -- =====================================================================
 
-CREATE TABLE incidents.incidents (
+CREATE TABLE IF NOT EXISTS incidents.incidents (
     incident_id SERIAL PRIMARY KEY,
     incident_guid UUID DEFAULT gen_random_uuid(),
 
@@ -644,22 +649,27 @@ CREATE TABLE incidents.incidents (
 );
 
 -- Индексы для инцидентов
-CREATE INDEX idx_incidents_status ON incidents.incidents(status, severity DESC, created_at DESC);
-CREATE INDEX idx_incidents_severity ON incidents.incidents(severity DESC, created_at DESC);
-CREATE INDEX idx_incidents_assigned_to ON incidents.incidents(assigned_to, status);
-CREATE INDEX idx_incidents_cbr_reportable ON incidents.incidents(is_reported_to_cbr, created_at DESC) WHERE is_reported_to_cbr = FALSE;
-CREATE UNIQUE INDEX idx_incidents_incident_guid ON incidents.incidents(incident_guid);
+CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents.incidents(status, severity DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents.incidents(severity DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidents_assigned_to ON incidents.incidents(assigned_to, status);
+CREATE INDEX IF NOT EXISTS idx_incidents_cbr_reportable ON incidents.incidents(is_reported_to_cbr, created_at DESC) WHERE is_reported_to_cbr = FALSE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_incidents_incident_guid ON incidents.incidents(incident_guid);
 
--- Обновление связи алертов с инцидентами
-ALTER TABLE incidents.alerts
-ADD CONSTRAINT fk_alerts_incident FOREIGN KEY (incident_id) REFERENCES incidents.incidents(incident_id);
+-- Обновление связи алертов с инцидентами (с обработкой если уже существует)
+DO $$
+BEGIN
+    ALTER TABLE incidents.alerts
+    ADD CONSTRAINT fk_alerts_incident FOREIGN KEY (incident_id) REFERENCES incidents.incidents(incident_id);
+EXCEPTION WHEN duplicate_object THEN
+    RAISE NOTICE 'Constraint fk_alerts_incident already exists, skipping';
+END $$;
 
 -- =====================================================================
 -- ОТЧЁТЫ ДЛЯ ЦБ РФ И КОМПЛАЕНСА
 -- =====================================================================
 
 -- История экспортов для регулятора
-CREATE TABLE compliance.cbr_reports (
+CREATE TABLE IF NOT EXISTS compliance.cbr_reports (
     report_id SERIAL PRIMARY KEY,
     report_guid UUID DEFAULT gen_random_uuid(),
 
@@ -693,9 +703,9 @@ CREATE TABLE compliance.cbr_reports (
     CONSTRAINT ck_cbr_reports_status CHECK (status IN ('draft', 'ready', 'sent', 'confirmed'))
 );
 
-CREATE INDEX idx_cbr_reports_type ON compliance.cbr_reports(report_type, generated_at DESC);
-CREATE INDEX idx_cbr_reports_status ON compliance.cbr_reports(status);
-CREATE UNIQUE INDEX idx_cbr_reports_report_guid ON compliance.cbr_reports(report_guid);
+CREATE INDEX IF NOT EXISTS idx_cbr_reports_type ON compliance.cbr_reports(report_type, generated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cbr_reports_status ON compliance.cbr_reports(status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cbr_reports_report_guid ON compliance.cbr_reports(report_guid);
 
 COMMENT ON TABLE compliance.cbr_reports IS 'История экспортов данных для ЦБ РФ. Хранит отчёты по формам 683-П, 716-П, 747-П с контрольными суммами.';
 
@@ -703,7 +713,7 @@ COMMENT ON TABLE compliance.cbr_reports IS 'История экспортов д
 -- АУДИТ ИЗМЕНЕНИЙ ДЛЯ СООТВЕТСТВИЯ ГОСТ Р 57580
 -- =====================================================================
 
-CREATE TABLE compliance.audit_log (
+CREATE TABLE IF NOT EXISTS compliance.audit_log (
     log_id BIGSERIAL PRIMARY KEY,
     log_guid UUID DEFAULT gen_random_uuid(),
 
@@ -746,11 +756,11 @@ CREATE TABLE compliance.audit_log (
 );
 
 -- Индексы для аудит лога
-CREATE INDEX idx_audit_log_user_id ON compliance.audit_log(user_id, created_at DESC);
-CREATE INDEX idx_audit_log_action ON compliance.audit_log(action, created_at DESC);
-CREATE INDEX idx_audit_log_object_type ON compliance.audit_log(object_type, object_id, created_at DESC);
-CREATE INDEX idx_audit_log_created_at ON compliance.audit_log(created_at DESC);
-CREATE UNIQUE INDEX idx_audit_log_log_guid ON compliance.audit_log(log_guid);
+CREATE INDEX IF NOT EXISTS idx_audit_log_user_id ON compliance.audit_log(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON compliance.audit_log(action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_object_type ON compliance.audit_log(object_type, object_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON compliance.audit_log(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_audit_log_log_guid ON compliance.audit_log(log_guid);
 
 COMMENT ON TABLE compliance.audit_log IS 'Журнал аудита всех действий пользователей системы (ГОСТ Р 57580).';
 
@@ -764,7 +774,7 @@ CREATE SCHEMA IF NOT EXISTS enrichment;
 -- ---------------------------------------------------------------------
 -- SystemSettings - Хранение настроек системы
 -- ---------------------------------------------------------------------
-CREATE TABLE config.system_settings (
+CREATE TABLE IF NOT EXISTS config.system_settings (
     setting_id SERIAL PRIMARY KEY,
     setting_key VARCHAR(100) NOT NULL UNIQUE,
     setting_value TEXT,
@@ -776,15 +786,15 @@ CREATE TABLE config.system_settings (
     updated_at TIMESTAMP
 );
 
-CREATE INDEX idx_system_settings_key ON config.system_settings(setting_key);
-CREATE INDEX idx_system_settings_category ON config.system_settings(category);
+CREATE INDEX IF NOT EXISTS idx_system_settings_key ON config.system_settings(setting_key);
+CREATE INDEX IF NOT EXISTS idx_system_settings_category ON config.system_settings(category);
 
 COMMENT ON TABLE config.system_settings IS 'Настройки системы (FreeScout, Email, AI, Threat Intel)';
 
 -- ---------------------------------------------------------------------
 -- SavedSearches - Сохранённые поисковые запросы
 -- ---------------------------------------------------------------------
-CREATE TABLE config.saved_searches (
+CREATE TABLE IF NOT EXISTS config.saved_searches (
     saved_search_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -799,18 +809,18 @@ CREATE TABLE config.saved_searches (
         CHECK (search_type IN ('events', 'alerts', 'incidents'))
 );
 
-CREATE INDEX idx_saved_searches_name ON config.saved_searches(name);
-CREATE INDEX idx_saved_searches_search_type ON config.saved_searches(search_type);
-CREATE INDEX idx_saved_searches_user_id ON config.saved_searches(user_id);
-CREATE INDEX idx_saved_searches_is_shared ON config.saved_searches(is_shared);
-CREATE INDEX idx_saved_searches_created_at ON config.saved_searches(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_name ON config.saved_searches(name);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_search_type ON config.saved_searches(search_type);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_user_id ON config.saved_searches(user_id);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_is_shared ON config.saved_searches(is_shared);
+CREATE INDEX IF NOT EXISTS idx_saved_searches_created_at ON config.saved_searches(created_at DESC);
 
 COMMENT ON TABLE config.saved_searches IS 'Сохранённые поисковые запросы пользователей';
 
 -- ---------------------------------------------------------------------
 -- FreeScoutTickets - Связь с тикетами FreeScout
 -- ---------------------------------------------------------------------
-CREATE TABLE incidents.freescout_tickets (
+CREATE TABLE IF NOT EXISTS incidents.freescout_tickets (
     ticket_id SERIAL PRIMARY KEY,
     freescout_conversation_id INTEGER NOT NULL UNIQUE,
     freescout_conversation_number INTEGER NOT NULL,
@@ -824,17 +834,17 @@ CREATE TABLE incidents.freescout_tickets (
     last_synced_at TIMESTAMP
 );
 
-CREATE INDEX idx_freescout_tickets_conversation_id ON incidents.freescout_tickets(freescout_conversation_id);
-CREATE INDEX idx_freescout_tickets_alert_id ON incidents.freescout_tickets(alert_id);
-CREATE INDEX idx_freescout_tickets_incident_id ON incidents.freescout_tickets(incident_id);
-CREATE INDEX idx_freescout_tickets_status ON incidents.freescout_tickets(ticket_status);
+CREATE INDEX IF NOT EXISTS idx_freescout_tickets_conversation_id ON incidents.freescout_tickets(freescout_conversation_id);
+CREATE INDEX IF NOT EXISTS idx_freescout_tickets_alert_id ON incidents.freescout_tickets(alert_id);
+CREATE INDEX IF NOT EXISTS idx_freescout_tickets_incident_id ON incidents.freescout_tickets(incident_id);
+CREATE INDEX IF NOT EXISTS idx_freescout_tickets_status ON incidents.freescout_tickets(ticket_status);
 
 COMMENT ON TABLE incidents.freescout_tickets IS 'Связь алертов/инцидентов с тикетами в FreeScout';
 
 -- ---------------------------------------------------------------------
 -- EmailNotifications - Журнал отправленных email уведомлений
 -- ---------------------------------------------------------------------
-CREATE TABLE config.email_notifications (
+CREATE TABLE IF NOT EXISTS config.email_notifications (
     notification_id SERIAL PRIMARY KEY,
     recipient_email VARCHAR(255) NOT NULL,
     subject VARCHAR(500) NOT NULL,
@@ -847,18 +857,18 @@ CREATE TABLE config.email_notifications (
     smtp_message_id VARCHAR(255)
 );
 
-CREATE INDEX idx_email_notifications_recipient ON config.email_notifications(recipient_email, sent_at DESC);
-CREATE INDEX idx_email_notifications_alert_id ON config.email_notifications(alert_id);
-CREATE INDEX idx_email_notifications_incident_id ON config.email_notifications(incident_id);
-CREATE INDEX idx_email_notifications_sent_at ON config.email_notifications(sent_at DESC);
-CREATE INDEX idx_email_notifications_status ON config.email_notifications(status);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_recipient ON config.email_notifications(recipient_email, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_alert_id ON config.email_notifications(alert_id);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_incident_id ON config.email_notifications(incident_id);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_sent_at ON config.email_notifications(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_email_notifications_status ON config.email_notifications(status);
 
 COMMENT ON TABLE config.email_notifications IS 'Журнал отправленных email уведомлений';
 
 -- ---------------------------------------------------------------------
 -- ThreatIntelligence - Кэш результатов threat intelligence
 -- ---------------------------------------------------------------------
-CREATE TABLE enrichment.threat_intelligence (
+CREATE TABLE IF NOT EXISTS enrichment.threat_intelligence (
     intel_id SERIAL PRIMARY KEY,
     lookup_type VARCHAR(20) NOT NULL, -- ip, file_hash, domain
     lookup_value VARCHAR(255) NOT NULL,
@@ -872,11 +882,11 @@ CREATE TABLE enrichment.threat_intelligence (
 );
 
 -- Уникальный индекс для предотвращения дублей (один тип запроса + значение + источник)
-CREATE UNIQUE INDEX idx_threat_intel_unique ON enrichment.threat_intelligence(lookup_type, lookup_value, source);
-CREATE INDEX idx_threat_intel_lookup_value ON enrichment.threat_intelligence(lookup_value);
-CREATE INDEX idx_threat_intel_source ON enrichment.threat_intelligence(source);
-CREATE INDEX idx_threat_intel_created_at ON enrichment.threat_intelligence(created_at DESC);
-CREATE INDEX idx_threat_intel_expires_at ON enrichment.threat_intelligence(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_threat_intel_unique ON enrichment.threat_intelligence(lookup_type, lookup_value, source);
+CREATE INDEX IF NOT EXISTS idx_threat_intel_lookup_value ON enrichment.threat_intelligence(lookup_value);
+CREATE INDEX IF NOT EXISTS idx_threat_intel_source ON enrichment.threat_intelligence(source);
+CREATE INDEX IF NOT EXISTS idx_threat_intel_created_at ON enrichment.threat_intelligence(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_threat_intel_expires_at ON enrichment.threat_intelligence(expires_at);
 
 COMMENT ON TABLE enrichment.threat_intelligence IS 'Кэш результатов threat intelligence (VirusTotal, AbuseIPDB) с TTL 24 часа';
 
@@ -887,7 +897,7 @@ COMMENT ON TABLE enrichment.threat_intelligence IS 'Кэш результато�
 CREATE SCHEMA IF NOT EXISTS automation;
 
 -- Playbook Actions - Individual steps that can be executed
-CREATE TABLE automation.playbook_actions (
+CREATE TABLE IF NOT EXISTS automation.playbook_actions (
     action_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -905,13 +915,13 @@ CREATE TABLE automation.playbook_actions (
     updated_at TIMESTAMP
 );
 
-CREATE INDEX idx_playbook_actions_type ON automation.playbook_actions(action_type);
-CREATE INDEX idx_playbook_actions_enabled ON automation.playbook_actions(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_playbook_actions_type ON automation.playbook_actions(action_type);
+CREATE INDEX IF NOT EXISTS idx_playbook_actions_enabled ON automation.playbook_actions(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
 
 COMMENT ON TABLE automation.playbook_actions IS 'SOAR playbook actions - individual executable steps';
 
 -- Playbooks - Automated response workflows
-CREATE TABLE automation.playbooks (
+CREATE TABLE IF NOT EXISTS automation.playbooks (
     playbook_id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -934,13 +944,13 @@ CREATE TABLE automation.playbooks (
     tags VARCHAR(50)[]
 );
 
-CREATE INDEX idx_playbooks_enabled ON automation.playbooks(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
-CREATE INDEX idx_playbooks_severity ON automation.playbooks USING GIN (trigger_on_severity);
+CREATE INDEX IF NOT EXISTS idx_playbooks_enabled ON automation.playbooks(is_enabled) WHERE is_enabled = TRUE AND is_deleted = FALSE;
+CREATE INDEX IF NOT EXISTS idx_playbooks_severity ON automation.playbooks USING GIN (trigger_on_severity);
 
 COMMENT ON TABLE automation.playbooks IS 'SOAR playbooks - automated response workflows';
 
 -- Playbook Executions - History of playbook runs
-CREATE TABLE automation.playbook_executions (
+CREATE TABLE IF NOT EXISTS automation.playbook_executions (
     execution_id SERIAL PRIMARY KEY,
     playbook_id INTEGER NOT NULL REFERENCES automation.playbooks(playbook_id),
     alert_id BIGINT REFERENCES incidents.alerts(alert_id),
@@ -964,14 +974,14 @@ CREATE TABLE automation.playbook_executions (
     CONSTRAINT ck_playbook_executions_status CHECK (status IN ('pending', 'running', 'success', 'failed', 'cancelled', 'awaiting_approval', 'approved', 'rejected', 'rolled_back'))
 );
 
-CREATE INDEX idx_playbook_executions_playbook ON automation.playbook_executions(playbook_id, started_at DESC);
-CREATE INDEX idx_playbook_executions_status ON automation.playbook_executions(status, started_at DESC);
-CREATE INDEX idx_playbook_executions_alert ON automation.playbook_executions(alert_id) WHERE alert_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_playbook_executions_playbook ON automation.playbook_executions(playbook_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_playbook_executions_status ON automation.playbook_executions(status, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_playbook_executions_alert ON automation.playbook_executions(alert_id) WHERE alert_id IS NOT NULL;
 
 COMMENT ON TABLE automation.playbook_executions IS 'SOAR playbook execution history';
 
 -- Action Results - Results of individual action executions
-CREATE TABLE automation.action_results (
+CREATE TABLE IF NOT EXISTS automation.action_results (
     result_id SERIAL PRIMARY KEY,
     execution_id INTEGER NOT NULL REFERENCES automation.playbook_executions(execution_id),
     action_id INTEGER NOT NULL REFERENCES automation.playbook_actions(action_id),
@@ -988,8 +998,8 @@ CREATE TABLE automation.action_results (
     CONSTRAINT ck_action_results_status CHECK (status IN ('pending', 'running', 'success', 'failed', 'skipped', 'timeout'))
 );
 
-CREATE INDEX idx_action_results_execution ON automation.action_results(execution_id, sequence_number);
-CREATE INDEX idx_action_results_action ON automation.action_results(action_id);
+CREATE INDEX IF NOT EXISTS idx_action_results_execution ON automation.action_results(execution_id, sequence_number);
+CREATE INDEX IF NOT EXISTS idx_action_results_action ON automation.action_results(action_id);
 
 COMMENT ON TABLE automation.action_results IS 'SOAR action execution results';
 
