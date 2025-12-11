@@ -271,7 +271,7 @@ class AgentPackage(Base):
     IsActive = Column(Boolean, default=True)
     IsLatest = Column(Boolean, default=False)
     UploadedBy = Column(String(100))
-    UploadedAt = Column(DateTime, server_default=func.getutcdate())
+    UploadedAt = Column(DateTime, server_default=func.now())
 
     # Relationships
     deployments = relationship("AgentDeployment", back_populates="package")
@@ -306,8 +306,8 @@ class AgentDeployment(Base):
     # Status
     Status = Column(String(20), default='draft')  # draft, active, paused, completed
     CreatedBy = Column(String(100))
-    CreatedAt = Column(DateTime, server_default=func.getutcdate())
-    UpdatedAt = Column(DateTime, server_default=func.getutcdate(), onupdate=func.getutcdate())
+    CreatedAt = Column(DateTime, server_default=func.now())
+    UpdatedAt = Column(DateTime, server_default=func.now(), onupdate=func.now())
     ActivatedAt = Column(DateTime)
 
     # Statistics

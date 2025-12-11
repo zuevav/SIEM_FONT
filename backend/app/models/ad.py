@@ -58,7 +58,7 @@ class ADUser(Base):
     # Sync metadata
     CreatedAt = Column(DateTime)  # AD creation date
     ModifiedAt = Column(DateTime)  # AD modification date
-    SyncedAt = Column(DateTime, server_default=func.getutcdate())
+    SyncedAt = Column(DateTime, server_default=func.now())
 
     # SIEM metadata
     RiskScore = Column(Integer, default=0)  # 0-100
@@ -115,7 +115,7 @@ class ADComputer(Base):
     AgentId = Column(String(36), ForeignKey('assets.agents.agent_id'), nullable=True)
 
     # Sync metadata
-    SyncedAt = Column(DateTime, server_default=func.getutcdate())
+    SyncedAt = Column(DateTime, server_default=func.now())
 
     # SIEM metadata
     CriticalityLevel = Column(String(20), default='medium')
@@ -170,7 +170,7 @@ class SoftwareInstallRequest(Base):
     # User's request
     UserComment = Column(Text)  # Why user needs this software
     BusinessJustification = Column(Text)
-    RequestedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    RequestedAt = Column(DateTime, server_default=func.now(), index=True)
 
     # Status
     Status = Column(String(20), default='pending', index=True)
@@ -228,7 +228,7 @@ class ADGroup(Base):
     # Metadata
     WhenCreated = Column(DateTime)
     WhenChanged = Column(DateTime)
-    SyncedAt = Column(DateTime, server_default=func.getutcdate())
+    SyncedAt = Column(DateTime, server_default=func.now())
 
     # SIEM metadata
     IsPrivileged = Column(Boolean, default=False, index=True)  # Admin groups
@@ -249,7 +249,7 @@ class ADSyncLog(Base):
     SyncType = Column(String(50), nullable=False)  # full, incremental, users, computers, groups
     Status = Column(String(20), default='running')  # running, completed, failed
 
-    StartedAt = Column(DateTime, server_default=func.getutcdate())
+    StartedAt = Column(DateTime, server_default=func.now())
     CompletedAt = Column(DateTime)
 
     # Statistics
@@ -325,7 +325,7 @@ class RemoteSession(Base):
     # cancelled - admin cancelled
 
     # Timestamps
-    RequestedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    RequestedAt = Column(DateTime, server_default=func.now(), index=True)
     UserRespondedAt = Column(DateTime)
     ConnectedAt = Column(DateTime)
     EndedAt = Column(DateTime)
@@ -405,7 +405,7 @@ class PeerHelpSession(Base):
     # cancelled - requester cancelled
 
     # Timestamps
-    CreatedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    CreatedAt = Column(DateTime, server_default=func.now(), index=True)
     ExpiresAt = Column(DateTime)  # Link expiration
     HelperJoinedAt = Column(DateTime)
     ConsentGivenAt = Column(DateTime)
@@ -491,7 +491,7 @@ class RemoteScriptExecution(Base):
     # Execution
     ExecutedBy = Column(Integer, ForeignKey('config.users.user_id'), nullable=False)
     ExecutedByName = Column(String(256))
-    ExecutedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    ExecutedAt = Column(DateTime, server_default=func.now(), index=True)
 
     # Parameters passed (JSON)
     ExecutionParameters = Column(Text)
@@ -609,7 +609,7 @@ class AppStoreInstallRequest(Base):
 
     # Request details
     RequestReason = Column(Text)  # Why user needs this app
-    RequestedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
+    RequestedAt = Column(DateTime, server_default=func.now(), index=True)
 
     # Status
     Status = Column(String(30), default='pending', index=True)
