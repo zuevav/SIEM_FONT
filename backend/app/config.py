@@ -144,7 +144,7 @@ class Settings(BaseSettings):
     # DEFAULT ADMIN USER
     # ============================================================================
     default_admin_username: str = Field(default="admin", env="DEFAULT_ADMIN_USERNAME")
-    default_admin_password: str = Field(default="Admin123!", env="DEFAULT_ADMIN_PASSWORD")
+    default_admin_password: str = Field(default="Admin123!@#$", env="DEFAULT_ADMIN_PASSWORD")  # 12+ chars to meet policy
     default_admin_email: str = Field(default="admin@company.local", env="DEFAULT_ADMIN_EMAIL")
 
     # ============================================================================

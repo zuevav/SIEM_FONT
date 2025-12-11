@@ -3,55 +3,57 @@ SQLAlchemy models for Agents and Assets
 """
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, BigInteger, Date, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
 
 class Agent(Base):
-    """Agent model - assets.Agents table"""
+    """Agent model - assets.agents table (PostgreSQL snake_case)"""
 
-    __tablename__ = "Agents"
+    __tablename__ = "agents"
     __table_args__ = {'schema': 'assets'}
 
-    AgentId = Column(String(36), primary_key=True)  # GUID
-    Hostname = Column(String(255), nullable=False, unique=True, index=True)
-    FQDN = Column(String(500))
-    IPAddress = Column(String(45), index=True)
-    MACAddress = Column(String(17))
+    # Column names match PostgreSQL schema (snake_case)
+    agent_id = Column('agent_id', UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    hostname = Column('hostname', String(255), nullable=False, unique=True, index=True)
+    fqdn = Column('fqdn', String(500))
+    ip_address = Column('ip_address', String(45), index=True)
+    mac_address = Column('mac_address', String(17))
 
     # System Info
-    OSVersion = Column(String(100))
-    OSBuild = Column(String(50))
-    OSArchitecture = Column(String(10))  # x64, x86
+    os_version = Column('os_version', String(100))
+    os_build = Column('os_build', String(50))
+    os_architecture = Column('os_architecture', String(10))  # x64, x86
 
     # Active Directory
-    Domain = Column(String(255), index=True)
-    OrganizationalUnit = Column(String(500))
+    domain = Column('domain', String(255), index=True)
+    organizational_unit = Column('organizational_unit', String(500))
 
     # Hardware
-    Manufacturer = Column(String(100))
-    Model = Column(String(100))
-    SerialNumber = Column(String(100))
-    CPUModel = Column(String(200))
-    CPUCores = Column(Integer)
-    TotalRAM_MB = Column(BigInteger)
-    TotalDisk_GB = Column(BigInteger)
+    manufacturer = Column('manufacturer', String(100))
+    model = Column('model', String(100))
+    serial_number = Column('serial_number', String(100))
+    cpu_model = Column('cpu_model', String(200))
+    cpu_cores = Column('cpu_cores', Integer)
+    total_ram_mb = Column('total_ram_mb', BigInteger)
+    total_disk_gb = Column('total_disk_gb', BigInteger)
 
     # Agent Status
-    AgentVersion = Column(String(20))
-    Status = Column(String(20), default='offline', index=True)  # online, offline, error
-    LastSeen = Column(DateTime, default=func.getutcdate(), index=True)
-    LastInventory = Column(DateTime)
-    LastReboot = Column(DateTime)
+    agent_version = Column('agent_version', String(20))
+    status = Column('status', String(20), default='offline', index=True)  # online, offline, error
+    last_seen = Column('last_seen', DateTime, index=True)
+    last_inventory = Column('last_inventory', DateTime)
+    last_reboot = Column('last_reboot', DateTime)
 
     # Metadata
-    RegisteredAt = Column(DateTime, server_default=func.getutcdate())
-    Configuration = Column(Text)  # JSON
-    Tags = Column(String(500))  # JSON
-    Location = Column(String(200))
-    Owner = Column(String(200))
-    CriticalityLevel = Column(String(20), default='medium')  # critical, high, medium, low
+    registered_at = Column('registered_at', DateTime, server_default=func.now())
+    configuration = Column('configuration', JSONB)
+    tags = Column('tags', JSONB)
+    location = Column('location', String(200))
+    owner = Column('owner', String(200))
+    criticality_level = Column('criticality_level', String(20), default='medium')  # critical, high, medium, low
 
     # Relationships
     events = relationship("Event", back_populates="agent")
@@ -59,145 +61,184 @@ class Agent(Base):
     services = relationship("WindowsService", back_populates="agent")
     alerts = relationship("Alert", back_populates="agent")
 
+    # PascalCase aliases for backward compatibility
+    @property
+    def AgentId(self):
+        return self.agent_id
+
+    @property
+    def Hostname(self):
+        return self.hostname
+
+    @property
+    def IPAddress(self):
+        return self.ip_address
+
+    @property
+    def Status(self):
+        return self.status
+
+    @property
+    def LastSeen(self):
+        return self.last_seen
+
     def __repr__(self):
-        return f"<Agent(id='{self.AgentId}', hostname='{self.Hostname}', status='{self.Status}')>"
+        return f"<Agent(id='{self.agent_id}', hostname='{self.hostname}', status='{self.status}')>"
 
     @property
     def is_online(self) -> bool:
         """Check if agent is online"""
-        return self.Status == 'online'
+        return self.status == 'online'
 
 
 class SoftwareCategory(Base):
-    """Software Category model - assets.SoftwareCategories table"""
+    """Software Category model - assets.software_categories table (PostgreSQL snake_case)"""
 
-    __tablename__ = "SoftwareCategories"
+    __tablename__ = "software_categories"
     __table_args__ = {'schema': 'assets'}
 
-    CategoryId = Column(Integer, primary_key=True, autoincrement=True)
-    CategoryName = Column(String(50), nullable=False, unique=True)
-    Description = Column(String(500))
-    DefaultRiskLevel = Column(String(20), default='low')
-    RequiresLicense = Column(Boolean, default=False)
-    RequiresApproval = Column(Boolean, default=False)
+    category_id = Column('category_id', Integer, primary_key=True, autoincrement=True)
+    category_name = Column('category_name', String(50), nullable=False, unique=True)
+    description = Column('description', String(500))
+    default_risk_level = Column('default_risk_level', String(20), default='low')
+    requires_license = Column('requires_license', Boolean, default=False)
+    requires_approval = Column('requires_approval', Boolean, default=False)
 
     # Relationships
     software = relationship("SoftwareRegistry", back_populates="category")
 
+    # PascalCase aliases for backward compatibility
+    @property
+    def CategoryId(self):
+        return self.category_id
+
+    @property
+    def CategoryName(self):
+        return self.category_name
+
     def __repr__(self):
-        return f"<SoftwareCategory(id={self.CategoryId}, name='{self.CategoryName}')>"
+        return f"<SoftwareCategory(id={self.category_id}, name='{self.category_name}')>"
 
 
 class SoftwareRegistry(Base):
-    """Software Registry model - assets.SoftwareRegistry table"""
+    """Software Registry model - assets.software_registry table (PostgreSQL snake_case)"""
 
-    __tablename__ = "SoftwareRegistry"
+    __tablename__ = "software_registry"
     __table_args__ = {'schema': 'assets'}
 
-    SoftwareId = Column(Integer, primary_key=True, autoincrement=True)
-    Name = Column(String(255), nullable=False, index=True)
-    NormalizedName = Column(String(255), index=True)
-    Publisher = Column(String(255))
-    CategoryId = Column(Integer, ForeignKey('assets.SoftwareCategories.CategoryId'))
+    software_id = Column('software_id', Integer, primary_key=True, autoincrement=True)
+    name = Column('name', String(255), nullable=False, index=True)
+    normalized_name = Column('normalized_name', String(255), index=True)
+    publisher = Column('publisher', String(255))
+    category_id = Column('category_id', Integer, ForeignKey('assets.software_categories.category_id'))
 
     # Classification
-    IsAllowed = Column(Boolean, default=True)
-    IsForbidden = Column(Boolean, default=False, index=True)
-    RequiresLicense = Column(Boolean, default=False)
-    RiskLevel = Column(String(20), default='low')
+    is_allowed = Column('is_allowed', Boolean, default=True)
+    is_forbidden = Column('is_forbidden', Boolean, default=False, index=True)
+    requires_license = Column('requires_license', Boolean, default=False)
+    risk_level = Column('risk_level', String(20), default='low')
 
     # MITRE ATT&CK
-    MitreRelevant = Column(Boolean, default=False)
-    MitreTechniques = Column(String(500))  # JSON
+    mitre_relevant = Column('mitre_relevant', Boolean, default=False)
+    mitre_techniques = Column('mitre_techniques', JSONB)
 
     # Metadata
-    FirstSeenAt = Column(DateTime, server_default=func.getutcdate())
-    LastSeenAt = Column(DateTime, server_default=func.getutcdate())
-    Notes = Column(Text)
+    first_seen_at = Column('first_seen_at', DateTime, server_default=func.now())
+    last_seen_at = Column('last_seen_at', DateTime, server_default=func.now())
+    notes = Column('notes', Text)
 
     # Relationships
     category = relationship("SoftwareCategory", back_populates="software")
     installations = relationship("InstalledSoftware", back_populates="software")
 
+    # PascalCase aliases for backward compatibility
+    @property
+    def SoftwareId(self):
+        return self.software_id
+
+    @property
+    def Name(self):
+        return self.name
+
     def __repr__(self):
-        return f"<SoftwareRegistry(id={self.SoftwareId}, name='{self.Name}')>"
+        return f"<SoftwareRegistry(id={self.software_id}, name='{self.name}')>"
 
 
 class InstalledSoftware(Base):
-    """Installed Software model - assets.InstalledSoftware table"""
+    """Installed Software model - assets.installed_software table (PostgreSQL snake_case)"""
 
-    __tablename__ = "InstalledSoftware"
+    __tablename__ = "installed_software"
     __table_args__ = {'schema': 'assets'}
 
-    InstallId = Column(BigInteger, primary_key=True, autoincrement=True)
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
-    SoftwareId = Column(Integer, ForeignKey('assets.SoftwareRegistry.SoftwareId'))
+    install_id = Column('install_id', BigInteger, primary_key=True, autoincrement=True)
+    agent_id = Column('agent_id', UUID(as_uuid=True), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
+    software_id = Column('software_id', Integer, ForeignKey('assets.software_registry.software_id'))
 
     # Installation Info
-    Name = Column(String(255), nullable=False)
-    Version = Column(String(100))
-    Publisher = Column(String(255))
-    InstallDate = Column(Date)
-    InstallLocation = Column(String(1000))
-    UninstallString = Column(String(1000))
-    EstimatedSize_KB = Column(BigInteger)
+    name = Column('name', String(255), nullable=False)
+    version = Column('version', String(100))
+    publisher = Column('publisher', String(255))
+    install_date = Column('install_date', Date)
+    install_location = Column('install_location', String(1000))
+    uninstall_string = Column('uninstall_string', String(1000))
+    estimated_size_kb = Column('estimated_size_kb', BigInteger)
 
     # Status
-    IsActive = Column(Boolean, default=True, index=True)
-    FirstSeenAt = Column(DateTime, server_default=func.getutcdate())
-    LastSeenAt = Column(DateTime, server_default=func.getutcdate())
-    RemovedAt = Column(DateTime)
+    is_active = Column('is_active', Boolean, default=True, index=True)
+    first_seen_at = Column('first_seen_at', DateTime, server_default=func.now())
+    last_seen_at = Column('last_seen_at', DateTime, server_default=func.now())
+    removed_at = Column('removed_at', DateTime)
 
     # Relationships
     agent = relationship("Agent", back_populates="installed_software")
     software = relationship("SoftwareRegistry", back_populates="installations")
 
     def __repr__(self):
-        return f"<InstalledSoftware(id={self.InstallId}, name='{self.Name}', version='{self.Version}')>"
+        return f"<InstalledSoftware(id={self.install_id}, name='{self.name}', version='{self.version}')>"
 
 
 class WindowsService(Base):
-    """Windows Service model - assets.WindowsServices table"""
+    """Windows Service model - assets.windows_services table (PostgreSQL snake_case)"""
 
-    __tablename__ = "WindowsServices"
+    __tablename__ = "windows_services"
     __table_args__ = {'schema': 'assets'}
 
-    ServiceId = Column(BigInteger, primary_key=True, autoincrement=True)
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
+    service_id = Column('service_id', BigInteger, primary_key=True, autoincrement=True)
+    agent_id = Column('agent_id', UUID(as_uuid=True), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
 
-    ServiceName = Column(String(255), nullable=False)
-    DisplayName = Column(String(500))
-    Status = Column(String(20))  # running, stopped, paused
-    StartType = Column(String(20))  # auto, manual, disabled
-    ServiceAccount = Column(String(255))
-    ExecutablePath = Column(String(1000))
+    service_name = Column('service_name', String(255), nullable=False)
+    display_name = Column('display_name', String(500))
+    status = Column('status', String(20))  # running, stopped, paused
+    start_type = Column('start_type', String(20))  # auto, manual, disabled
+    service_account = Column('service_account', String(255))
+    executable_path = Column('executable_path', String(1000))
 
-    IsActive = Column(Boolean, default=True)
-    FirstSeenAt = Column(DateTime, server_default=func.getutcdate())
-    LastSeenAt = Column(DateTime, server_default=func.getutcdate())
+    is_active = Column('is_active', Boolean, default=True)
+    first_seen_at = Column('first_seen_at', DateTime, server_default=func.now())
+    last_seen_at = Column('last_seen_at', DateTime, server_default=func.now())
 
     # Relationships
     agent = relationship("Agent", back_populates="services")
 
     def __repr__(self):
-        return f"<WindowsService(id={self.ServiceId}, name='{self.ServiceName}', status='{self.Status}')>"
+        return f"<WindowsService(id={self.service_id}, name='{self.service_name}', status='{self.status}')>"
 
 
 class AssetChange(Base):
-    """Asset Change model - assets.AssetChanges table"""
+    """Asset Change model - assets.asset_changes table (PostgreSQL snake_case)"""
 
-    __tablename__ = "AssetChanges"
+    __tablename__ = "asset_changes"
     __table_args__ = {'schema': 'assets'}
 
-    ChangeId = Column(BigInteger, primary_key=True, autoincrement=True)
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), nullable=False, index=True)
-    ChangeType = Column(String(50), nullable=False, index=True)
-    ChangeDetails = Column(Text)  # JSON
-    DetectedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
-    Severity = Column(Integer, default=0, index=True)
+    change_id = Column('change_id', BigInteger, primary_key=True, autoincrement=True)
+    agent_id = Column('agent_id', UUID(as_uuid=True), ForeignKey('assets.agents.agent_id'), nullable=False, index=True)
+    change_type = Column('change_type', String(50), nullable=False, index=True)
+    change_details = Column('change_details', JSONB)
+    detected_at = Column('detected_at', DateTime, server_default=func.now(), index=True)
+    severity = Column('severity', Integer, default=0, index=True)
 
     def __repr__(self):
-        return f"<AssetChange(id={self.ChangeId}, type='{self.ChangeType}', severity={self.Severity})>"
+        return f"<AssetChange(id={self.change_id}, type='{self.change_type}', severity={self.severity})>"
 
 
 # ============================================================================
