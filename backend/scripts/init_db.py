@@ -219,24 +219,24 @@ def get_statistics():
 
     try:
         with engine.connect() as conn:
-            # Count events
-            result = conn.execute(text("SELECT COUNT(*) FROM security_events.Events"))
+            # Count events (PostgreSQL snake_case)
+            result = conn.execute(text("SELECT COUNT(*) FROM security_events.events"))
             events_count = result.scalar()
 
             # Count agents
-            result = conn.execute(text("SELECT COUNT(*) FROM assets.Agents"))
+            result = conn.execute(text("SELECT COUNT(*) FROM assets.agents"))
             agents_count = result.scalar()
 
             # Count alerts
-            result = conn.execute(text("SELECT COUNT(*) FROM incidents.Alerts"))
+            result = conn.execute(text("SELECT COUNT(*) FROM incidents.alerts"))
             alerts_count = result.scalar()
 
             # Count users
-            result = conn.execute(text("SELECT COUNT(*) FROM config.Users"))
+            result = conn.execute(text("SELECT COUNT(*) FROM config.users"))
             users_count = result.scalar()
 
             # Count rules
-            result = conn.execute(text("SELECT COUNT(*) FROM config.DetectionRules"))
+            result = conn.execute(text("SELECT COUNT(*) FROM config.detection_rules"))
             rules_count = result.scalar()
 
             print(f"\nCurrent statistics:")

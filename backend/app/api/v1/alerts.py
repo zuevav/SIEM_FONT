@@ -377,7 +377,7 @@ async def get_alerts(
     last_hours: Optional[int] = Query(None, description="Get alerts from last N hours"),
 
     # Status filters
-    status: Optional[str] = Query(None, description="Filter by status"),
+    alert_status: Optional[str] = Query(None, description="Filter by status"),
     min_severity: Optional[int] = Query(None, ge=0, le=4, description="Minimum severity"),
     category: Optional[str] = Query(None, description="Filter by category"),
 
@@ -425,8 +425,8 @@ async def get_alerts(
             query = query.filter(Alert.CreatedAt <= end_time)
 
         # Status filters
-        if status:
-            query = query.filter(Alert.Status == status)
+        if alert_status:
+            query = query.filter(Alert.Status == alert_status)
         if min_severity is not None:
             query = query.filter(Alert.Severity >= min_severity)
         if category:
