@@ -35,10 +35,11 @@ def ensure_default_admin_user(db):
     """
     try:
         # Check if any user exists
+        logger.info(f"Checking for existing admin user '{settings.default_admin_username}'...")
         existing_user = db.query(User).filter(User.username == settings.default_admin_username).first()
 
         if existing_user:
-            logger.info(f"✓ Admin user '{settings.default_admin_username}' already exists")
+            logger.info(f"✓ Admin user '{settings.default_admin_username}' already exists (id={existing_user.user_id})")
             return
 
         # Check if any admin exists
@@ -49,11 +50,16 @@ def ensure_default_admin_user(db):
 
         # Create default admin user
         logger.info(f"Creating default admin user: {settings.default_admin_username}")
+        logger.info(f"  Email: {settings.default_admin_email}")
+        logger.info(f"  Password length: {len(settings.default_admin_password)} characters")
+
+        password_hash = get_password_hash(settings.default_admin_password)
+        logger.info(f"  Password hash generated: {password_hash[:20]}...")
 
         admin_user = User(
             username=settings.default_admin_username,
             email=settings.default_admin_email,
-            password_hash=get_password_hash(settings.default_admin_password),
+            password_hash=password_hash,
             role='admin',
             is_active=True,
             is_ad_user=False
@@ -61,13 +67,19 @@ def ensure_default_admin_user(db):
 
         db.add(admin_user)
         db.commit()
+        db.refresh(admin_user)
 
-        logger.info(f"✓ Default admin user created: {settings.default_admin_username}")
-        logger.warning(f"⚠️  IMPORTANT: Change default password after first login!")
+        logger.info(f"✓ Default admin user created successfully!")
+        logger.info(f"  User ID: {admin_user.user_id}")
+        logger.info(f"  Username: {admin_user.username}")
+        logger.warning(f"⚠️  IMPORTANT: Change default password (Admin123!@#$) after first login!")
 
     except Exception as e:
-        logger.error(f"Failed to create default admin user: {e}")
-        db.rollback()
+        logger.error(f"Failed to create default admin user: {e}", exc_info=True)
+        try:
+            db.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Rollback also failed: {rollback_error}")
 
 
 # ============================================================================

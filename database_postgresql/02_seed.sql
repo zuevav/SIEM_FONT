@@ -127,22 +127,22 @@ ON CONFLICT (setting_key) DO NOTHING;
 
 -- Создаём администратора по умолчанию
 -- Username: admin
--- Password: Admin123! (ОБЯЗАТЕЛЬНО ИЗМЕНИТЬ ПОСЛЕ ПЕРВОГО ВХОДА!)
--- Bcrypt hash: $2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VzNQPAB7thK.lK
+-- Password: Admin123!@#$ (ОБЯЗАТЕЛЬНО ИЗМЕНИТЬ ПОСЛЕ ПЕРВОГО ВХОДА!)
+-- Bcrypt hash: $2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW
 
 INSERT INTO config.users (user_id, username, email, password_hash, role, is_ad_user, is_active) VALUES
-(1, 'admin', 'admin@company.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VzNQPAB7thK.lK', 'admin', FALSE, TRUE),
-(2, 'analyst', 'analyst@company.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VzNQPAB7thK.lK', 'analyst', FALSE, TRUE),
-(3, 'viewer', 'viewer@company.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VzNQPAB7thK.lK', 'viewer', FALSE, TRUE)
+(1, 'admin', 'admin@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'admin', FALSE, TRUE),
+(2, 'analyst', 'analyst@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'analyst', FALSE, TRUE),
+(3, 'viewer', 'viewer@company.local', '$2b$12$XyBLab47k8KwdpTThic7zOCEV7YV4cYckutungUbzSPL8fQCMFDLW', 'viewer', FALSE, TRUE)
 ON CONFLICT (username) DO NOTHING;
 
 -- Обновляем sequence
 SELECT setval('config.users_user_id_seq', 3, true);
 
 \echo '  ✓ Пользователи по умолчанию созданы:'
-\echo '    - admin / Admin123!  (роль: admin)'
-\echo '    - analyst / Admin123!  (роль: analyst)'
-\echo '    - viewer / Admin123!  (роль: viewer)'
+\echo '    - admin / Admin123!@#$  (роль: admin)'
+\echo '    - analyst / Admin123!@#$  (роль: analyst)'
+\echo '    - viewer / Admin123!@#$  (роль: viewer)'
 \echo '    ⚠ ВАЖНО: Измените пароли при первом входе!'
 
 -- =====================================================================
