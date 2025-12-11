@@ -21,7 +21,7 @@ import secrets
 import string
 from app.models.user import User
 from app.models.agent import Agent
-from app.api.v1.auth import get_current_user, require_role
+from app.api.deps import get_current_user, require_role
 import uuid
 
 router = APIRouter()
