@@ -3,7 +3,19 @@ import useWebSocket, { ReadyState } from 'react-use-websocket'
 import { useAuthStore, useNotificationsStore } from '@/store'
 import type { WebSocketMessage, Event, Alert } from '@/types'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws'
+// Build WebSocket URL based on current location (works with nginx proxy)
+const getWebSocketUrl = () => {
+  // If explicitly set via env var, use that
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL
+  }
+  // Otherwise, build from current location (relative path via nginx proxy)
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const host = window.location.host
+  return `${protocol}//${host}/ws/dashboard`
+}
+
+const WS_URL = getWebSocketUrl()
 
 interface UseWebSocketOptions {
   onEvent?: (event: Event) => void
