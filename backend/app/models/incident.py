@@ -1,137 +1,152 @@
 """
 SQLAlchemy models for Alerts and Incidents
+Updated for PostgreSQL compatibility
 """
 
 from sqlalchemy import Column, BigInteger, Integer, String, DateTime, Boolean, Numeric, Text, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
 
 
 class DetectionRule(Base):
-    """Detection Rule model - config.DetectionRules table"""
+    """Detection Rule model - config.detection_rules table"""
 
-    __tablename__ = "DetectionRules"
+    __tablename__ = "detection_rules"
     __table_args__ = {'schema': 'config'}
 
-    RuleId = Column(Integer, primary_key=True, autoincrement=True)
-    RuleName = Column(String(200), nullable=False, unique=True)
-    Description = Column(String(1000))
-    IsEnabled = Column(Boolean, default=True, index=True)
+    # Map Python attributes to PostgreSQL column names
+    RuleId = Column('rule_id', Integer, primary_key=True, autoincrement=True)
+    RuleName = Column('rule_name', String(200), nullable=False, unique=True)
+    Description = Column('description', String(1000))
+    IsEnabled = Column('is_enabled', Boolean, default=True, index=True)
 
     # Priority
-    Severity = Column(Integer, default=2)  # 0-4
-    Priority = Column(Integer, default=50)  # Execution order
+    Severity = Column('severity', Integer, default=2)  # 0-4
+    Priority = Column('priority', Integer, default=50)  # Execution order
 
     # Rule Type
-    RuleType = Column(String(20), nullable=False)  # simple, threshold, correlation, sigma, ml
-    RuleLogic = Column(Text, nullable=False)  # JSON or YAML
+    RuleType = Column('rule_type', String(20), nullable=False)
+    RuleLogic = Column('rule_logic', Text, nullable=False)
 
     # Time Parameters
-    TimeWindowMinutes = Column(Integer)
-    ThresholdCount = Column(Integer)
-    GroupByFields = Column(String(500))  # JSON
+    TimeWindowMinutes = Column('time_window_minutes', Integer)
+    ThresholdCount = Column('threshold_count', Integer)
+    GroupByFields = Column('group_by_fields', JSONB)
 
     # Conditions
-    SourceTypes = Column(String(500))  # JSON
-    EventCodes = Column(String(500))  # JSON
-    Categories = Column(String(500))  # JSON
+    SourceTypes = Column('source_types', JSONB)
+    EventCodes = Column('event_codes', JSONB)
+    Categories = Column('categories', JSONB)
 
     # Actions
-    Actions = Column(Text)  # JSON
-    AutoEscalate = Column(Boolean, default=False)
+    Actions = Column('actions', JSONB)
+    AutoEscalate = Column('auto_escalate', Boolean, default=False)
 
     # MITRE ATT&CK
-    MitreAttackTactic = Column(String(50))
-    MitreAttackTechnique = Column(String(20))
-    MitreAttackSubtechnique = Column(String(30))
+    MitreAttackTactic = Column('mitre_attack_tactic', String(50))
+    MitreAttackTechnique = Column('mitre_attack_technique', String(20))
+    MitreAttackSubtechnique = Column('mitre_attack_subtechnique', String(30))
 
     # Exceptions
-    Exceptions = Column(Text)  # JSON
+    Exceptions = Column('exceptions', JSONB)
 
     # Statistics
-    TotalMatches = Column(BigInteger, default=0)
-    FalsePositives = Column(Integer, default=0)
-    LastMatch = Column(DateTime)
+    TotalMatches = Column('total_matches', BigInteger, default=0)
+    FalsePositives = Column('false_positives', Integer, default=0)
+    LastMatch = Column('last_match', DateTime)
 
     # Metadata
-    CreatedBy = Column(Integer, ForeignKey('config.Users.UserId'))
-    CreatedAt = Column(DateTime, server_default=func.getutcdate())
-    UpdatedBy = Column(Integer, ForeignKey('config.Users.UserId'))
-    UpdatedAt = Column(DateTime)
-    Tags = Column(String(500))  # JSON
+    CreatedBy = Column('created_by', Integer, ForeignKey('config.users.user_id'))
+    CreatedAt = Column('created_at', DateTime, server_default=func.now())
+    UpdatedBy = Column('updated_by', Integer, ForeignKey('config.users.user_id'))
+    UpdatedAt = Column('updated_at', DateTime)
+    Tags = Column('tags', JSONB)
 
     # Relationships
     creator = relationship("User", foreign_keys=[CreatedBy], back_populates="created_rules")
     alerts = relationship("Alert", back_populates="rule")
+
+    # Lowercase aliases for compatibility
+    @property
+    def rule_id(self):
+        return self.RuleId
+
+    @property
+    def rule_name(self):
+        return self.RuleName
+
+    @property
+    def is_enabled(self):
+        return self.IsEnabled
 
     def __repr__(self):
         return f"<DetectionRule(id={self.RuleId}, name='{self.RuleName}', enabled={self.IsEnabled})>"
 
 
 class Alert(Base):
-    """Alert model - incidents.Alerts table"""
+    """Alert model - incidents.alerts table"""
 
-    __tablename__ = "Alerts"
+    __tablename__ = "alerts"
     __table_args__ = {'schema': 'incidents'}
 
-    AlertId = Column(BigInteger, primary_key=True, autoincrement=True)
-    AlertGuid = Column(String(36), unique=True, index=True, server_default=func.newid())
-    RuleId = Column(Integer, ForeignKey('config.DetectionRules.RuleId'))
+    AlertId = Column('alert_id', BigInteger, primary_key=True, autoincrement=True)
+    AlertGuid = Column('alert_guid', UUID(as_uuid=True), unique=True, index=True, server_default=func.gen_random_uuid())
+    RuleId = Column('rule_id', Integer, ForeignKey('config.detection_rules.rule_id'))
 
     # Classification
-    Severity = Column(Integer, nullable=False, index=True)
-    Title = Column(String(500), nullable=False)
-    Description = Column(Text)
-    Category = Column(String(50))  # intrusion, malware, policy_violation, anomaly, recon
+    Severity = Column('severity', Integer, nullable=False, index=True)
+    Title = Column('title', String(500), nullable=False)
+    Description = Column('description', Text)
+    Category = Column('category', String(50))
 
     # Related Events
-    EventIds = Column(Text)  # JSON array
-    EventCount = Column(Integer, default=1)
-    FirstEventTime = Column(DateTime)
-    LastEventTime = Column(DateTime)
+    EventIds = Column('event_ids', JSONB)
+    EventCount = Column('event_count', Integer, default=1)
+    FirstEventTime = Column('first_event_time', DateTime)
+    LastEventTime = Column('last_event_time', DateTime)
 
     # Context
-    AgentId = Column(String(36), ForeignKey('assets.Agents.AgentId'), index=True)
-    Hostname = Column(String(255))
-    Username = Column(String(200))
-    SourceIP = Column(String(45))
-    TargetIP = Column(String(45))
-    ProcessName = Column(String(500))
+    AgentId = Column('agent_id', UUID(as_uuid=True), ForeignKey('assets.agents.agent_id'), index=True)
+    Hostname = Column('hostname', String(255))
+    Username = Column('username', String(200))
+    SourceIP = Column('source_ip', String(45))
+    TargetIP = Column('target_ip', String(45))
+    ProcessName = Column('process_name', String(500))
 
     # MITRE ATT&CK
-    MitreAttackTactic = Column(String(50))
-    MitreAttackTechnique = Column(String(20))
-    MitreAttackSubtechnique = Column(String(30))
+    MitreAttackTactic = Column('mitre_attack_tactic', String(50))
+    MitreAttackTechnique = Column('mitre_attack_technique', String(20))
+    MitreAttackSubtechnique = Column('mitre_attack_subtechnique', String(30))
 
     # Status
-    Status = Column(String(20), default='new', index=True)
-    # new, acknowledged, investigating, resolved, false_positive
-    AssignedTo = Column(Integer, ForeignKey('config.Users.UserId'))
-    Priority = Column(Integer, default=2)  # 1-4
+    Status = Column('status', String(20), default='new', index=True)
+    AssignedTo = Column('assigned_to', Integer, ForeignKey('config.users.user_id'))
+    Priority = Column('priority', Integer, default=2)
 
     # AI Analysis
-    AIAnalysis = Column(Text)  # JSON
-    AIRecommendations = Column(Text)
-    AIConfidence = Column(Numeric(5, 2))
+    AIAnalysis = Column('ai_analysis', JSONB)
+    AIRecommendations = Column('ai_recommendations', Text)
+    AIConfidence = Column('ai_confidence', Numeric(5, 2))
 
     # Incident
-    IncidentId = Column(Integer, ForeignKey('incidents.Incidents.IncidentId'))
+    IncidentId = Column('incident_id', Integer, ForeignKey('incidents.incidents.incident_id'))
 
     # Timestamps
-    CreatedAt = Column(DateTime, server_default=func.getutcdate(), index=True)
-    AcknowledgedAt = Column(DateTime)
-    ResolvedAt = Column(DateTime)
-    UpdatedAt = Column(DateTime)
+    CreatedAt = Column('created_at', DateTime, server_default=func.now(), index=True)
+    AcknowledgedAt = Column('acknowledged_at', DateTime)
+    ResolvedAt = Column('resolved_at', DateTime)
+    UpdatedAt = Column('updated_at', DateTime)
 
     # Comments and History
-    Comments = Column(Text)  # JSON
-    ActionsTaken = Column(Text)  # JSON
+    Comments = Column('comments', JSONB)
+    ActionsTaken = Column('actions_taken', JSONB)
 
     # CBR Compliance
-    OperationalRiskCategory = Column(String(100))
-    EstimatedDamage_RUB = Column(Numeric(15, 2))
-    IsReportable = Column(Boolean, default=True)
+    OperationalRiskCategory = Column('operational_risk_category', String(100))
+    EstimatedDamage_RUB = Column('estimated_damage_rub', Numeric(15, 2))
+    IsReportable = Column('is_reportable', Boolean, default=True)
 
     # Relationships
     rule = relationship("DetectionRule", back_populates="alerts")
@@ -144,82 +159,79 @@ class Alert(Base):
 
     @property
     def is_new(self) -> bool:
-        """Check if alert is new"""
         return self.Status == 'new'
 
     @property
     def is_resolved(self) -> bool:
-        """Check if alert is resolved"""
         return self.Status in ('resolved', 'false_positive')
 
 
 class Incident(Base):
-    """Incident model - incidents.Incidents table"""
+    """Incident model - incidents.incidents table"""
 
-    __tablename__ = "Incidents"
+    __tablename__ = "incidents"
     __table_args__ = {'schema': 'incidents'}
 
-    IncidentId = Column(Integer, primary_key=True, autoincrement=True)
-    IncidentGuid = Column(String(36), unique=True, index=True, server_default=func.newid())
+    IncidentId = Column('incident_id', Integer, primary_key=True, autoincrement=True)
+    IncidentGuid = Column('incident_guid', UUID(as_uuid=True), unique=True, index=True, server_default=func.gen_random_uuid())
 
     # Basic Info
-    Title = Column(String(500), nullable=False)
-    Description = Column(Text)
-    Severity = Column(Integer, nullable=False, index=True)
-    Category = Column(String(50))  # intrusion, malware, data_breach, policy_violation
+    Title = Column('title', String(500), nullable=False)
+    Description = Column('description', Text)
+    Severity = Column('severity', Integer, nullable=False, index=True)
+    Category = Column('category', String(50))
 
     # Related Alerts
-    AlertCount = Column(Integer, default=0)
-    EventCount = Column(Integer, default=0)
+    AlertCount = Column('alert_count', Integer, default=0)
+    EventCount = Column('event_count', Integer, default=0)
 
     # Affected Systems
-    AffectedAgents = Column(Text)  # JSON
-    AffectedUsers = Column(Text)  # JSON
-    AffectedAssets = Column(Integer, default=0)
+    AffectedAgents = Column('affected_agents', JSONB)
+    AffectedUsers = Column('affected_users', JSONB)
+    AffectedAssets = Column('affected_assets', Integer, default=0)
 
     # Timeline
-    StartTime = Column(DateTime)
-    EndTime = Column(DateTime)
-    DetectedAt = Column(DateTime, server_default=func.getutcdate())
+    StartTime = Column('start_time', DateTime)
+    EndTime = Column('end_time', DateTime)
+    DetectedAt = Column('detected_at', DateTime, server_default=func.now())
 
     # Status
-    Status = Column(String(20), default='open', index=True)
-    # open, investigating, contained, resolved, closed
-    AssignedTo = Column(Integer, ForeignKey('config.Users.UserId'))
-    Priority = Column(Integer, default=2)
+    Status = Column('status', String(20), default='open', index=True)
+    AssignedTo = Column('assigned_to', Integer, ForeignKey('config.users.user_id'))
+    Priority = Column('priority', Integer, default=2)
 
     # AI Analysis
-    AISummary = Column(Text)
-    AITimeline = Column(Text)  # JSON
-    AIRootCause = Column(Text)
-    AIRecommendations = Column(Text)
-    AIImpactAssessment = Column(Text)
+    AISummary = Column('ai_summary', Text)
+    AITimeline = Column('ai_timeline', JSONB)
+    AIRootCause = Column('ai_root_cause', Text)
+    AIRecommendations = Column('ai_recommendations', Text)
+    AIImpactAssessment = Column('ai_impact_assessment', Text)
 
     # MITRE ATT&CK
-    MitreAttackTactics = Column(String(500))  # JSON
-    MitreAttackTechniques = Column(String(500))  # JSON
-    AttackChain = Column(Text)  # JSON
+    MitreAttackTactics = Column('mitre_attack_tactics', JSONB)
+    MitreAttackTechniques = Column('mitre_attack_techniques', JSONB)
+    AttackChain = Column('attack_chain', JSONB)
 
     # Response
-    ContainmentActions = Column(Text)  # JSON
-    RemediationActions = Column(Text)  # JSON
-    LessonsLearned = Column(Text)
+    ContainmentActions = Column('containment_actions', JSONB)
+    RemediationActions = Column('remediation_actions', JSONB)
+    LessonsLearned = Column('lessons_learned', Text)
 
     # CBR Compliance
-    OperationalRiskCategory = Column(String(100))
-    EstimatedDamage_RUB = Column(Numeric(15, 2))
-    ActualDamage_RUB = Column(Numeric(15, 2))
-    IsReportedToCBR = Column(Boolean, default=False, index=True)
-    CBRReportDate = Column(DateTime)
-    CBRIncidentNumber = Column(String(100))
+    OperationalRiskCategory = Column('operational_risk_category', String(100))
+    EstimatedDamage_RUB = Column('estimated_damage_rub', Numeric(15, 2))
+    ActualDamage_RUB = Column('actual_damage_rub', Numeric(15, 2))
+    IsReportedToCBR = Column('is_reported_to_cbr', Boolean, default=False, index=True)
+    CBRReportDate = Column('cbr_report_date', DateTime)
+    CBRIncidentNumber = Column('cbr_incident_number', String(100))
 
     # Timestamps
-    CreatedAt = Column(DateTime, server_default=func.getutcdate())
-    UpdatedAt = Column(DateTime)
-    ClosedAt = Column(DateTime)
+    CreatedAt = Column('created_at', DateTime, server_default=func.now())
+    UpdatedAt = Column('updated_at', DateTime)
+    ClosedAt = Column('closed_at', DateTime)
 
     # Work Log
-    WorkLog = Column(Text)  # JSON
+    WorkLog = Column('work_log', JSONB)
 
     # Relationships
     alerts = relationship("Alert", back_populates="incident")
@@ -230,10 +242,8 @@ class Incident(Base):
 
     @property
     def is_active(self) -> bool:
-        """Check if incident is active"""
         return self.Status not in ('resolved', 'closed')
 
     @property
     def is_critical(self) -> bool:
-        """Check if incident is critical"""
         return self.Severity >= 4

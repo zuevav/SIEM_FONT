@@ -338,7 +338,7 @@ async def get_event_statistics(
 @router.get("/stats/timeline", response_model=EventsTimeline)
 async def get_events_timeline(
     hours: int = Query(24, ge=1, le=168, description="Time window in hours"),
-    interval: str = Query("hour", regex="^(hour|day)$", description="Time interval"),
+    interval: str = Query("hour", pattern="^(hour|day)$", description="Time interval"),
     db: Session = Depends(get_db),
     current_user: CurrentUser = Depends(get_current_user)
 ):

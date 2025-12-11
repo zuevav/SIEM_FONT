@@ -29,7 +29,7 @@ class User(Base):
 
     # Relationships
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
-    created_rules = relationship("DetectionRule", foreign_keys="DetectionRule.created_by", back_populates="creator")
+    created_rules = relationship("DetectionRule", foreign_keys="DetectionRule.CreatedBy", back_populates="creator")
     assigned_alerts = relationship("Alert", back_populates="assigned_user")
     assigned_incidents = relationship("Incident", back_populates="assigned_user")
     saved_searches = relationship("SavedSearch", back_populates="user", cascade="all, delete-orphan")
