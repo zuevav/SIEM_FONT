@@ -200,7 +200,10 @@ export default function Settings() {
 
     try {
       // Подключаемся к WebSocket для получения логов обновления
-      const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/api/v1/system/update/stream`)
+      // WebSocket routes are mounted at /ws prefix
+      const token = localStorage.getItem('siem_token')
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/system/update/stream?token=${token}`)
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)

@@ -315,3 +315,55 @@ async def websocket_notifications(
     except WebSocketException as e:
         logger.warning(f"WebSocket connection rejected: {e.reason}")
         await websocket.close(code=e.code, reason=e.reason)
+
+
+@router.websocket("/system/update/stream")
+async def websocket_system_update(
+    websocket: WebSocket,
+    token: Optional[str] = Query(None)
+):
+    """
+    WebSocket endpoint for system update progress
+    Sends real-time update progress during system updates
+
+    Message Format:
+        {
+            "type": "progress|log|error|complete",
+            "progress": 0-100,
+            "message": "Update message...",
+            "timestamp": "2024-01-01T00:00:00"
+        }
+    """
+    manager = get_connection_manager()
+
+    try:
+        user_info = await get_websocket_user(websocket, token)
+
+        # Only admin can watch update progress
+        if user_info.get("role") != "admin":
+            raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Admin access required")
+
+        logger.info(f"User {user_info['username']} connecting to system update channel")
+
+        await manager.connect(websocket, "system_update", user_info)
+
+        # Send initial connection message
+        await manager.send_personal_message({
+            "type": "connected",
+            "message": "Connected to system update channel"
+        }, websocket)
+
+        try:
+            while True:
+                data = await websocket.receive_text()
+                if data == "ping":
+                    await manager.send_personal_message({"type": "pong"}, websocket)
+
+        except WebSocketDisconnect:
+            logger.info(f"User {user_info['username']} disconnected from system update channel")
+        finally:
+            await manager.disconnect(websocket, "system_update")
+
+    except WebSocketException as e:
+        logger.warning(f"WebSocket connection rejected: {e.reason}")
+        await websocket.close(code=e.code, reason=e.reason)
