@@ -142,13 +142,12 @@ export default function UserManagement() {
     if (!selectedUser) return
 
     try {
+      // FIX BUG-015: Use snake_case field names as expected by backend API (UserUpdate schema)
       await apiService.updateUser(selectedUser.UserId, {
-        Username: values.username,
-        FullName: values.full_name,
-        Email: values.email,
-        Role: values.role,
-        IsActive: values.is_active,
-      } as Partial<User>)
+        email: values.email,
+        role: values.role,
+        is_active: values.is_active,
+      })
       message.success('User updated successfully')
       setEditModalVisible(false)
       setSelectedUser(null)
@@ -175,9 +174,10 @@ export default function UserManagement() {
   // Handle toggle active status
   const handleToggleActive = async (user: User) => {
     try {
+      // FIX BUG-015: Use snake_case field names as expected by backend API
       await apiService.updateUser(user.UserId, {
-        IsActive: !user.IsActive,
-      } as Partial<User>)
+        is_active: !user.IsActive,
+      })
       message.success(`User ${!user.IsActive ? 'activated' : 'deactivated'} successfully`)
       loadUsers()
     } catch (error) {

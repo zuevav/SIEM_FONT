@@ -2069,8 +2069,12 @@ async def update_appstore_app(
     if not app:
         raise HTTPException(status_code=404, detail="App not found")
 
+    # FIX BUG-004: Correct snake_case to PascalCase conversion
+    # Old code: field.replace("_", "").title() gave "display_name" → "Displayname" (wrong)
+    # New code: split and capitalize each word gives "display_name" → "DisplayName" (correct)
     for field, value in update.model_dump(exclude_unset=True).items():
-        setattr(app, field.replace("_", "").title() if "_" in field else field.title().replace("_", ""), value)
+        pascal_name = ''.join(word.capitalize() for word in field.split('_'))
+        setattr(app, pascal_name, value)
 
     app.UpdatedAt = datetime.utcnow()
     db.commit()

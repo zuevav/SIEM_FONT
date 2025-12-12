@@ -269,14 +269,15 @@ async def update_software_inventory(
             )
 
         # Mark all current software as inactive first
+        # FIX BUG-001: Use snake_case attributes (model uses snake_case)
         db.query(InstalledSoftware).filter(
             and_(
-                InstalledSoftware.AgentId == agent_id,
-                InstalledSoftware.IsActive == True
+                InstalledSoftware.agent_id == agent_id,
+                InstalledSoftware.is_active == True
             )
         ).update({
-            "IsActive": False,
-            "RemovedAt": datetime.utcnow()
+            "is_active": False,
+            "removed_at": datetime.utcnow()
         })
 
         # Process each software item
@@ -285,46 +286,49 @@ async def update_software_inventory(
 
         for software in inventory.software_list:
             # Check if software exists in registry
+            # FIX BUG-001: Use snake_case for SoftwareRegistry (has @property alias but column is snake_case)
             registry_entry = db.query(SoftwareRegistry).filter(
-                SoftwareRegistry.Name == software.name
+                SoftwareRegistry.name == software.name
             ).first()
 
             # Find or create installed software entry
+            # FIX BUG-001: Use snake_case for InstalledSoftware model attributes
             existing = db.query(InstalledSoftware).filter(
                 and_(
-                    InstalledSoftware.AgentId == agent_id,
-                    InstalledSoftware.Name == software.name,
-                    InstalledSoftware.Version == software.version
+                    InstalledSoftware.agent_id == agent_id,
+                    InstalledSoftware.name == software.name,
+                    InstalledSoftware.version == software.version
                 )
             ).first()
 
             if existing:
                 # Reactivate if was previously removed
-                existing.IsActive = True
-                existing.LastSeenAt = datetime.utcnow()
-                existing.RemovedAt = None
+                existing.is_active = True
+                existing.last_seen_at = datetime.utcnow()
+                existing.removed_at = None
                 updated_count += 1
             else:
-                # Create new entry
+                # Create new entry with snake_case attributes
                 new_software = InstalledSoftware(
-                    AgentId=agent_id,
-                    SoftwareId=registry_entry.SoftwareId if registry_entry else None,
-                    Name=software.name,
-                    Version=software.version,
-                    Publisher=software.publisher,
-                    InstallDate=software.install_date,
-                    InstallLocation=software.install_location,
-                    UninstallString=software.uninstall_string,
-                    EstimatedSize_KB=software.estimated_size_kb,
-                    IsActive=True,
-                    FirstSeenAt=datetime.utcnow(),
-                    LastSeenAt=datetime.utcnow()
+                    agent_id=agent_id,
+                    software_id=registry_entry.software_id if registry_entry else None,
+                    name=software.name,
+                    version=software.version,
+                    publisher=software.publisher,
+                    install_date=software.install_date,
+                    install_location=software.install_location,
+                    uninstall_string=software.uninstall_string,
+                    estimated_size_kb=software.estimated_size_kb,
+                    is_active=True,
+                    first_seen_at=datetime.utcnow(),
+                    last_seen_at=datetime.utcnow()
                 )
                 db.add(new_software)
                 added_count += 1
 
         # Update agent last inventory time
-        agent.LastInventory = datetime.utcnow()
+        # FIX BUG-002: Use snake_case - Agent model has last_inventory, not LastInventory
+        agent.last_inventory = datetime.utcnow()
 
         db.commit()
 
@@ -368,13 +372,14 @@ async def update_services_inventory(
             )
 
         # Mark all current services as inactive
+        # FIX BUG-003: Use snake_case for WindowsService model attributes
         db.query(WindowsService).filter(
             and_(
-                WindowsService.AgentId == agent_id,
-                WindowsService.IsActive == True
+                WindowsService.agent_id == agent_id,
+                WindowsService.is_active == True
             )
         ).update({
-            "IsActive": False
+            "is_active": False
         })
 
         # Process each service
@@ -382,36 +387,37 @@ async def update_services_inventory(
         updated_count = 0
 
         for service in inventory.services_list:
+            # FIX BUG-003: Use snake_case for WindowsService queries
             existing = db.query(WindowsService).filter(
                 and_(
-                    WindowsService.AgentId == agent_id,
-                    WindowsService.ServiceName == service.service_name
+                    WindowsService.agent_id == agent_id,
+                    WindowsService.service_name == service.service_name
                 )
             ).first()
 
             if existing:
-                # Update existing service
-                existing.DisplayName = service.display_name
-                existing.Status = service.status
-                existing.StartType = service.start_type
-                existing.ServiceAccount = service.service_account
-                existing.ExecutablePath = service.executable_path
-                existing.IsActive = True
-                existing.LastSeenAt = datetime.utcnow()
+                # Update existing service with snake_case attributes
+                existing.display_name = service.display_name
+                existing.status = service.status
+                existing.start_type = service.start_type
+                existing.service_account = service.service_account
+                existing.executable_path = service.executable_path
+                existing.is_active = True
+                existing.last_seen_at = datetime.utcnow()
                 updated_count += 1
             else:
-                # Create new service entry
+                # Create new service entry with snake_case attributes
                 new_service = WindowsService(
-                    AgentId=agent_id,
-                    ServiceName=service.service_name,
-                    DisplayName=service.display_name,
-                    Status=service.status,
-                    StartType=service.start_type,
-                    ServiceAccount=service.service_account,
-                    ExecutablePath=service.executable_path,
-                    IsActive=True,
-                    FirstSeenAt=datetime.utcnow(),
-                    LastSeenAt=datetime.utcnow()
+                    agent_id=agent_id,
+                    service_name=service.service_name,
+                    display_name=service.display_name,
+                    status=service.status,
+                    start_type=service.start_type,
+                    service_account=service.service_account,
+                    executable_path=service.executable_path,
+                    is_active=True,
+                    first_seen_at=datetime.utcnow(),
+                    last_seen_at=datetime.utcnow()
                 )
                 db.add(new_service)
                 added_count += 1
@@ -540,19 +546,20 @@ async def update_agent(
             )
 
         # Update fields
+        # FIX BUG-001: Use snake_case for Agent model attributes
         if update_data.tags is not None:
-            agent.Tags = json.dumps(update_data.tags)
+            agent.tags = json.dumps(update_data.tags)
         if update_data.location is not None:
-            agent.Location = update_data.location
+            agent.location = update_data.location
         if update_data.owner is not None:
-            agent.Owner = update_data.owner
+            agent.owner = update_data.owner
         if update_data.criticality_level is not None:
-            agent.CriticalityLevel = update_data.criticality_level
+            agent.criticality_level = update_data.criticality_level
 
         db.commit()
         db.refresh(agent)
 
-        logger.info(f"Agent {agent.Hostname} updated by {current_user.username}")
+        logger.info(f"Agent {agent.hostname} updated by {current_user.username}")
 
         return AgentResponse.from_orm(agent)
 
@@ -586,7 +593,8 @@ async def delete_agent(
                 detail=f"Agent {agent_id} not found"
             )
 
-        hostname = agent.Hostname
+        # FIX BUG-001: Use snake_case - Agent model has hostname, not Hostname
+        hostname = agent.hostname
 
         # Delete agent (cascade will handle related records)
         db.delete(agent)
@@ -702,23 +710,24 @@ async def get_agent_software(
         )
 
     # Query software
-    query = db.query(InstalledSoftware).filter(InstalledSoftware.AgentId == agent_id)
+    # FIX BUG-001: Use snake_case for InstalledSoftware model attributes
+    query = db.query(InstalledSoftware).filter(InstalledSoftware.agent_id == agent_id)
 
     if not include_inactive:
-        query = query.filter(InstalledSoftware.IsActive == True)
+        query = query.filter(InstalledSoftware.is_active == True)
 
-    software_list = query.order_by(InstalledSoftware.Name).all()
+    software_list = query.order_by(InstalledSoftware.name).all()
 
     return [
         {
-            "install_id": sw.InstallId,
-            "name": sw.Name,
-            "version": sw.Version,
-            "publisher": sw.Publisher,
-            "install_date": sw.InstallDate,
-            "is_active": sw.IsActive,
-            "first_seen": sw.FirstSeenAt,
-            "last_seen": sw.LastSeenAt
+            "install_id": sw.install_id,
+            "name": sw.name,
+            "version": sw.version,
+            "publisher": sw.publisher,
+            "install_date": sw.install_date,
+            "is_active": sw.is_active,
+            "first_seen": sw.first_seen_at,
+            "last_seen": sw.last_seen_at
         }
         for sw in software_list
     ]
@@ -743,23 +752,24 @@ async def get_agent_services(
         )
 
     # Query services
-    query = db.query(WindowsService).filter(WindowsService.AgentId == agent_id)
+    # FIX BUG-003: Use snake_case for WindowsService model attributes
+    query = db.query(WindowsService).filter(WindowsService.agent_id == agent_id)
 
     if not include_inactive:
-        query = query.filter(WindowsService.IsActive == True)
+        query = query.filter(WindowsService.is_active == True)
 
-    services_list = query.order_by(WindowsService.DisplayName).all()
+    services_list = query.order_by(WindowsService.display_name).all()
 
     return [
         {
-            "service_id": svc.ServiceId,
-            "service_name": svc.ServiceName,
-            "display_name": svc.DisplayName,
-            "status": svc.Status,
-            "start_type": svc.StartType,
-            "service_account": svc.ServiceAccount,
-            "executable_path": svc.ExecutablePath,
-            "is_active": svc.IsActive
+            "service_id": svc.service_id,
+            "service_name": svc.service_name,
+            "display_name": svc.display_name,
+            "status": svc.status,
+            "start_type": svc.start_type,
+            "service_account": svc.service_account,
+            "executable_path": svc.executable_path,
+            "is_active": svc.is_active
         }
         for svc in services_list
     ]

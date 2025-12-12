@@ -23,6 +23,7 @@ import {
   EyeOutlined,
   FilterOutlined,
 } from '@ant-design/icons'
+import { message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import { apiService } from '@/services/api'
@@ -52,6 +53,8 @@ export default function Events() {
       setTotal(response.total)
     } catch (error) {
       console.error('Failed to load events:', error)
+      // FIX BUG-021: Show error message to user
+      message.error('Не удалось загрузить события')
     } finally {
       setLoading(false)
     }

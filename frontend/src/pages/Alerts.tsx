@@ -81,7 +81,8 @@ export default function Alerts() {
     if (!selectedAlert) return
 
     try {
-      await apiService.resolveAlert(selectedAlert.AlertId, values.resolution, values.comment)
+      // FIX BUG-006: Use snake_case field name (alert_id instead of AlertId)
+      await apiService.resolveAlert(selectedAlert.alert_id, values.resolution, values.comment)
       message.success('Алерт решён')
       setResolveModalVisible(false)
       resolveForm.resetFields()
@@ -97,12 +98,13 @@ export default function Alerts() {
   }
 
   const handleTableChange = (pagination: any, filters: any) => {
+    // FIX BUG-006: Use snake_case field names for filter keys
     setFilter({
       ...filter,
       limit: pagination.pageSize,
       offset: (pagination.current - 1) * pagination.pageSize,
-      severity: filters.Severity,
-      status: filters.Status,
+      severity: filters.severity,
+      status: filters.status,
     })
   }
 
@@ -110,25 +112,26 @@ export default function Alerts() {
     setFilter({ ...filter, ...savedFilters, offset: 0 })
   }
 
+  // FIX BUG-006: Use snake_case field names matching Alert type
   const columns: ColumnsType<Alert> = [
     {
       title: 'ID',
-      dataIndex: 'AlertId',
-      key: 'AlertId',
+      dataIndex: 'alert_id',
+      key: 'alert_id',
       width: 80,
     },
     {
       title: 'Время',
-      dataIndex: 'FirstSeenAt',
-      key: 'FirstSeenAt',
+      dataIndex: 'first_event_time',
+      key: 'first_event_time',
       width: 160,
       render: (time) => formatDateTime(time),
       sorter: true,
     },
     {
       title: 'Severity',
-      dataIndex: 'Severity',
-      key: 'Severity',
+      dataIndex: 'severity',
+      key: 'severity',
       width: 110,
       render: (severity) => (
         <Tag color={getSeverityColor(severity)}>{getSeverityText(severity)}</Tag>
@@ -143,30 +146,30 @@ export default function Alerts() {
     },
     {
       title: 'Priority',
-      dataIndex: 'Priority',
-      key: 'Priority',
+      dataIndex: 'priority',
+      key: 'priority',
       width: 100,
       render: (priority) => <Tag>{getPriorityText(priority)}</Tag>,
     },
     {
       title: 'Название',
-      dataIndex: 'Title',
-      key: 'Title',
+      dataIndex: 'title',
+      key: 'title',
       width: 300,
       ellipsis: true,
       render: (title, record) => (
         <Space direction="vertical" size={0}>
           <Text strong>{title}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {record.Computer} • {record.EventCount} событий
+            {record.hostname} • {record.event_count} событий
           </Text>
         </Space>
       ),
     },
     {
       title: 'Статус',
-      dataIndex: 'Status',
-      key: 'Status',
+      dataIndex: 'status',
+      key: 'status',
       width: 130,
       render: (status) => <Tag color={getStatusColor(status)}>{getStatusText(status)}</Tag>,
       filters: [
@@ -180,15 +183,15 @@ export default function Alerts() {
     },
     {
       title: 'Назначен',
-      dataIndex: 'AssignedToUser',
-      key: 'AssignedToUser',
+      dataIndex: 'assigned_to_user',
+      key: 'assigned_to_user',
       width: 120,
       render: (user) => user || '-',
     },
     {
       title: 'Обновлён',
-      dataIndex: 'LastSeenAt',
-      key: 'LastSeenAt',
+      dataIndex: 'last_event_time',
+      key: 'last_event_time',
       width: 120,
       render: (time) => formatRelativeTime(time),
     },
@@ -199,17 +202,17 @@ export default function Alerts() {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          {record.Status === 'new' && (
+          {record.status === 'new' && (
             <Button
               type="primary"
               size="small"
               icon={<CheckOutlined />}
-              onClick={() => handleAcknowledge(record.AlertId)}
+              onClick={() => handleAcknowledge(record.alert_id)}
             >
               Подтвердить
             </Button>
           )}
-          {['new', 'acknowledged', 'in_progress'].includes(record.Status) && (
+          {['new', 'acknowledged', 'in_progress'].includes(record.status) && (
             <Button
               size="small"
               icon={<CloseOutlined />}
@@ -280,7 +283,7 @@ export default function Alerts() {
         <Table
           columns={columns}
           dataSource={alerts}
-          rowKey="AlertId"
+          rowKey="alert_id"
           loading={loading}
           onChange={handleTableChange}
           pagination={{
