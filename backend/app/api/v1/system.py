@@ -23,8 +23,26 @@ from app.schemas.settings import (
 )
 from app.schemas.auth import CurrentUser
 from app.models.settings import SystemSettings
+from app.websocket.manager import get_connection_manager
 
 logger = logging.getLogger(__name__)
+
+
+async def broadcast_update_progress(progress: int, message: str, msg_type: str = "progress"):
+    """Broadcast update progress to all connected WebSocket clients"""
+    try:
+        manager = get_connection_manager()
+        await manager.broadcast(
+            {
+                "type": msg_type,
+                "progress": progress,
+                "message": message,
+                "timestamp": datetime.utcnow().isoformat()
+            },
+            channel="system_update"
+        )
+    except Exception as e:
+        logger.warning(f"Failed to broadcast update progress: {e}")
 
 router = APIRouter()
 
@@ -146,49 +164,65 @@ async def perform_system_update(update_id: str):
             "logs": [],
             "status": "running"
         }
+        await broadcast_update_progress(0, "Starting update...")
 
         # Step 1: Git pull (40%)
         update_status[update_id]["progress"] = 10
         update_status[update_id]["message"] = "Pulling latest changes from GitHub..."
-        success, stdout, stderr = run_command("git pull origin $(git rev-parse --abbrev-ref HEAD)")
+        await broadcast_update_progress(10, "Pulling latest changes from GitHub...")
+
+        # Get current branch first (shell expansion doesn't work with shell=False)
+        git_info = get_git_info()
+        current_branch = git_info.get("branch", "main")
+
+        success, stdout, stderr = run_command(f"git pull origin {current_branch}")
 
         if not success:
             update_status[update_id]["status"] = "failed"
             update_status[update_id]["message"] = f"Git pull failed: {stderr}"
             update_status[update_id]["logs"].append(f"ERROR: {stderr}")
+            await broadcast_update_progress(10, f"Git pull failed: {stderr}", "error")
             return
 
         update_status[update_id]["logs"].append(stdout)
         update_status[update_id]["progress"] = 40
+        await broadcast_update_progress(40, "Git pull completed")
 
         # Step 2: Build images (70%)
         update_status[update_id]["message"] = "Building Docker images..."
+        await broadcast_update_progress(45, "Building Docker images...")
         success, stdout, stderr = run_command("docker compose build", cwd=".")
 
         if not success:
             update_status[update_id]["status"] = "failed"
             update_status[update_id]["message"] = f"Docker build failed: {stderr}"
             update_status[update_id]["logs"].append(f"ERROR: {stderr}")
+            await broadcast_update_progress(45, f"Docker build failed: {stderr}", "error")
             return
 
         update_status[update_id]["logs"].append(stdout)
         update_status[update_id]["progress"] = 70
+        await broadcast_update_progress(70, "Docker images built successfully")
 
         # Step 3: Restart containers (90%)
         update_status[update_id]["message"] = "Restarting containers..."
+        await broadcast_update_progress(75, "Restarting containers...")
         success, stdout, stderr = run_command("docker compose up -d", cwd=".")
 
         if not success:
             update_status[update_id]["status"] = "failed"
             update_status[update_id]["message"] = f"Docker restart failed: {stderr}"
             update_status[update_id]["logs"].append(f"ERROR: {stderr}")
+            await broadcast_update_progress(75, f"Docker restart failed: {stderr}", "error")
             return
 
         update_status[update_id]["logs"].append(stdout)
         update_status[update_id]["progress"] = 90
+        await broadcast_update_progress(90, "Containers restarted")
 
         # Step 4: Database migrations (if needed)
         update_status[update_id]["message"] = "Running database migrations..."
+        await broadcast_update_progress(95, "Running database migrations...")
         # TODO: Add migration logic here
         await asyncio.sleep(2)  # Simulate migration
 
@@ -196,6 +230,7 @@ async def perform_system_update(update_id: str):
         update_status[update_id]["progress"] = 100
         update_status[update_id]["message"] = "Update completed successfully!"
         update_status[update_id]["status"] = "completed"
+        await broadcast_update_progress(100, "Update completed successfully!", "complete")
 
         logger.info(f"System update {update_id} completed successfully")
 
@@ -203,6 +238,7 @@ async def perform_system_update(update_id: str):
         logger.error(f"System update {update_id} failed: {e}", exc_info=True)
         update_status[update_id]["status"] = "failed"
         update_status[update_id]["message"] = f"Update failed: {str(e)}"
+        await broadcast_update_progress(0, f"Update failed: {str(e)}", "error")
 
 
 # ============================================================================

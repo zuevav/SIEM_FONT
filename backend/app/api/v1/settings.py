@@ -34,8 +34,38 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Encryption key for sensitive settings (should be in env var)
-ENCRYPTION_KEY = os.getenv("SETTINGS_ENCRYPTION_KEY", Fernet.generate_key())
+# Encryption key for sensitive settings
+# IMPORTANT: If SETTINGS_ENCRYPTION_KEY is not set, use a deterministic key derived from JWT_SECRET_KEY
+# This ensures the key persists across restarts while still being secure
+def get_encryption_key() -> bytes:
+    """Get or generate a persistent encryption key"""
+    # First try environment variable
+    env_key = os.getenv("SETTINGS_ENCRYPTION_KEY")
+    if env_key:
+        # If it's already a valid Fernet key, use it
+        try:
+            Fernet(env_key.encode() if isinstance(env_key, str) else env_key)
+            return env_key.encode() if isinstance(env_key, str) else env_key
+        except Exception:
+            pass
+
+    # Fall back to deriving from JWT_SECRET_KEY (which should be persistent)
+    jwt_secret = os.getenv("JWT_SECRET_KEY", "default-siem-secret-key-change-me")
+
+    # Use PBKDF2 to derive a valid Fernet key from the JWT secret
+    import hashlib
+    import base64
+    # Fernet requires a 32-byte key, base64 encoded
+    derived = hashlib.pbkdf2_hmac(
+        'sha256',
+        jwt_secret.encode(),
+        b'siem-settings-encryption-salt',
+        100000,
+        dklen=32
+    )
+    return base64.urlsafe_b64encode(derived)
+
+ENCRYPTION_KEY = get_encryption_key()
 cipher = Fernet(ENCRYPTION_KEY)
 
 
